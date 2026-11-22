@@ -398,6 +398,22 @@ elif [ "$MODE" = "interval_cert" ]; then
     '$REMOTE_DIR/build/ufbi_interval_rg_cert' > '$REMOTE_DIR/evidence/phase3a_interval_rg_cert.tsv'
     cat '$REMOTE_DIR/evidence/phase3a_interval_rg_cert.tsv'
   "
+elif [ "$MODE" = "phase3b_cert" ]; then
+  echo "=== Building & running pure OM-2 Zero-MC Phase III-B Dual-Cliff Verifier on Spark CPU ==="
+  ssh spark "set -eu
+    cd '$OMEGA_DIR'
+    OMC=seed/out/omc
+    {
+      printf 'om2\n'
+      cat '$REMOTE_DIR/src/ufbi_math.om' '$REMOTE_DIR/src/ufbi_phase3b_cert.om'
+    } | \"\$OMC\" > '$REMOTE_DIR/build/ufbi_phase3b_cert'
+    chmod 755 '$REMOTE_DIR/build/ufbi_phase3b_cert'
+    file '$REMOTE_DIR/build/ufbi_phase3b_cert'
+    ldd '$REMOTE_DIR/build/ufbi_phase3b_cert' 2>&1 || true
+    sha256sum '$REMOTE_DIR/build/ufbi_phase3b_cert'
+    '$REMOTE_DIR/build/ufbi_phase3b_cert' > '$REMOTE_DIR/evidence/phase3b_dual_cliff_cert.tsv'
+    cat '$REMOTE_DIR/evidence/phase3b_dual_cliff_cert.tsv'
+  "
 elif [ "$MODE" = "proofs" ]; then
   echo "=== Checking zero-dependency Lean 4 bridge proofs/UfbiMassGap.lean on Spark ==="
   ssh spark "set -eu
@@ -416,6 +432,6 @@ elif [ "$MODE" = "openai_bridge" ]; then
     echo 'LEAN_PHASE3A_BRIDGES status=PASS'
   "
 else
-  echo "usage: $0 check1 | obs_synth | obs_synth_w2 | obs_synth_w3 | check3 | check4 | check5 | check6 | check7 | check8 | check9 | check10 | interval_cert | proofs | openai_bridge" >&2
+  echo "usage: $0 check1 | obs_synth | obs_synth_w2 | obs_synth_w3 | check3 | check4 | check5 | check6 | check7 | check8 | check9 | check10 | interval_cert | phase3b_cert | proofs | openai_bridge" >&2
   exit 2
 fi
