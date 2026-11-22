@@ -1,0 +1,18 @@
+# Phase IV Lean receipt  host=spark-b87b  date=2026-11-22T23:39:02Z
+Lean (version 4.32.0, aarch64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)
+mathlib: rev = "81a5d257c8e410db227a6665ed08f64fea08e997"
+519be81621efeef15ae0b4f2cbb7771fe49841a644424eaf591078f0ceb2987f  PhaseFourBridge.lean
+725cdd7e2dab738a408f0dcdc6554a712c3d178f3e266eb55d3baafabdb28c01  WilsonPolymerBridge.lean
+b46781a9d02e7afc82b3b1396ffd853d22feb517c91f84dccbcf6ea34d0a2373  OpenAiYmBridge.lean
+eb46c3a68d62365840ce4bed54eb8b0007cd74d10db45243570fb7a39d1795ee  DobrushinShlosman.lean
+c1542c816cd42d23448b66b4cb021c7f3bdad64b64f1c643dde27147ce0c3233  PublicWilson.lean
+94111ad258b4218a263fcc0a7136446d5a6eff0e090809b72036fb3a7aecfff8  PublicTheory.lean
+lake_build_exit=0 secs=9.645196802
+Build completed successfully (8665 jobs).
+lean_PhaseFourBridge_exit=0
+errors=0 warnings=8 sorryAx_mentions=0 theorems_with_axiom_report=19
+'YangMills.PhaseFour.wilsonLaw_map_gaugeAct' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.balanced_tree_p2_strictly_acyclic' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.balanced_tree_p2_all_plaquettes_one_fixed' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.balanced_tree_p2_all_dyn_deg_twelve' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.balanced_tree_cauchy_schwarz_minimum' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.balanced_tree_su2_4d_tv_dobrushin_window' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.balanced_tree_su2_4d_w1_dobrushin_window' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.balanced_tree_su2_4d_w2_dobrushin_window' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.balanced_tree_multiloop_w2_open_ball' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.quaternion_chordal_exact_splitting' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.quaternion_landau_faddeev_popov_exact' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.bernoulli_finset_prod_one_sub' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.star_4d_quaternion_quartic_expectation' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.star_4d_k1222_spectral_gap' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.star_4d_global_1far_action_floor' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.star_4d_global_2far_action_floor' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.density_ratio_sharp_tv_and_partition_bounds' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.star_4d_nontrivial_boundary_holonomy_bound' depends on axioms: [propext, Classical.choice, Quot.sound]'YangMills.PhaseFour.wilson_converges_preserves_exponential_decay' depends on axioms: [propext, Classical.choice, Quot.sound]
+
+# Negative control (Spark, 2026-11-22): theorem 14F-3 hypothesis widened to beta < sqrt3/5 must be rejected
+neg_control_exit=1
+NegControlPhaseFour.lean:289:27: error: Application type mismatch (the false widening is rejected)

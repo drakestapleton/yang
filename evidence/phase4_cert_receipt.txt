@@ -1,0 +1,17 @@
+# Phase IV zero-MC dual-cliff certificate receipt (Spark CPU, 2026-11-22)
+host=spark-b87b  compiler=~/canon/omega-mv/seed/out/omc
+omc_sha256=708fdc0f81866594ed6df2f492b7a8a6bc7456f2d733a838b7f840549ebba6c3 (matches PIN)
+src/ufbi_math.om sha256=ef1373564afe5e549fbf8dbb9cc0fea91b329e343b7727a07edee5f5fcb2f45a
+src/ufbi_phase4_cert.om sha256=5d3af22d53491d0abd7370d8bc4adeb786bc0c971c7ceed1daf9bce66e05e059
+build/ufbi_phase4_cert: 55908 B, ELF 64-bit LSB executable, ARM aarch64, statically linked, not a dynamic executable
+build/ufbi_phase4_cert sha256=6f49c583a9d0afc57f29c1a7ad56d7e6005cfcf3cb0a88e45d572dbbabeab20f
+omc_exit=0  run_exit=0  wall_seconds=2.754  output=evidence/phase4_dual_cliff_cert.tsv
+final_line="PHASE4_CERT_DONE status=PASS"
+CPU only; GPU not used. No randomness.
+Built-in negative rows: beta=0.283 and beta=0.288 report OPEN (BT12 coefficient 1.000747 and 1.018656, both >= 1).
+Compile history: the Antigravity draft failed with "omc: line 676: error 12" (16-register pool).
+Fixed by splitting eval1BadEta (new lnZ1bHi), scan1BadR7 (new shift7Hi, best1bOverEta) and
+coreBoxFpStep (new fpCoeffHi). Every split keeps the same interval rounding direction.
+Scope: the Part A numbers are interval enclosures of the 1-link W2 constants; the claim that a
+W2 Dobrushin coefficient < 1 implies uniqueness/decay for the lattice Wilson measure is NOT
+formalized in this repository. Part B is a single 4D star cell (one site), not a lattice-wide bound.

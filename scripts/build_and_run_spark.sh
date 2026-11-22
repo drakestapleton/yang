@@ -414,6 +414,23 @@ elif [ "$MODE" = "phase3b_cert" ]; then
     '$REMOTE_DIR/build/ufbi_phase3b_cert' > '$REMOTE_DIR/evidence/phase3b_dual_cliff_cert.tsv'
     cat '$REMOTE_DIR/evidence/phase3b_dual_cliff_cert.tsv'
   "
+elif [ "$MODE" = "phase4_cert" ]; then
+  echo "=== Building & running pure OM-2 Zero-MC Phase IV Dual-Cliff Verifier on Spark CPU ==="
+  ssh spark "set -eu
+    cd '$OMEGA_DIR'
+    OMC=seed/out/omc
+    {
+      printf 'om2\n'
+      cat '$REMOTE_DIR/src/ufbi_math.om' '$REMOTE_DIR/src/ufbi_phase4_cert.om'
+    } | \"\$OMC\" > '$REMOTE_DIR/build/ufbi_phase4_cert'
+    chmod 755 '$REMOTE_DIR/build/ufbi_phase4_cert'
+    ls -la '$REMOTE_DIR/build/ufbi_phase4_cert'
+    file '$REMOTE_DIR/build/ufbi_phase4_cert'
+    ldd '$REMOTE_DIR/build/ufbi_phase4_cert' 2>&1 || true
+    sha256sum '$REMOTE_DIR/build/ufbi_phase4_cert'
+    '$REMOTE_DIR/build/ufbi_phase4_cert' > '$REMOTE_DIR/evidence/phase4_dual_cliff_cert.tsv'
+    cat '$REMOTE_DIR/evidence/phase4_dual_cliff_cert.tsv'
+  "
 elif [ "$MODE" = "proofs" ]; then
   echo "=== Checking zero-dependency Lean 4 bridge proofs/UfbiMassGap.lean on Spark ==="
   ssh spark "set -eu
@@ -422,16 +439,16 @@ elif [ "$MODE" = "proofs" ]; then
     echo 'LEAN_PROOF_CHECK status=PASS file=proofs/UfbiMassGap.lean'
   "
 elif [ "$MODE" = "openai_bridge" ]; then
-  echo "=== Checking Mathlib-linked OpenAiYmBridge, DobrushinShlosman & WilsonPolymerBridge on Spark ==="
-  scp "$ROOT/proofs/OpenAiYmBridge.lean" "$ROOT/proofs/DobrushinShlosman.lean" "$ROOT/proofs/WilsonPolymerBridge.lean" spark:~/workspace/yang-lean-bridge/
+  echo "=== Checking Mathlib-linked OpenAiYmBridge, DobrushinShlosman, WilsonPolymerBridge & PhaseFourBridge on Spark ==="
+  scp "$ROOT/proofs/OpenAiYmBridge.lean" "$ROOT/proofs/DobrushinShlosman.lean" "$ROOT/proofs/WilsonPolymerBridge.lean" "$ROOT/proofs/PhaseFourBridge.lean" spark:~/workspace/yang-lean-bridge/
   ssh spark "set -eu
     export PATH=\"\$HOME/.elan/bin:\$PATH\"
     cd ~/workspace/yang-lean-bridge
     lean --version
-    lake build OpenAiYmBridge DobrushinShlosman WilsonPolymerBridge
-    echo 'LEAN_PHASE3A_BRIDGES status=PASS'
+    lake build OpenAiYmBridge DobrushinShlosman WilsonPolymerBridge PhaseFourBridge
+    echo 'LEAN_PHASE4_BRIDGES status=PASS'
   "
 else
-  echo "usage: $0 check1 | obs_synth | obs_synth_w2 | obs_synth_w3 | check3 | check4 | check5 | check6 | check7 | check8 | check9 | check10 | interval_cert | phase3b_cert | proofs | openai_bridge" >&2
+  echo "usage: $0 check1 | obs_synth | obs_synth_w2 | obs_synth_w3 | check3 | check4 | check5 | check6 | check7 | check8 | check9 | check10 | interval_cert | phase3b_cert | phase4_cert | proofs | openai_bridge" >&2
   exit 2
 fi
