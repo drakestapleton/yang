@@ -1,0 +1,1118 @@
+note SPDX-License-Identifier: Apache-2.0
+note src/ufbi_check9_gb10.om: Pure Seeded-OM-2 Zero-CUDA GB10 Runner for UFBI Check #9
+note (Phase II Blocked-Action Tomography + Extended 12-Point Calibration beta=0.10..10.0
+note  + k=3 Deep RG Blocking 32^4 -> 16^4 -> 8^4 -> 4^4 at beta=2.00, 2.30).
+note
+note Directly answers all three Check #8 referee questions on live GB10 silicon:
+note   1. Extended 12-point periodic 8^4 bulk calibration (beta in {0.10, 0.25, 0.50, 1.00,
+note      1.50, 2.00, 2.30, 2.50, 3.00, 4.00, 6.00, 10.00}) measuring P_bulk, Adj_bulk,
+note      R1x2_bulk, and W2x2_bulk — removing Check #8's beta=6.0 upper clamp AND providing
+note      exact pure-Wilson multi-loop reference curves.
+note   2. Blocked-Action Tomography (16^4 -> 8^4 -> 4^4 at beta in {1.50, 2.00, 2.30, 2.50, 6.00}):
+note      Measures P^(k), Adj^(k), R1x2^(k), W2x2^(k) at k=0, 1, 2 and computes exact
+note      non-plaquette coupling leakage relative to a pure Wilson action at matched beta_eff(k):
+note        dAdj^(k)  = Adj^(k)  - Adj_Wilson(beta_eff(k))
+note        dR1x2^(k) = R1x2^(k) - R1x2_Wilson(beta_eff(k))
+note        dW2x2^(k) = W2x2^(k) - W2x2_Wilson(beta_eff(k))
+note   3. k=3 Deep RG Blocking on 32^4 (N=1,048,576 sites on GB10 GPU -> 16^4 -> 8^4 -> 4^4)
+note      at beta=2.00 and beta=2.30, testing whether beta_eff(k=3) crosses directly inside
+note      the unconditionally Lean-certified 4D SU(2) Dobrushin basin (< 0.111 / < 0.0556)!
+note
+note Composed after:
+note   gpu/nvidia/native/nvrm/context.om
+note   gpu/nvidia/native/blackwell/vector.om
+note   gpu/nvidia/native/blackwell/launch.om
+note   gpu/nvidia/native/blackwell/batch.om
+note   om/encoder/bw_enc_sm121.om
+note   src/ufbi_math.om
+note   src/ufbi_check3_kernels.om
+
+global uCodePos ulong 1
+global uEntry ulong 8
+global uCodeMap long 1
+global uCodeFail uint 1
+global uBind uint 32
+global uBindN ulong 1
+global uDirty uint 1
+
+global dLinks long 1
+global dStaples long 1
+global dFlags long 1
+global dNbSite long 1
+global dRng long 1
+
+note Host link levels (max 16^4 = 1,048,576 f32; 32^4 reads directly from GPU cached dLinks!)
+note lvl 0 = hL1 (16^4, 65536 sites), lvl 1 = hL2 (8^4, 4096 sites), lvl 2 = hL3 (4^4, 256 sites)
+note lvl 3 = direct GPU dLinks read for 32^4!
+global hL1 f32 1048576
+global hL2 f32 65536
+global hL3 f32 4096
+global hStage uchar 65536
+
+note 12-point extended bulk calibration tables (beta, P, Adj, R1x2, W2x2)
+global calBeta f64 12
+global calP f64 12
+global calAdj f64 12
+global calR12 f64 12
+global calW22 f64 12
+
+note Tomography accumulators: 4 scales x 4 obs (P, Adj, R12, W22) = 16 f64
+global tomAcc f64 16
+global tomCur f64 4
+global tomCnt ulong 1
+global rgSrcLvl ulong 1
+global rgDstLvl ulong 1
+global rgLf ulong 1
+
+text tC9Hdr "=== UFBI CHECK #9: PHASE-II BLOCKED-ACTION TOMOGRAPHY & k=3 32^4 RG FLOW (PURE OM-2 GB10) ===\n"
+text tC9Err "FAIL: GB10 native NVRM/kernel error stage="
+text tC9CalHdr "=== EXTENDED 12-POINT PERIODIC 8^4 SU(2) PURE-WILSON MULTI-LOOP CALIBRATION ===\n"
+text tC9CalCols "cal_beta\tP_bulk\tAdj_bulk\tR1x2_bulk\tW2x2_bulk\n"
+text tC9TomHdr "=== BLOCKED-ACTION TOMOGRAPHY (16^4 -> 8^4 -> 4^4, PERIODIC BULK, 64 MEAS) ===\n"
+text tC9TomCols "L_base\tbeta\tk\tP_k\tbeta_eff\tAdj_k\tdAdj_nonW\tR1x2_k\tdR1x2_nonW\tW2x2_k\tdW2x2_nonW\tus\n"
+text tC9K3Hdr "=== DEEP k=3 BLOCK-SPIN RG FLOW ON 32^4 (1,048,576 SITES: 32^4 -> 16^4 -> 8^4 -> 4^4) ===\n"
+text tTab "\t"
+text tNl "\n"
+text tC9Done "CHECK9_GB10_DONE status=PASS\n"
+
+fn uCodeWrite w view ulong 4 to void
+p = get uCodePos 0
+b = new uchar 16 0
+if gt get uCodeMap 0 0
+for i ulong 16
+put b i uchar and shr get w div i 4 mul rem i 4 8 255
+end
+if ne mapwrite get uCodeMap 0 p b 0 16 16
+put uCodeFail 0 1
+end
+end
+put uCodePos 0 add p 16
+end
+
+fn uEmitAllKernels to void
+put uCodePos 0 0
+for id ulong 3
+p = mul div add get uCodePos 0 255 256 256
+put uEntry id p
+put uCodePos 0 p
+put uPc 0 0
+put uGuard 0 0
+ok = false
+if eq id 0
+ok = uEmitSu2Staple
+end
+if eq id 1
+ok = uEmitSu2Overrelax
+end
+if eq id 2
+ok = uEmitSu2Heatbath
+end
+if not ok
+exit 4
+end
+uDone
+end
+end
+
+fn uArg u uint to void
+i = get uBindN 0
+put uBind i u
+put uBindN 0 add i 1
+end
+
+fn uPtr va ulong to void
+uArg gblo va
+uArg gbhi va
+end
+
+fn uRecord id ulong gx uint bx uint to bool
+gbqmd 1
+a = add mapaddr get uCodeMap 0 get uEntry id
+put gbq1 32 gblo shr a 4
+put gbq1 33 or uint and shr a 36 2097151 20971520
+put gbq1 59 gblo shr a 8
+put gbq1 34 or uint 65536 bx
+put gbq1 35 or uint 131073 shl uint 64 8
+put gbq1 36 78923784
+put gbq1 37 0
+put gbq1 39 gx
+put gbq1 40 1
+put gbq1 41 1
+put gbcb 216 bx
+put gbcb 220 gx
+put gbcb 221 1
+put gbcb 222 1
+cb = mapaddr get gbmem 1
+words = get uBindN 0
+endva = add cb add 896 mul words 4
+put gbcb 212 gbhi endva
+put gbcb 213 gblo endva
+put gbused 0 0
+gbsetup
+if ne get uDirty 0 0
+gbmth 0 40 4
+gbemit 0
+gbemit 0
+gbemit 0
+gbemit 2281701376
+put uDirty 0 0
+end
+gbdma cb 224
+for j ulong 224
+gbemit get gbcb j
+end
+gbdma add cb 896 uint words
+for j ulong words bound 32
+gbemit get uBind j
+end
+q = mapaddr get gbmem 2
+gbinline q false
+gbdma add q 8192 1
+gbemit 1
+gbinline add q 4096 true
+gbrel add mapaddr get gbmem 3 32 6
+put uBindN 0 0
+ret gbappend id get gbst 1
+end
+
+fn uRunKernel id ulong gx uint bx uint to bool
+put uDirty 0 1
+if not gbbegin 1
+ret false
+end
+if not uRecord id gx bx
+ret false
+end
+ret gbbsubmit 2000000000
+end
+
+fn stageU32 k ulong v uint to void
+b = mul k 4
+put hStage b uchar and v 255
+put hStage add b 1 uchar and shr v 8 255
+put hStage add b 2 uchar and shr v 16 255
+put hStage add b 3 uchar and shr v 24 255
+end
+
+fn stageF32 k ulong v f32 to void
+stageU32 k bitcast uint v
+end
+
+fn flushStage m long offBytes ulong nWords ulong to bool
+nb = mul nWords 4
+ret eq mapwrite m offBytes hStage 0 nb long nb
+end
+
+fn coordIdx c0 ulong c1 ulong c2 ulong c3 ulong L ulong to ulong
+r = add mul c0 L c1
+r = add mul r L c2
+ret add mul r L c3
+end
+
+fn stepCoord s ulong L ulong dir ulong delta ulong to ulong
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+if eq dir 0
+c0 = rem add c0 delta L
+end
+if eq dir 1
+c1 = rem add c1 delta L
+end
+if eq dir 2
+c2 = rem add c2 delta L
+end
+if eq dir 3
+c3 = rem add c3 delta L
+end
+ret coordIdx c0 c1 c2 c3 L
+end
+
+fn isBox4 s ulong L ulong lo ulong hi ulong to bool
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+if or lt c0 lo ge c0 hi
+ret false
+end
+if or lt c1 lo ge c1 hi
+ret false
+end
+if or lt c2 lo ge c2 hi
+ret false
+end
+if or lt c3 lo ge c3 hi
+ret false
+end
+ret true
+end
+
+note Streaming neighbor-table builder (supports up to L=32 -> 1,048,576 sites x 8 = 8,388,608 u32!)
+fn stageSiteNb kSite ulong s ulong L ulong to void
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+b = mul kSite 8
+stageU32 b uint coordIdx rem add c0 1 L c1 c2 c3 L
+stageU32 add b 1 uint coordIdx rem add c0 sub L 1 L c1 c2 c3 L
+stageU32 add b 2 uint coordIdx c0 rem add c1 1 L c2 c3 L
+stageU32 add b 3 uint coordIdx c0 rem add c1 sub L 1 L c2 c3 L
+stageU32 add b 4 uint coordIdx c0 c1 rem add c2 1 L c3 L
+stageU32 add b 5 uint coordIdx c0 c1 rem add c2 sub L 1 L c3 L
+stageU32 add b 6 uint coordIdx c0 c1 c2 rem add c3 1 L L
+stageU32 add b 7 uint coordIdx c0 c1 c2 rem add c3 sub L 1 L L
+end
+
+fn buildNbTableStream L ulong to bool
+N = mul mul L L mul L L
+off = ulong 0
+while lt off N bound 512
+cnt = sub N off
+if gt cnt 2048
+cnt = ulong 2048
+end
+for k ulong cnt bound 2048
+stageSiteNb k add off k L
+end
+if not flushStage get dNbSite 0 mul off 32 mul cnt 8
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn siteParity s ulong L ulong to uint
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+ret uint and add add c0 c1 add c2 c3 1
+end
+
+fn buildFlagsStream L ulong to bool
+N = mul mul L L mul L L
+totalW = mul N 4
+off = ulong 0
+while lt off totalW bound 256
+cnt = sub totalW off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+stageU32 k siteParity div add off k 4 L
+end
+if not flushStage get dFlags 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn seedGpuRngStream N ulong seed ulong to bool
+uRngSeed seed
+off = ulong 0
+while lt off N bound 64
+cnt = sub N off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+r = uint and uRngNext 0xffffffff
+if eq r 0
+r = uint 0x9e3779b9
+end
+stageU32 k r
+end
+if not flushStage get dRng 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+note Streaming cold-perturbed SU(2) lattice initializer on GPU (supports L up to 32!)
+fn stageRandLink kLink ulong to void
+a0 = f32 0.85f32
+a1 = mul 0.25f32 f32 uRngNorm64
+a2 = mul 0.25f32 f32 uRngNorm64
+a3 = mul 0.25f32 f32 uRngNorm64
+n2 = add add mul a0 a0 mul a1 a1 add mul a2 a2 mul a3 a3
+inv = f32 div 1.0f64 uSqrt64 f64 n2
+b = mul kLink 4
+stageF32 b mul a0 inv
+stageF32 add b 1 mul a1 inv
+stageF32 add b 2 mul a2 inv
+stageF32 add b 3 mul a3 inv
+end
+
+fn initLatticeStream L ulong seed ulong to bool
+N = mul mul L L mul L L
+uRngSeed seed
+totalLinks = mul N 4
+off = ulong 0
+while lt off totalLinks bound 1024
+cnt = sub totalLinks off
+if gt cnt 4096
+cnt = ulong 4096
+end
+for k ulong cnt bound 4096
+stageRandLink k
+end
+if not flushStage get dLinks 0 mul off 16 mul cnt 4
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn downloadAllToL1 N ulong to void
+totalF = mul N 16
+lm = get dLinks 0
+for i ulong totalF bound 1048576
+put hL1 i bitcast f32 uint mapget lm mul i 4 4
+end
+end
+
+fn gpuRunStaple N ulong mu ulong par ulong to bool
+gx = uint div add N 255 256
+nu0 = ulong 0
+nu1 = ulong 1
+nu2 = ulong 2
+if eq mu 0
+nu0 = ulong 1
+nu1 = ulong 2
+nu2 = ulong 3
+end
+if eq mu 1
+nu0 = ulong 0
+nu1 = ulong 2
+nu2 = ulong 3
+end
+if eq mu 2
+nu0 = ulong 0
+nu1 = ulong 1
+nu2 = ulong 3
+end
+uPtr mapaddr get dLinks 0
+uPtr mapaddr get dStaples 0
+uPtr mapaddr get dFlags 0
+uPtr mapaddr get dNbSite 0
+uArg uint N
+uArg uint mu
+uArg uint par
+uArg uint nu0
+uArg uint nu1
+uArg uint nu2
+ret uRunKernel 0 gx 256
+end
+
+fn gpuRunOverrelax N ulong mu ulong par ulong to bool
+gx = uint div add N 255 256
+uPtr mapaddr get dLinks 0
+uPtr mapaddr get dStaples 0
+uPtr mapaddr get dFlags 0
+uArg uint N
+uArg uint mu
+uArg uint par
+ret uRunKernel 1 gx 256
+end
+
+fn gpuRunHeatbath N ulong mu ulong par ulong beta f32 to bool
+gx = uint div add N 255 256
+uPtr mapaddr get dLinks 0
+uPtr mapaddr get dStaples 0
+uPtr mapaddr get dFlags 0
+uPtr mapaddr get dRng 0
+uArg uint N
+uArg uint mu
+uArg uint par
+uArg bitcast uint beta
+ret uRunKernel 2 gx 256
+end
+
+fn gpuSweep N ulong beta f32 nOr ulong to bool
+for mu ulong 4
+for par ulong 2
+if not gpuRunStaple N mu par
+ret false
+end
+if not gpuRunHeatbath N mu par beta
+ret false
+end
+for r ulong nOr bound 8
+if not gpuRunStaple N mu par
+ret false
+end
+if not gpuRunOverrelax N mu par
+ret false
+end
+end
+end
+end
+ret true
+end
+
+note =========================================================================
+note Quaternion Helpers + Multi-Level Storage (lvl 0=hL1, 1=hL2, 2=hL3, 3=dLinks)
+note =========================================================================
+fn hQMul a view f32 4 b view f32 4 o edit f32 4 to void
+v = mul get a 0 get b 0
+v = sub v mul get a 1 get b 1
+v = sub v mul get a 2 get b 2
+v = sub v mul get a 3 get b 3
+put o 0 v
+v = mul get a 0 get b 1
+v = add v mul get a 1 get b 0
+v = add v mul get a 2 get b 3
+v = sub v mul get a 3 get b 2
+put o 1 v
+v = mul get a 0 get b 2
+v = sub v mul get a 1 get b 3
+v = add v mul get a 2 get b 0
+v = add v mul get a 3 get b 1
+put o 2 v
+v = mul get a 0 get b 3
+v = add v mul get a 1 get b 2
+v = sub v mul get a 2 get b 1
+v = add v mul get a 3 get b 0
+put o 3 v
+end
+
+fn hQConj q edit f32 4 to void
+put q 1 neg get q 1
+put q 2 neg get q 2
+put q 3 neg get q 3
+end
+
+fn hQNorm q edit f32 4 to void
+n2 = mul get q 0 get q 0
+n2 = add n2 mul get q 1 get q 1
+n2 = add n2 mul get q 2 get q 2
+n2 = add n2 mul get q 3 get q 3
+if le n2 0.0000000001f32
+put q 0 1.0f32
+put q 1 0.0f32
+put q 2 0.0f32
+put q 3 0.0f32
+ret
+end
+inv = f32 div 1.0f64 uSqrt64 f64 n2
+for c ulong 4
+put q c mul get q c inv
+end
+end
+
+fn loadLvl lvl ulong s ulong mu ulong dst edit f32 4 to void
+b = mul add mul s 4 mu 4
+if eq lvl 0
+put dst 0 get hL1 b
+put dst 1 get hL1 add b 1
+put dst 2 get hL1 add b 2
+put dst 3 get hL1 add b 3
+ret
+end
+if eq lvl 1
+put dst 0 get hL2 b
+put dst 1 get hL2 add b 1
+put dst 2 get hL2 add b 2
+put dst 3 get hL2 add b 3
+ret
+end
+if eq lvl 2
+put dst 0 get hL3 b
+put dst 1 get hL3 add b 1
+put dst 2 get hL3 add b 2
+put dst 3 get hL3 add b 3
+ret
+end
+lm = get dLinks 0
+bo = mul b 4
+put dst 0 bitcast f32 uint mapget lm bo 4
+put dst 1 bitcast f32 uint mapget lm add bo 4 4
+put dst 2 bitcast f32 uint mapget lm add bo 8 4
+put dst 3 bitcast f32 uint mapget lm add bo 12 4
+end
+
+fn storeLvl lvl ulong s ulong mu ulong src view f32 4 to void
+b = mul add mul s 4 mu 4
+if eq lvl 0
+put hL1 b get src 0
+put hL1 add b 1 get src 1
+put hL1 add b 2 get src 2
+put hL1 add b 3 get src 3
+ret
+end
+if eq lvl 1
+put hL2 b get src 0
+put hL2 add b 1 get src 1
+put hL2 add b 2 get src 2
+put hL2 add b 3 get src 3
+ret
+end
+put hL3 b get src 0
+put hL3 add b 1 get src 1
+put hL3 add b 2 get src 2
+put hL3 add b 3 get src 3
+end
+
+fn addBlockStaple x ulong mu ulong nu ulong isBack bool dst edit f32 4 to void
+lvl = get rgSrcLvl 0
+Lf = get rgLf 0
+a = new f32 4 0.0f32
+b = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+x2m = stepCoord stepCoord x Lf mu 1 Lf mu 1
+if not isBack
+xn = stepCoord x Lf nu 1
+loadLvl lvl x nu a
+loadLvl lvl xn mu b
+hQMul a b p
+loadLvl lvl stepCoord xn Lf mu 1 mu a
+hQMul p a q
+loadLvl lvl x2m nu a
+hQConj a
+hQMul q a p
+else
+xm = stepCoord x Lf nu sub Lf 1
+loadLvl lvl xm nu a
+hQConj a
+loadLvl lvl xm mu b
+hQMul a b p
+loadLvl lvl stepCoord xm Lf mu 1 mu a
+hQMul p a q
+loadLvl lvl stepCoord x2m Lf nu sub Lf 1 nu a
+hQMul q a p
+end
+for c ulong 4
+put dst c add get dst c get p c
+end
+end
+
+fn coarseToFine X ulong Lf ulong to ulong
+Lc = div Lf 2
+c3 = rem X Lc
+t = div X Lc
+c2 = rem t Lc
+t = div t Lc
+c1 = rem t Lc
+c0 = div t Lc
+ret coordIdx mul c0 2 mul c1 2 mul c2 2 mul c3 2 Lf
+end
+
+fn blockLinkOne X ulong mu ulong to void
+srcLvl = get rgSrcLvl 0
+Lf = get rgLf 0
+x = coarseToFine X Lf
+u1 = new f32 4 0.0f32
+u2 = new f32 4 0.0f32
+w0 = new f32 4 0.0f32
+st = new f32 4 0.0f32
+loadLvl srcLvl x mu u1
+loadLvl srcLvl stepCoord x Lf mu 1 mu u2
+hQMul u1 u2 w0
+for nu ulong 4
+if ne nu mu
+addBlockStaple x mu nu false st
+addBlockStaple x mu nu true st
+end
+end
+wS = div 0.5f32 6.0f32
+for c ulong 4
+put w0 c add mul 0.5f32 get w0 c mul wS get st c
+end
+hQNorm w0
+storeLvl get rgDstLvl 0 X mu w0
+end
+
+fn blockBox srcLvl ulong dstLvl ulong Lf ulong cLo ulong cHi ulong to void
+put rgSrcLvl 0 srcLvl
+put rgDstLvl 0 dstLvl
+put rgLf 0 Lf
+Lc = div Lf 2
+Nc = mul mul Lc Lc mul Lc Lc
+for X ulong Nc bound 65536
+if isBox4 X Lc cLo cHi
+for mu ulong 4
+blockLinkOne X mu
+end
+end
+end
+end
+
+note =========================================================================
+note Multi-Loop Wilson Observables: Plaq (1x1), Adj, Rect (1x2), Loop (2x2)
+note =========================================================================
+fn plaqLvl lvl ulong L ulong s ulong mu ulong nu ulong to f64
+a = new f32 4 0.0f32
+b = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+loadLvl lvl s mu a
+loadLvl lvl stepCoord s L mu 1 nu b
+hQMul a b p
+loadLvl lvl stepCoord s L nu 1 mu a
+hQConj a
+hQMul p a q
+loadLvl lvl s nu b
+hQConj b
+hQMul q b p
+ret f64 get p 0
+end
+
+fn rect12Lvl lvl ulong L ulong s ulong mu ulong nu ulong to f64
+a = new f32 4 0.0f32
+b = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+s1 = stepCoord s L mu 1
+s2 = stepCoord s1 L mu 1
+loadLvl lvl s mu a
+loadLvl lvl s1 mu b
+hQMul a b p
+loadLvl lvl s2 nu a
+hQMul p a q
+loadLvl lvl stepCoord s1 L nu 1 mu a
+hQConj a
+hQMul q a p
+loadLvl lvl stepCoord s L nu 1 mu a
+hQConj a
+hQMul p a q
+loadLvl lvl s nu b
+hQConj b
+hQMul q b p
+ret f64 get p 0
+end
+
+fn rect22Lvl lvl ulong L ulong s ulong mu ulong nu ulong to f64
+a = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+cur = s
+loadLvl lvl cur mu p
+cur = stepCoord cur L mu 1
+loadLvl lvl cur mu a
+hQMul p a q
+cur = stepCoord cur L mu 1
+loadLvl lvl cur nu a
+hQMul q a p
+cur = stepCoord cur L nu 1
+loadLvl lvl cur nu a
+hQMul p a q
+cur = stepCoord cur L nu 1
+cur = stepCoord cur L mu sub L 1
+loadLvl lvl cur mu a
+hQConj a
+hQMul q a p
+cur = stepCoord cur L mu sub L 1
+loadLvl lvl cur mu a
+hQConj a
+hQMul p a q
+cur = stepCoord cur L nu sub L 1
+loadLvl lvl cur nu a
+hQConj a
+hQMul q a p
+cur = stepCoord cur L nu sub L 1
+loadLvl lvl cur nu a
+hQConj a
+hQMul p a q
+ret f64 get q 0
+end
+
+fn accumTomSite lvl ulong L ulong s ulong to void
+for mu ulong 4
+for nu ulong 4
+if lt mu nu
+vp = plaqLvl lvl L s mu nu
+put tomCur 0 add get tomCur 0 vp
+put tomCur 1 add get tomCur 1 sub mul 4.0f64 mul vp vp 1.0f64
+put tomCur 2 add get tomCur 2 rect12Lvl lvl L s mu nu
+put tomCur 3 add get tomCur 3 rect22Lvl lvl L s mu nu
+put tomCnt 0 add get tomCnt 0 1
+end
+end
+end
+end
+
+fn evalTomBox lvl ulong L ulong lo ulong hi ulong kIdx ulong to void
+for c ulong 4
+put tomCur c 0.0f64
+end
+put tomCnt 0 0
+N = mul mul L L mul L L
+for s ulong N bound 65536
+if isBox4 s L lo hi
+accumTomSite lvl L s
+end
+end
+fc = f64 get tomCnt 0
+base = mul kIdx 4
+for d ulong 4
+idx = add base d
+nv = add get tomAcc idx div get tomCur d fc
+put tomAcc idx nv
+end
+end
+
+note Direct 32^4 fine-level sampling on central [14, 18)^4 (256 sites)
+fn evalTom32Center kIdx ulong to void
+for c ulong 4
+put tomCur c 0.0f64
+end
+put tomCnt 0 0
+for c0 ulong 4
+for c1 ulong 4
+for c2 ulong 4
+for c3 ulong 4
+s = coordIdx add c0 14 add c1 14 add c2 14 add c3 14 32
+accumTomSite 3 32 s
+end
+end
+end
+end
+fc = f64 get tomCnt 0
+base = mul kIdx 4
+for d ulong 4
+idx = add base d
+nv = add get tomAcc idx div get tomCur d fc
+put tomAcc idx nv
+end
+end
+
+note =========================================================================
+note 12-Point Calibration & Piecewise-Linear Pure-Wilson Reference Interpolation
+note =========================================================================
+fn runCal9 idx ulong beta f32 to void
+N = ulong 4096
+if not seedGpuRngStream N add 0xc9000001 mul idx 7919
+exit 21
+end
+if not initLatticeStream 8 add 0xc9000001 mul idx 104729
+exit 22
+end
+for sw ulong 48
+if not gpuSweep N beta 3
+exit 23
+end
+end
+for c ulong 4
+put tomAcc c 0.0f64
+end
+for m ulong 32
+if not gpuSweep N beta 2
+exit 24
+end
+downloadAllToL1 N
+evalTomBox 0 8 2 6 0
+end
+pM = div get tomAcc 0 32.0f64
+aM = div get tomAcc 1 32.0f64
+rM = div get tomAcc 2 32.0f64
+wM = div get tomAcc 3 32.0f64
+put calBeta idx f64 beta
+put calP idx pM
+put calAdj idx aM
+put calR12 idx rM
+put calW22 idx wM
+uPrintF64 f64 beta
+uPrint tTab
+uPrintF64 pM
+uPrint tTab
+uPrintF64 aM
+uPrint tTab
+uPrintF64 rM
+uPrint tTab
+uPrintF64 wM
+uPrint tNl
+end
+
+fn invertBeta9 p f64 to f64
+if le p get calP 0
+ret mul get calBeta 0 div p get calP 0
+end
+for i ulong 11
+p0 = get calP i
+p1 = get calP add i 1
+if le p p1
+b0 = get calBeta i
+b1 = get calBeta add i 1
+dp = sub p1 p0
+if le dp 0.000001f64
+ret b0
+end
+ret add b0 mul sub b1 b0 div sub p p0 dp
+end
+end
+ret get calBeta 11
+end
+
+fn interpRef which ulong beta f64 to f64
+if le beta get calBeta 0
+if eq which 1
+ret get calAdj 0
+end
+if eq which 2
+ret get calR12 0
+end
+ret get calW22 0
+end
+for i ulong 11
+b0 = get calBeta i
+b1 = get calBeta add i 1
+if le beta b1
+t = div sub beta b0 sub b1 b0
+v0 = f64 0.0f64
+v1 = f64 0.0f64
+if eq which 1
+v0 = get calAdj i
+v1 = get calAdj add i 1
+end
+if eq which 2
+v0 = get calR12 i
+v1 = get calR12 add i 1
+end
+if eq which 3
+v0 = get calW22 i
+v1 = get calW22 add i 1
+end
+ret add v0 mul sub v1 v0 t
+end
+end
+if eq which 1
+ret get calAdj 11
+end
+if eq which 2
+ret get calR12 11
+end
+ret get calW22 11
+end
+
+fn printTomRow Lbase ulong beta f64 k ulong nMeas ulong us ulong to void
+fnM = f64 nMeas
+base = mul k 4
+pK = div get tomAcc base fnM
+aK = div get tomAcc add base 1 fnM
+rK = div get tomAcc add base 2 fnM
+wK = div get tomAcc add base 3 fnM
+bEff = invertBeta9 pK
+uPrintU Lbase
+uPrint tTab
+uPrintF64 beta
+uPrint tTab
+uPrintU k
+uPrint tTab
+uPrintF64 pK
+uPrint tTab
+uPrintF64 bEff
+uPrint tTab
+uPrintF64 aK
+uPrint tTab
+uPrintF64 sub aK interpRef 1 bEff
+uPrint tTab
+uPrintF64 rK
+uPrint tTab
+uPrintF64 sub rK interpRef 2 bEff
+uPrint tTab
+uPrintF64 wK
+uPrint tTab
+uPrintF64 sub wK interpRef 3 bEff
+uPrint tTab
+uPrintU us
+uPrint tNl
+end
+
+note Run Blocked-Action Tomography on Periodic 16^4 -> 8^4 -> 4^4 (64 measurements)
+fn runTom16 beta f32 seed ulong to void
+t0 = monons
+N = ulong 65536
+if not seedGpuRngStream N seed
+exit 31
+end
+if not initLatticeStream 16 add seed 104729
+exit 32
+end
+for sw ulong 64
+if not gpuSweep N beta 3
+exit 33
+end
+end
+for c ulong 16
+put tomAcc c 0.0f64
+end
+for m ulong 64
+if not gpuSweep N beta 2
+exit 34
+end
+if not gpuSweep N beta 2
+exit 35
+end
+downloadAllToL1 N
+evalTomBox 0 16 6 10 0
+blockBox 0 1 16 0 8
+evalTomBox 1 8 2 6 1
+blockBox 1 2 8 0 4
+evalTomBox 2 4 0 4 2
+end
+us = div ulong sub monons t0 1000
+printTomRow 16 f64 beta 0 64 us
+printTomRow 16 f64 beta 1 64 us
+printTomRow 16 f64 beta 2 64 us
+end
+
+note Run Deep k=3 Block-Spin RG on Periodic 32^4 (1,048,576 sites -> 16^4 -> 8^4 -> 4^4, 16 measurements)
+fn runTom32 beta f32 seed ulong to void
+t0 = monons
+N = ulong 1048576
+if not seedGpuRngStream N seed
+exit 41
+end
+if not initLatticeStream 32 add seed 104729
+exit 42
+end
+for sw ulong 32
+if not gpuSweep N beta 3
+exit 43
+end
+end
+for c ulong 16
+put tomAcc c 0.0f64
+end
+for m ulong 16
+if not gpuSweep N beta 2
+exit 44
+end
+if not gpuSweep N beta 2
+exit 45
+end
+evalTom32Center 0
+blockBox 3 0 32 0 16
+evalTomBox 0 16 6 10 1
+blockBox 0 1 16 0 8
+evalTomBox 1 8 2 6 2
+blockBox 1 2 8 0 4
+evalTomBox 2 4 0 4 3
+end
+us = div ulong sub monons t0 1000
+printTomRow 32 f64 beta 0 16 us
+printTomRow 32 f64 beta 1 16 us
+printTomRow 32 f64 beta 2 16 us
+printTomRow 32 f64 beta 3 16 us
+end
+
+fn allocBuf bytes ulong cached bool to long
+m = nvalloc bytes cached
+if le m 0
+uPrint tC9Err
+uPrintU ulong get nvstage 0
+uPrint tNl
+exit 6
+end
+ret m
+end
+
+fn main to int
+uPrint tC9Hdr
+if not gbopen 1
+uPrint tC9Err
+uPrintU ulong get nvstage 0
+uPrint tNl
+ret 2
+end
+if not gbbopen
+ret 3
+end
+put uCodeMap 0 0
+uEmitAllKernels
+csize = mul div add get uCodePos 0 4095 4096 4096
+cm = nvalloc csize false
+if le cm 0
+ret 4
+end
+put uCodeMap 0 cm
+put uCodeFail 0 0
+uEmitAllKernels
+if ne get uCodeFail 0 0
+ret 5
+end
+
+note Allocate GPU buffers for up to 32^4 = 1,048,576 sites (189 MB total on GB10!)
+put dLinks 0 allocBuf 67108864 true
+put dStaples 0 allocBuf 67108864 true
+put dFlags 0 allocBuf 16777216 true
+put dNbSite 0 allocBuf 33554432 true
+put dRng 0 allocBuf 4194304 true
+
+note Step 1: Extended 12-point periodic 8^4 bulk calibration (0.10 .. 10.0)
+uPrint tC9CalHdr
+uPrint tC9CalCols
+if not buildNbTableStream 8
+rc = nvmclose
+ret 10
+end
+if not buildFlagsStream 8
+rc = nvmclose
+ret 11
+end
+runCal9 0 0.10f32
+runCal9 1 0.25f32
+runCal9 2 0.50f32
+runCal9 3 1.00f32
+runCal9 4 1.50f32
+runCal9 5 2.00f32
+runCal9 6 2.30f32
+runCal9 7 2.50f32
+runCal9 8 3.00f32
+runCal9 9 4.00f32
+runCal9 10 6.00f32
+runCal9 11 10.00f32
+
+note Step 2: Blocked-Action Tomography on 16^4 -> 8^4 -> 4^4
+uPrint tC9TomHdr
+uPrint tC9TomCols
+if not buildNbTableStream 16
+rc = nvmclose
+ret 12
+end
+if not buildFlagsStream 16
+rc = nvmclose
+ret 13
+end
+runTom16 1.50f32 0x91010001
+runTom16 2.00f32 0x91020001
+runTom16 2.30f32 0x91030001
+runTom16 2.50f32 0x91040001
+runTom16 6.00f32 0x91060001
+
+note Step 3: Deep k=3 Block-Spin RG on 32^4 (1,048,576 sites -> 16^4 -> 8^4 -> 4^4!)
+uPrint tC9K3Hdr
+uPrint tC9TomCols
+if not buildNbTableStream 32
+rc = nvmclose
+ret 14
+end
+if not buildFlagsStream 32
+rc = nvmclose
+ret 15
+end
+runTom32 2.00f32 0x93020001
+runTom32 2.30f32 0x93030001
+
+uPrint tC9Done
+rc = nvmclose
+ret 0
+end

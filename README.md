@@ -26,26 +26,38 @@ Zero C, zero Python, zero Rust, zero `libcuda.so.1` on the execution path: every
 9. **Check #8 (`src/ufbi_check8_gb10.om`) — Phase II Multi-Scale Gauge-Covariant Block-Spin RG Flow (`16^4 -> 8^4 -> 4^4`)**:
    - **Runtime invariants verified:** `RG_GAUGE_COV_ASSERT scales=3 max_gauge_err=0.000000 status=PASS` (exact local $SU(2)$ gauge covariance of Swendsen 2× blocking across all 3 scales) and `ZERO_CONTACT_ASSERT L=16 scales=3 max_direct_err=0.000000 status=PASS`.
    - **In-situ 10-point periodic $8^4$ bulk calibration + Non-perturbative RG flow $\beta_{\text{eff}}(k)$ (`k=0 [a] -> k=1 [2a] -> k=2 [4a]`):**
-     - `β=1.50`: `1.499 -> 0.370 -> 0.159` (enters strong-coupling zone in 1 step; `dP2_Rb = 0.043 [0.70σ]`)
-     - `β=2.00`: `1.986 -> 0.832 -> 0.176` (enters strong-coupling zone in 2 steps; `dP2_Rb = 0.010 [0.12σ]`)
-     - `β=2.30`: `2.307 -> 1.624 -> 0.512` (1 step maps onto `1.62`, 2 steps onto `0.512`; `dP2_Rb = 0.075 [1.02σ]`)
+     - `β=1.50`: `1.499 -> 0.370 -> 0.159` (`dP2_Rb = 0.043 [0.70σ]`)
+     - `β=2.00`: `1.986 -> 0.832 -> 0.176` (`dP2_Rb = 0.010 [0.12σ]`)
+     - `β=2.30`: `2.307 -> 1.624 -> 0.512` (`dP2_Rb = 0.075 [1.02σ]`)
      - `β=2.50`: `2.494 -> 2.044 -> 1.333` (1 step maps onto `~2.04`, requiring `+1` blocking step vs `β=2.30` for a `2x` finer lattice spacing, matching $2^{k^*} a(\beta) \approx \ell_{\text{conf}}$)
-     - `β=2.70`: `2.730 -> 2.267 -> 1.816` (1 step maps onto `~2.27`, matching bare `β=2.30`!)
-     - `β=6.00` (weak-coupling control): `6.000 -> 6.000 -> 5.643` (remains weak-coupled with `3.53σ` / `3.12σ` boundary penetration on `C8_smooth_hol`).
+     - `β=2.70`: `2.730 -> 2.267 -> 1.816` (1 step maps onto `~2.27`, matching bare `β=2.30`)
+     - `β=6.00` (weak-coupling control): `6.000 [table clamp] -> 6.000 [table clamp] -> 5.643` (clamp removed in Check #9's extended $\beta \le 10.0$ table; retains `3.53σ` / `3.12σ` boundary penetration on `C8_smooth_hol`).
+   - **Fixed-box geometric note on `dP2_Rb > dP1_Rb` at $\beta \in \{2.30, 2.50, 2.70\}$:** On a fixed $16^4$ lattice with a fixed collar, moving from `k=1` ($8^4$) to `k=2` ($4^4$) holds the physical box size fixed while expanding the measured blocked plaquette from $2a \times 2a$ to $4a \times 4a$, bringing its outer footprint closer to the collar and increasing IR sensitivity on physically smaller high-$\beta$ boxes (whereas on the physically large $\beta=1.50$ box, `dP2_Rb` drops cleanly `0.097 -> 0.043`).
    - Evidence: `evidence/check8_gb10_run.tsv`, `evidence/check8_gb10_receipt.json` (`WID=20261122T213636Z-8c0b65`, `161.503 s`, `exit: 0`, `nvrm_errors_delta: 0`).
-10. **Formal Lean 4 Bridges (Part I + Phase II Foundations):**
+10. **Check #9 (`src/ufbi_check9_gb10.om`) — Phase II Blocked-Action Tomography, Extended $\beta \in [0.10, 10.0]$ Calibration, & $k=3$ Deep RG on $32^4$ (`1,048,576` Sites on GB10)**:
+   - **Extended 12-point periodic $8^4$ pure-Wilson multi-loop calibration ($\beta = 0.10 \dots 10.0$):** Measures `P_bulk`, `Adj_bulk`, `R1x2_bulk`, and `W2x2_bulk`, eliminating Check #8's $\beta=6.0$ upper clamp (`β=6.00` now flows cleanly `6.040 -> 6.021 -> 5.613`).
+   - **Blocked-action tomography (`16^4 -> 8^4 -> 4^4`, 64 meas):** Quantifies non-plaquette coupling leakage `dO_nonW = O^(k) - O_Wilson(β_eff(k))` across `Adj`, `R1x2`, and `W2x2`:
+     - Generates a clear **negative adjoint coupling** right across the $\beta \approx 2.0\text{–}2.5$ crossover (`dAdj_nonW = -0.0380` at $\beta=2.50, k=1$ and `-0.0324` at $\beta=2.30, k=1$ on $32^4$), steering the RG trajectory away from the positive-adjoint bulk critical endpoint.
+     - As the flow enters strong coupling, all three non-plaquette deviations collapse back to `< 0.005` (`β=1.50, k=2`: `dAdj=-0.0008, dR1x2=+0.0012, dW2x2=-0.0031`; `32^4 β=2.30, k=3`: `dAdj=-0.0016, dR1x2=+0.0048, dW2x2=-0.0046`).
+   - **Crossing into the unconditionally Lean-certified $S^3$ Dobrushin basin ($\beta < 1/9 \approx 0.1111$):**
+     - `16^4`, `β=1.50`: `1.488 -> 0.372 ->` **`0.0912 < 1/9`** (`k=2`, inside certified basin).
+     - `32^4` (`1,048,576` sites, 189 MB GPU buffers, pure OM-2), `β=2.00`: `2.004 -> 0.827 -> 0.144 ->` **`0.0828 < 1/9`** (`k=3`, `25.5%` inside certified basin).
+     - `32^4`, `β=2.30` (physical scaling window): `2.279 -> 1.622 -> 0.528 ->` **`0.1272`** (`k=3`, within `14%` of `1/9` with all non-plaquette deviations `< 0.005`).
+   - Evidence: `evidence/check9_gb10_run.tsv`, `evidence/check9_gb10_receipt.json` (`WID=20261122T215446Z-f9a4ab`, `50.558 s`, `exit: 0`, `nvrm_errors_delta: 0`, `177,148 B` static AArch64 ELF, SHA-256 `5878793d5f8e30a0b642b8f515019c6f5e75cb61f6dda2f774b420ba43712c7a`).
+11. **Formal Lean 4 Bridges (Part I + Phase II Foundations):**
    - **Standalone zero-dependency bridge (`proofs/UfbiMassGap.lean`, Lean `4.36.0`):** `evidence/lean_ufbi_bridge.txt` (`0` errors, `0` warnings, `0` `sorryAx`, `[propext, Classical.choice, Quot.sound]`). Proves over explicit discrete models: `ast_gauge_invariant`, `raw_link_not_gauge_invariant`, `ufbi_implies_connected_clustering`, `exponential_decay_implies_spectral_gap`, `massless_mode_violates_decay`, and `schur_uv_divergence_unbounded`.
    - **Mathlib-linked Relativistic Mass-Gap Bridge directly over `OpenAI-YM-20261028` (`proofs/OpenAiYmBridge.lean`, Lean `4.32.0` + cached Mathlib `81a5d257c8e4...`):** Builds in **`5.9 s`** (`evidence/lean_openai_ym_bridge.txt`, `0` errors, `0` warnings, `0` `sorryAx`, strictly `[propext, Classical.choice, Quot.sound]`, zero extra axioms). Proves `ufbi_collapses_phase_mixture`, `ufbi_collapses_character_space`, `uniform_decay_implies_energy_gap`, `energy_gap_implies_relativistic_mass_gap`, `uniform_decay_implies_relativistic_mass_gap`, and `part1_conditional_mass_gap_over_openai_ym`.
-   - **Phase II Dobrushin–Shlosman & RG-Flow Formalization (`proofs/DobrushinShlosman.lean`, Lean `4.32.0` + Mathlib, importing `OpenAiYmBridge`):** Builds in **`3.3 s`** (`evidence/lean_dobrushin_shlosman.txt`, `0` errors, `0` warnings, `0` `sorryAx`, strictly `[propext, Classical.choice, Quot.sound]`). Proves:
+   - **Phase II Dobrushin–Shlosman, $S^3$ Haar/vMF Geometry & RG-Flow Formalization (`proofs/DobrushinShlosman.lean`, Lean `4.32.0` + Mathlib, importing `OpenAiYmBridge`):** Builds in **`6.5 s`** (`evidence/lean_dobrushin_shlosman.txt`, `0` errors, `0` warnings, `0` `sorryAx`, strictly `[propext, Classical.choice, Quot.sound]` across all 9 theorems). Proves:
      - `finite_volume_ufbi_implies_phase_insensitivity` (finite-volume UFBI limit $\implies$ `UniformPhaseInsensitivity` on `Hierarchy C`),
      - `gibbs_tilt_tv_le_tanh` (sharp unconditional Gibbs-tilt Total Variation bound: $\frac{1}{2}\int |d\mu_h/d\mu - 1|\, d\mu \le \tanh(\operatorname{osc}(h)/4)$),
-     - `su2_4d_dobrushin_window` (unconditional 4D $SU(2)$ strong-coupling 1-link Dobrushin uniqueness window: $18\tanh\beta < 1$ for $0 \le \beta < 1/18$),
+     - `su2_4d_dobrushin_window` (unconditional 4D $SU(2)$ strong-coupling 1-link Dobrushin window via oscillation bound: $18\tanh\beta < 1$ for $0 \le \beta < 1/18 \approx 0.0556$),
+     - `su2_s3_haar_l1_moment`, `su2_s3_parallel_var_le_quarter` (exact Riccati ODE barrier $b(r) = (\sqrt{9+3r^2}-3)/(2r)$ proving $\operatorname{Var}_\parallel(r) \le 1/4$ for all $r > 0$), `su2_s3_transverse_var_le_quarter` (pointwise Chebyshev correlation proving $\operatorname{Var}_\perp(r) \le 1/4$ for all $r \in \mathbb{R}$), and **`su2_4d_dobrushin_window_s3_widened`** (unconditionally doubling the certified 4D $SU(2)$ Dobrushin basin to **$0 \le \beta < 1/9 \approx 0.1111$** via $\Sigma(W) \preceq \frac{1}{4} I_4$),
      - `dobrushin_shlosman_exponential_decay` (iterated DS contraction $\alpha < 1$ on radius-$R$ shells $\implies$ exact exponential decay rate $m = \frac{1}{R}\ln(1/\alpha) > 0$),
      - `rg_flow_into_ds_implies_uniform_mass_gap` (if $k_n$ RG blocking steps reach physical scale $2^{k_n} a_n \le \ell_{\max}$ inside the DS contraction ball $\alpha_{\text{eff}} \le \alpha_* < 1$, then $m_n \ge \frac{1}{\ell_{\max}}\ln(1/\alpha_*) > 0$ uniformly as $a_n \to 0$).
 
 > **Scientific & formal scope note:**
-> - **Proved unconditionally in Lean 4:** Sharp Gibbs-tilt TV bound (`gibbs_tilt_tv_le_tanh`), 4D $SU(2)$ strong-coupling Dobrushin window (`su2_4d_dobrushin_window`), and the conditional bridges in `UfbiMassGap.lean`, `OpenAiYmBridge.lean`, and `DobrushinShlosman.lean` (`finite_volume_ufbi_implies_phase_insensitivity`, `part1_conditional_mass_gap_over_openai_ym`, `rg_flow_into_ds_implies_uniform_mass_gap`).
-> - **Remaining formal seams:** (i) Formally transporting a finite-box lattice correlation decay across Osterwalder–Schrader reconstruction into `UniformSpectralDecay` on `Hierarchy C`; and (ii) **Part II (the open Clay Millennium Problem)**: proving analytically that 4D $SU(N)$ block-spin RG flow enters the Dobrushin–Shlosman contraction ball at a uniform physical scale $\ell_{\max}$ for all $a \to 0$ (as empirically observed in Check #8 on $L=16$).
+> - **Proved unconditionally in Lean 4:** Sharp Gibbs-tilt TV bound (`gibbs_tilt_tv_le_tanh`), 4D $SU(2)$ strong-coupling Dobrushin windows (`su2_4d_dobrushin_window` for $\beta < 1/18$ and `su2_4d_dobrushin_window_s3_widened` for $\beta < 1/9 \approx 0.1111$ via exact $S^3$ Riccati + Chebyshev covariance bounds $\Sigma(W) \preceq \frac{1}{4} I_4$), and the conditional bridges in `UfbiMassGap.lean`, `OpenAiYmBridge.lean`, and `DobrushinShlosman.lean` (`finite_volume_ufbi_implies_phase_insensitivity`, `part1_conditional_mass_gap_over_openai_ym`, `rg_flow_into_ds_implies_uniform_mass_gap`). Note that `su2_4d_dobrushin_window_s3_widened` certifies pure Wilson 1-link measures; blocked effective measures also carry small multi-loop couplings (measured directly in Check #9's tomography).
+> - **Remaining formal seams:** (i) Formally transporting finite-box lattice correlation decay across Osterwalder–Schrader reconstruction into `UniformSpectralDecay` on `Hierarchy C`; and (ii) **Part II (the open Clay Millennium Problem)**: proving analytically that 4D $SU(N)$ block-spin RG flow (including all generated non-plaquette polymer couplings) enters the full Dobrushin–Shlosman contraction ball $\alpha_{\text{eff}} < 1$ at a uniform physical scale $\ell_{\max}$ for all $a \to 0$ (as empirically measured in Checks #8–#9 up to $32^4$).
 
 ## Build & Run (Spark AArch64 + GB10)
 
@@ -60,6 +72,7 @@ sh scripts/build_and_run_spark.sh check5
 sh scripts/build_and_run_spark.sh check6
 sh scripts/build_and_run_spark.sh check7
 sh scripts/build_and_run_spark.sh check8
+sh scripts/build_and_run_spark.sh check9
 sh scripts/build_and_run_spark.sh proofs
 sh scripts/build_and_run_spark.sh openai_bridge
 ```
