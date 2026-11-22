@@ -1,0 +1,1236 @@
+note SPDX-License-Identifier: Apache-2.0
+note src/ufbi_check8_gb10.om: Pure Seeded-OM-2 Zero-CUDA GB10 Runner for UFBI Check #8
+note (Phase II Multi-Scale Gauge-Covariant Block-Spin RG Flow & Effective Dobrushin-Shlosman
+note  Contraction Across L=16 -> L1=8 -> L2=4 for beta in {1.50, 2.00, 2.30, 2.50, 2.70, 6.00}).
+note
+note What Check #8 measures directly on physical GB10 silicon:
+note   1. Runtime RG_GAUGE_COV_ASSERT: applies a random local SU(2) gauge transformation g(x)
+note      on 16^4, runs Swendsen 2x gauge-covariant blocking (16^4 -> 8^4 -> 4^4) on both U
+note      and U^g, and asserts max |P^(k)(U^g) - P^(k)(U)| <= 1e-4 at every RG scale k=0,1,2.
+note   2. Runtime ZERO_CONTACT_ASSERT: swaps frozen collar C0_cold vs C3_hot_haar on a fixed
+note      interior 16^4 config and asserts max |O^(k)(B1) - O^(k)(B0)| == 0.000000 at all
+note      3 RG scales k=0 (a), k=1 (2a), k=2 (4a).
+note   3. In-situ periodic bulk SU(2) plaquette calibration curve <P_bulk>(beta) on periodic 8^4
+note      for beta in {0.25, 0.50, 1.00, 1.50, 2.00, 2.30, 2.50, 3.00, 4.00, 6.00} so each
+note      blocked plaquette <P^(k)> maps directly to a non-perturbative running coupling beta_eff(k).
+note   4. Multi-scale RG flow & scale-by-scale Dobrushin boundary sensitivity on frozen-collar 16^4
+note      (C0_cold vs C3_hot_haar & C8_smooth_hol, 256 measurements = 512 GPU sweeps/arm) at
+note      beta in {1.50, 2.00, 2.30, 2.50, 2.70, 6.00}:
+note        O0: P^(0)  (fine scale a,   16^4 core [6,10)^4)
+note        O1: P^(1)  (RG-1 scale 2a,  8^4  core [3,5)^4)
+note        O2: P^(2)  (RG-2 scale 4a,  4^4  center X=(1,1,1,1))
+note        O3: Adj^(1)(RG-1 scale 2a,  adjoint plaquette 4*(P^(1))^2 - 1)
+note        O4: Adj^(2)(RG-2 scale 4a,  adjoint plaquette 4*(P^(2))^2 - 1)
+note
+note Composed after:
+note   gpu/nvidia/native/nvrm/context.om
+note   gpu/nvidia/native/blackwell/vector.om
+note   gpu/nvidia/native/blackwell/launch.om
+note   gpu/nvidia/native/blackwell/batch.om
+note   om/encoder/bw_enc_sm121.om
+note   src/ufbi_math.om
+note   src/ufbi_check3_kernels.om
+
+global uCodePos ulong 1
+global uEntry ulong 8
+global uCodeMap long 1
+global uCodeFail uint 1
+global uBind uint 32
+global uBindN ulong 1
+global uDirty uint 1
+
+global dLinks long 1
+global dStaples long 1
+global dFlags long 1
+global dNbSite long 1
+global dRng long 1
+
+note Fine 16^4 (65536 sites x 16 = 1048576 f32), RG-1 8^4 (4096 x 16 = 65536), RG-2 4^4 (256 x 16 = 4096)
+global hL0 f32 1048576
+global hL1 f32 65536
+global hL2 f32 4096
+global hGauge f32 262144
+global hNb uint 524288
+global hStage uchar 65536
+
+note 5 observables x 256 sweeps = 1280 f64
+global tsData f64 1280
+global baseMean f64 5
+global baseErr f64 5
+global baseSig f64 5
+global curMean f64 5
+global curErr f64 5
+global curSig f64 5
+global curDelta f64 5
+global curZ f64 5
+global curRBulk f64 5
+global mcAcc f64 6
+global mcCnt ulong 1
+global armBeta f32 1
+global armSeed ulong 1
+global rgSrcLvl ulong 1
+global rgDstLvl ulong 1
+global rgLf ulong 1
+
+note 10-point periodic bulk calibration table (beta_i -> <P_bulk>(beta_i))
+global calBeta f64 10
+global calPlaq f64 10
+
+text tC8Hdr "=== UFBI CHECK #8: PHASE-II MULTI-SCALE GAUGE-COVARIANT BLOCK-SPIN RG FLOW & DOBRUSHIN CONTRACTION (PURE OM-2 GB10) ===\n"
+text tC8Err "FAIL: GB10 native NVRM/kernel error stage="
+text tC8GcFail "FAIL: RG_GAUGE_COV_ASSERT violated! err="
+text tC8GcOk "RG_GAUGE_COV_ASSERT scales=3 max_gauge_err="
+text tC8ZcFail "FAIL: ZERO_CONTACT_ASSERT violated! err="
+text tC8ZcOk "ZERO_CONTACT_ASSERT L=16 scales=3 max_direct_err="
+text tC8Pass " status=PASS\n"
+text tC8CalHdr "=== IN-SITU PERIODIC 8^4 SU(2) BULK CALIBRATION CURVE ===\n"
+text tC8CalCols "cal_beta\tcal_P_bulk\n"
+text tC8RgHdr "=== MULTI-SCALE BLOCK-SPIN RG FLOW (16^4 -> 8^4 -> 4^4) ===\n"
+text tC8Cols "beta\tcollar\tsweeps\tP0_m\tP1_m\tP2_m\tbeff_0\tbeff_1\tbeff_2\tdP0_Rb\tdP0_Z\tdP1_Rb\tdP1_Z\tdP2_Rb\tdP2_Z\tdA1_Rb\tdA1_Z\tdA2_Rb\tdA2_Z\tus\n"
+text tTab "\t"
+text tNl "\n"
+text tK0 "C0_cold"
+text tK3 "C3_hot_haar"
+text tK8 "C8_smooth_hol"
+text tC8Done "CHECK8_GB10_DONE status=PASS rg_gauge_cov_verified=1 zero_contact_verified=1\n"
+
+fn uCodeWrite w view ulong 4 to void
+p = get uCodePos 0
+b = new uchar 16 0
+if gt get uCodeMap 0 0
+for i ulong 16
+put b i uchar and shr get w div i 4 mul rem i 4 8 255
+end
+if ne mapwrite get uCodeMap 0 p b 0 16 16
+put uCodeFail 0 1
+end
+end
+put uCodePos 0 add p 16
+end
+
+fn uEmitAllKernels to void
+put uCodePos 0 0
+for id ulong 3
+p = mul div add get uCodePos 0 255 256 256
+put uEntry id p
+put uCodePos 0 p
+put uPc 0 0
+put uGuard 0 0
+ok = false
+if eq id 0
+ok = uEmitSu2Staple
+end
+if eq id 1
+ok = uEmitSu2Overrelax
+end
+if eq id 2
+ok = uEmitSu2Heatbath
+end
+if not ok
+exit 4
+end
+uDone
+end
+end
+
+fn uArg u uint to void
+i = get uBindN 0
+put uBind i u
+put uBindN 0 add i 1
+end
+
+fn uPtr va ulong to void
+uArg gblo va
+uArg gbhi va
+end
+
+fn uRecord id ulong gx uint bx uint to bool
+gbqmd 1
+a = add mapaddr get uCodeMap 0 get uEntry id
+put gbq1 32 gblo shr a 4
+put gbq1 33 or uint and shr a 36 2097151 20971520
+put gbq1 59 gblo shr a 8
+put gbq1 34 or uint 65536 bx
+put gbq1 35 or uint 131073 shl uint 64 8
+put gbq1 36 78923784
+put gbq1 37 0
+put gbq1 39 gx
+put gbq1 40 1
+put gbq1 41 1
+put gbcb 216 bx
+put gbcb 220 gx
+put gbcb 221 1
+put gbcb 222 1
+cb = mapaddr get gbmem 1
+words = get uBindN 0
+endva = add cb add 896 mul words 4
+put gbcb 212 gbhi endva
+put gbcb 213 gblo endva
+put gbused 0 0
+gbsetup
+if ne get uDirty 0 0
+gbmth 0 40 4
+gbemit 0
+gbemit 0
+gbemit 0
+gbemit 2281701376
+put uDirty 0 0
+end
+gbdma cb 224
+for j ulong 224
+gbemit get gbcb j
+end
+gbdma add cb 896 uint words
+for j ulong words bound 32
+gbemit get uBind j
+end
+q = mapaddr get gbmem 2
+gbinline q false
+gbdma add q 8192 1
+gbemit 1
+gbinline add q 4096 true
+gbrel add mapaddr get gbmem 3 32 6
+put uBindN 0 0
+ret gbappend id get gbst 1
+end
+
+fn uRunKernel id ulong gx uint bx uint to bool
+put uDirty 0 1
+if not gbbegin 1
+ret false
+end
+if not uRecord id gx bx
+ret false
+end
+ret gbbsubmit 2000000000
+end
+
+fn stageU32 k ulong v uint to void
+b = mul k 4
+put hStage b uchar and v 255
+put hStage add b 1 uchar and shr v 8 255
+put hStage add b 2 uchar and shr v 16 255
+put hStage add b 3 uchar and shr v 24 255
+end
+
+fn stageF32 k ulong v f32 to void
+stageU32 k bitcast uint v
+end
+
+fn flushStage m long offBytes ulong nWords ulong to bool
+nb = mul nWords 4
+ret eq mapwrite m offBytes hStage 0 nb long nb
+end
+
+fn uploadLinks N ulong to bool
+totalF = mul N 16
+off = ulong 0
+while lt off totalF bound 128
+cnt = sub totalF off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+stageF32 k get hL0 add off k
+end
+if not flushStage get dLinks 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn coordIdx c0 ulong c1 ulong c2 ulong c3 ulong L ulong to ulong
+r = add mul c0 L c1
+r = add mul r L c2
+ret add mul r L c3
+end
+
+fn stepCoord s ulong L ulong dir ulong delta ulong to ulong
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+if eq dir 0
+c0 = rem add c0 delta L
+end
+if eq dir 1
+c1 = rem add c1 delta L
+end
+if eq dir 2
+c2 = rem add c2 delta L
+end
+if eq dir 3
+c3 = rem add c3 delta L
+end
+ret coordIdx c0 c1 c2 c3 L
+end
+
+fn buildNbTable L ulong to bool
+N = mul mul L L mul L L
+for s ulong N bound 65536
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+b = mul s 8
+put hNb b uint coordIdx rem add c0 1 L c1 c2 c3 L
+put hNb add b 1 uint coordIdx rem add c0 sub L 1 L c1 c2 c3 L
+put hNb add b 2 uint coordIdx c0 rem add c1 1 L c2 c3 L
+put hNb add b 3 uint coordIdx c0 rem add c1 sub L 1 L c2 c3 L
+put hNb add b 4 uint coordIdx c0 c1 rem add c2 1 L c3 L
+put hNb add b 5 uint coordIdx c0 c1 rem add c2 sub L 1 L c3 L
+put hNb add b 6 uint coordIdx c0 c1 c2 rem add c3 1 L L
+put hNb add b 7 uint coordIdx c0 c1 c2 rem add c3 sub L 1 L L
+end
+totalW = mul N 8
+off = ulong 0
+while lt off totalW bound 64
+cnt = sub totalW off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+stageU32 k get hNb add off k
+end
+if not flushStage get dNbSite 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn isBdryL s ulong L ulong to bool
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+lm1 = sub L 1
+if or eq c0 0 eq c0 lm1
+ret true
+end
+if or eq c1 0 eq c1 lm1
+ret true
+end
+if or eq c2 0 eq c2 lm1
+ret true
+end
+if or eq c3 0 eq c3 lm1
+ret true
+end
+ret false
+end
+
+fn isBox4 s ulong L ulong lo ulong hi ulong to bool
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+if or lt c0 lo ge c0 hi
+ret false
+end
+if or lt c1 lo ge c1 hi
+ret false
+end
+if or lt c2 lo ge c2 hi
+ret false
+end
+if or lt c3 lo ge c3 hi
+ret false
+end
+ret true
+end
+
+fn downloadBox L ulong lo ulong hi ulong to void
+N = mul mul L L mul L L
+lm = get dLinks 0
+for s ulong N bound 65536
+if isBox4 s L lo hi
+base = mul s 16
+for k ulong 16
+put hL0 add base k bitcast f32 uint mapget lm mul add base k 4 4
+end
+end
+end
+end
+
+fn siteFlag s ulong L ulong freezeCollar bool to uint
+if and freezeCollar isBdryL s L
+ret uint 2
+end
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+ret uint and add add c0 c1 add c2 c3 1
+end
+
+fn buildFlags L ulong freezeCollar bool to bool
+N = mul mul L L mul L L
+totalW = mul N 4
+off = ulong 0
+while lt off totalW bound 32
+cnt = sub totalW off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+stageU32 k siteFlag div add off k 4 L freezeCollar
+end
+if not flushStage get dFlags 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn seedGpuRng N ulong seed ulong to bool
+uRngSeed seed
+off = ulong 0
+while lt off N bound 16
+cnt = sub N off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+r = uint and uRngNext 0xffffffff
+if eq r 0
+r = uint 0x9e3779b9
+end
+stageU32 k r
+end
+if not flushStage get dRng 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn qNormHost base ulong to void
+a0 = get hL0 base
+a1 = get hL0 add base 1
+a2 = get hL0 add base 2
+a3 = get hL0 add base 3
+n2 = add add mul a0 a0 mul a1 a1 add mul a2 a2 mul a3 a3
+if le n2 0.0000000001f32
+put hL0 base 1.0f32
+put hL0 add base 1 0.0f32
+put hL0 add base 2 0.0f32
+put hL0 add base 3 0.0f32
+ret
+end
+inv = f32 div 1.0f64 uSqrt64 f64 n2
+put hL0 base mul a0 inv
+put hL0 add base 1 mul a1 inv
+put hL0 add base 2 mul a2 inv
+put hL0 add base 3 mul a3 inv
+end
+
+fn setCollarLink s ulong mu ulong L ulong cid ulong to void
+base = mul add mul s 4 mu 4
+put hL0 base 1.0f32
+put hL0 add base 1 0.0f32
+put hL0 add base 2 0.0f32
+put hL0 add base 3 0.0f32
+if eq cid 0
+ret
+end
+if eq cid 3
+put hL0 base f32 uRngNorm64
+put hL0 add base 1 f32 uRngNorm64
+put hL0 add base 2 f32 uRngNorm64
+put hL0 add base 3 f32 uRngNorm64
+qNormHost base
+ret
+end
+if eq cid 8
+if eq mu 0
+put hL0 base 0.0f32
+put hL0 add base 1 1.0f32
+end
+if eq mu 1
+put hL0 base 0.0f32
+put hL0 add base 2 1.0f32
+end
+if eq mu 2
+put hL0 base 0.0f32
+put hL0 add base 3 1.0f32
+end
+if eq mu 3
+put hL0 base 0.5f32
+put hL0 add base 1 0.5f32
+put hL0 add base 2 0.5f32
+put hL0 add base 3 0.5f32
+end
+end
+end
+
+fn initLatticeHost L ulong cid ulong freezeCollar bool seed ulong to void
+N = mul mul L L mul L L
+uRngSeed seed
+for s ulong N bound 65536
+isB = and freezeCollar isBdryL s L
+for mu ulong 4
+if isB
+setCollarLink s mu L cid
+else
+base = mul add mul s 4 mu 4
+put hL0 base 0.85f32
+put hL0 add base 1 mul 0.25f32 f32 uRngNorm64
+put hL0 add base 2 mul 0.25f32 f32 uRngNorm64
+put hL0 add base 3 mul 0.25f32 f32 uRngNorm64
+qNormHost base
+end
+end
+end
+end
+
+fn initLattice L ulong cid ulong freezeCollar bool seed ulong to bool
+N = mul mul L L mul L L
+initLatticeHost L cid freezeCollar seed
+ret uploadLinks N
+end
+
+fn gpuRunStaple N ulong mu ulong par ulong to bool
+gx = uint div add N 255 256
+nu0 = ulong 0
+nu1 = ulong 1
+nu2 = ulong 2
+if eq mu 0
+nu0 = ulong 1
+nu1 = ulong 2
+nu2 = ulong 3
+end
+if eq mu 1
+nu0 = ulong 0
+nu1 = ulong 2
+nu2 = ulong 3
+end
+if eq mu 2
+nu0 = ulong 0
+nu1 = ulong 1
+nu2 = ulong 3
+end
+uPtr mapaddr get dLinks 0
+uPtr mapaddr get dStaples 0
+uPtr mapaddr get dFlags 0
+uPtr mapaddr get dNbSite 0
+uArg uint N
+uArg uint mu
+uArg uint par
+uArg uint nu0
+uArg uint nu1
+uArg uint nu2
+ret uRunKernel 0 gx 256
+end
+
+fn gpuRunOverrelax N ulong mu ulong par ulong to bool
+gx = uint div add N 255 256
+uPtr mapaddr get dLinks 0
+uPtr mapaddr get dStaples 0
+uPtr mapaddr get dFlags 0
+uArg uint N
+uArg uint mu
+uArg uint par
+ret uRunKernel 1 gx 256
+end
+
+fn gpuRunHeatbath N ulong mu ulong par ulong beta f32 to bool
+gx = uint div add N 255 256
+uPtr mapaddr get dLinks 0
+uPtr mapaddr get dStaples 0
+uPtr mapaddr get dFlags 0
+uPtr mapaddr get dRng 0
+uArg uint N
+uArg uint mu
+uArg uint par
+uArg bitcast uint beta
+ret uRunKernel 2 gx 256
+end
+
+fn gpuSweep N ulong beta f32 nOr ulong to bool
+for mu ulong 4
+for par ulong 2
+if not gpuRunStaple N mu par
+ret false
+end
+if not gpuRunHeatbath N mu par beta
+ret false
+end
+for r ulong nOr bound 8
+if not gpuRunStaple N mu par
+ret false
+end
+if not gpuRunOverrelax N mu par
+ret false
+end
+end
+end
+end
+ret true
+end
+
+note =========================================================================
+note Quaternion Helpers + Gauge-Covariant Swendsen 2x Block-Spin RG (lvl 0->1->2)
+note lvl: 0=hL0 (16^4), 1=hL1 (8^4), 2=hL2 (4^4)
+note =========================================================================
+fn hQMul a view f32 4 b view f32 4 o edit f32 4 to void
+v = mul get a 0 get b 0
+v = sub v mul get a 1 get b 1
+v = sub v mul get a 2 get b 2
+v = sub v mul get a 3 get b 3
+put o 0 v
+v = mul get a 0 get b 1
+v = add v mul get a 1 get b 0
+v = add v mul get a 2 get b 3
+v = sub v mul get a 3 get b 2
+put o 1 v
+v = mul get a 0 get b 2
+v = sub v mul get a 1 get b 3
+v = add v mul get a 2 get b 0
+v = add v mul get a 3 get b 1
+put o 2 v
+v = mul get a 0 get b 3
+v = add v mul get a 1 get b 2
+v = sub v mul get a 2 get b 1
+v = add v mul get a 3 get b 0
+put o 3 v
+end
+
+fn hQConj q edit f32 4 to void
+put q 1 neg get q 1
+put q 2 neg get q 2
+put q 3 neg get q 3
+end
+
+fn hQNorm q edit f32 4 to void
+n2 = mul get q 0 get q 0
+n2 = add n2 mul get q 1 get q 1
+n2 = add n2 mul get q 2 get q 2
+n2 = add n2 mul get q 3 get q 3
+if le n2 0.0000000001f32
+put q 0 1.0f32
+put q 1 0.0f32
+put q 2 0.0f32
+put q 3 0.0f32
+ret
+end
+inv = f32 div 1.0f64 uSqrt64 f64 n2
+for c ulong 4
+put q c mul get q c inv
+end
+end
+
+fn loadLvl lvl ulong s ulong mu ulong dst edit f32 4 to void
+b = mul add mul s 4 mu 4
+if eq lvl 0
+put dst 0 get hL0 b
+put dst 1 get hL0 add b 1
+put dst 2 get hL0 add b 2
+put dst 3 get hL0 add b 3
+ret
+end
+if eq lvl 1
+put dst 0 get hL1 b
+put dst 1 get hL1 add b 1
+put dst 2 get hL1 add b 2
+put dst 3 get hL1 add b 3
+ret
+end
+put dst 0 get hL2 b
+put dst 1 get hL2 add b 1
+put dst 2 get hL2 add b 2
+put dst 3 get hL2 add b 3
+end
+
+fn storeLvl lvl ulong s ulong mu ulong src view f32 4 to void
+b = mul add mul s 4 mu 4
+if eq lvl 0
+put hL0 b get src 0
+put hL0 add b 1 get src 1
+put hL0 add b 2 get src 2
+put hL0 add b 3 get src 3
+ret
+end
+if eq lvl 1
+put hL1 b get src 0
+put hL1 add b 1 get src 1
+put hL1 add b 2 get src 2
+put hL1 add b 3 get src 3
+ret
+end
+put hL2 b get src 0
+put hL2 add b 1 get src 1
+put hL2 add b 2 get src 2
+put hL2 add b 3 get src 3
+end
+
+note Swendsen 2x1 blocked staple from fine site x to x+2*mu via +-nu (reads rgSrcLvl, rgLf)
+fn addBlockStaple x ulong mu ulong nu ulong isBack bool dst edit f32 4 to void
+lvl = get rgSrcLvl 0
+Lf = get rgLf 0
+a = new f32 4 0.0f32
+b = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+x2m = stepCoord stepCoord x Lf mu 1 Lf mu 1
+if not isBack
+xn = stepCoord x Lf nu 1
+loadLvl lvl x nu a
+loadLvl lvl xn mu b
+hQMul a b p
+loadLvl lvl stepCoord xn Lf mu 1 mu a
+hQMul p a q
+loadLvl lvl x2m nu a
+hQConj a
+hQMul q a p
+else
+xm = stepCoord x Lf nu sub Lf 1
+loadLvl lvl xm nu a
+hQConj a
+loadLvl lvl xm mu b
+hQMul a b p
+loadLvl lvl stepCoord xm Lf mu 1 mu a
+hQMul p a q
+loadLvl lvl stepCoord x2m Lf nu sub Lf 1 nu a
+hQMul q a p
+end
+for c ulong 4
+put dst c add get dst c get p c
+end
+end
+
+fn coarseToFine X ulong Lf ulong to ulong
+Lc = div Lf 2
+c3 = rem X Lc
+t = div X Lc
+c2 = rem t Lc
+t = div t Lc
+c1 = rem t Lc
+c0 = div t Lc
+ret coordIdx mul c0 2 mul c1 2 mul c2 2 mul c3 2 Lf
+end
+
+note Compute ONE Swendsen gauge-covariant 2x blocked link at coarse site X (fine origin x = 2X)
+fn blockLinkOne X ulong mu ulong to void
+srcLvl = get rgSrcLvl 0
+Lf = get rgLf 0
+x = coarseToFine X Lf
+u1 = new f32 4 0.0f32
+u2 = new f32 4 0.0f32
+w0 = new f32 4 0.0f32
+st = new f32 4 0.0f32
+loadLvl srcLvl x mu u1
+loadLvl srcLvl stepCoord x Lf mu 1 mu u2
+hQMul u1 u2 w0
+for nu ulong 4
+if ne nu mu
+addBlockStaple x mu nu false st
+addBlockStaple x mu nu true st
+end
+end
+wS = div 0.5f32 6.0f32
+for c ulong 4
+put w0 c add mul 0.5f32 get w0 c mul wS get st c
+end
+hQNorm w0
+storeLvl get rgDstLvl 0 X mu w0
+end
+
+note Block sites in coarse box [cLo, cHi)^4 from srcLvl (size Lf) into dstLvl (size Lf/2)
+fn blockBox srcLvl ulong dstLvl ulong Lf ulong cLo ulong cHi ulong to void
+put rgSrcLvl 0 srcLvl
+put rgDstLvl 0 dstLvl
+put rgLf 0 Lf
+Lc = div Lf 2
+Nc = mul mul Lc Lc mul Lc Lc
+for X ulong Nc bound 4096
+if isBox4 X Lc cLo cHi
+for mu ulong 4
+blockLinkOne X mu
+end
+end
+end
+end
+
+fn plaqLvl lvl ulong L ulong s ulong mu ulong nu ulong to f64
+a = new f32 4 0.0f32
+b = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+loadLvl lvl s mu a
+loadLvl lvl stepCoord s L mu 1 nu b
+hQMul a b p
+loadLvl lvl stepCoord s L nu 1 mu a
+hQConj a
+hQMul p a q
+loadLvl lvl s nu b
+hQConj b
+hQMul q b p
+ret f64 get p 0
+end
+
+fn accumPlaqSite lvl ulong L ulong s ulong to void
+for mu ulong 4
+for nu ulong 4
+if lt mu nu
+vp = plaqLvl lvl L s mu nu
+put mcAcc 4 add get mcAcc 4 vp
+put mcAcc 5 add get mcAcc 5 sub mul 4.0f64 mul vp vp 1.0f64
+put mcCnt 0 add get mcCnt 0 1
+end
+end
+end
+end
+
+fn evalPlaqBox lvl ulong L ulong lo ulong hi ulong accIdx ulong to f64
+N = mul mul L L mul L L
+put mcAcc 4 0.0f64
+put mcAcc 5 0.0f64
+put mcCnt 0 0
+for s ulong N bound 65536
+if isBox4 s L lo hi
+accumPlaqSite lvl L s
+end
+end
+fc = f64 get mcCnt 0
+put mcAcc accIdx div get mcAcc 5 fc
+ret div get mcAcc 4 fc
+end
+
+note Full 3-scale evaluation on 16^4 (strictly zero contact with frozen shell {0, 15}!):
+note   RG-1 (L1=8): block box [1, 7)^4 -> fine sites read in [1, 14] (ZERO 0, ZERO 15!)
+note   RG-2 (L2=4): block box [1, 3)^4 -> L1 sites read in [1, 6] (subset of [1, 7)^4!)
+note   O0 = P^(0) on 16^4 core [6, 10)^4
+note   O1 = P^(1) on 8^4  core [3, 5)^4,   O3 = Adj^(1)
+note   O2 = P^(2) on 4^4  center [1, 2)^4, O4 = Adj^(2)
+fn evalMultiScale res edit f64 5 to void
+blockBox 0 1 16 1 7
+blockBox 1 2 8 1 3
+p0 = evalPlaqBox 0 16 6 10 0
+p1 = evalPlaqBox 1 8 3 5 1
+p2 = evalPlaqBox 2 4 1 2 2
+put res 0 p0
+put res 1 p1
+put res 2 p2
+put res 3 get mcAcc 1
+put res 4 get mcAcc 2
+end
+
+note =========================================================================
+note Runtime Self-Checks:
+note   1. RG_GAUGE_COV_ASSERT: random local SU(2) gauge transform on 16^4 -> 0 error at k=0,1,2!
+note   2. ZERO_CONTACT_ASSERT: swap frozen shell {0,15} C0->C3 -> 0.000000 error at k=0,1,2!
+note =========================================================================
+fn applyGauge16Link s ulong mu ulong g view f32 4 to void
+u = new f32 4 0.0f32
+g2 = new f32 4 0.0f32
+t1 = new f32 4 0.0f32
+t2 = new f32 4 0.0f32
+loadLvl 0 s mu u
+xp = stepCoord s 16 mu 1
+b2 = mul xp 4
+for c ulong 4
+put g2 c get hGauge add b2 c
+end
+hQConj g2
+hQMul g u t1
+hQMul t1 g2 t2
+hQNorm t2
+storeLvl 0 s mu t2
+end
+
+fn applyRandomGauge16 to void
+g = new f32 4 0.0f32
+uRngSeed 0x44449999
+for s ulong 65536
+put g 0 f32 uRngNorm64
+put g 1 f32 uRngNorm64
+put g 2 f32 uRngNorm64
+put g 3 f32 uRngNorm64
+hQNorm g
+b = mul s 4
+for c ulong 4
+put hGauge add b c get g c
+end
+end
+for s ulong 65536
+b = mul s 4
+for c ulong 4
+put g c get hGauge add b c
+end
+for mu ulong 4
+applyGauge16Link s mu g
+end
+end
+end
+
+fn assertRgGaugeCov to void
+initLatticeHost 16 3 true 0x88881111
+v0 = new f64 5 0.0f64
+v1 = new f64 5 0.0f64
+evalMultiScale v0
+applyRandomGauge16
+evalMultiScale v1
+maxE = f64 0.0f64
+for o ulong 5
+e = uAbs64 sub get v1 o get v0 o
+if gt e maxE
+maxE = e
+end
+end
+if gt maxE 0.0001f64
+uPrint tC8GcFail
+uPrintF64 maxE
+uPrint tNl
+exit 98
+end
+uPrint tC8GcOk
+uPrintF64 maxE
+uPrint tC8Pass
+end
+
+fn assertZeroContact8 to void
+initLatticeHost 16 0 true 0x77772222
+v0 = new f64 5 0.0f64
+v1 = new f64 5 0.0f64
+evalMultiScale v0
+uRngSeed 0x99993333
+for s ulong 65536
+if isBdryL s 16
+for mu ulong 4
+setCollarLink s mu 16 3
+end
+end
+end
+evalMultiScale v1
+maxE = f64 0.0f64
+for o ulong 5
+e = uAbs64 sub get v1 o get v0 o
+if gt e maxE
+maxE = e
+end
+end
+if gt maxE 0.000000000001f64
+uPrint tC8ZcFail
+uPrintF64 maxE
+uPrint tNl
+exit 99
+end
+uPrint tC8ZcOk
+uPrintF64 maxE
+uPrint tC8Pass
+end
+
+note =========================================================================
+note In-Situ Periodic 8^4 Bulk Calibration + Piecewise-Linear Inverse beta_eff(P)
+note =========================================================================
+fn runCalPoint idx ulong beta f32 to void
+N = ulong 4096
+if not seedGpuRng N add 0xc0100001 mul idx 7919
+exit 21
+end
+if not initLattice 8 0 false add 0xc0100001 mul idx 104729
+exit 22
+end
+for sw ulong 48
+if not gpuSweep N beta 3
+exit 23
+end
+end
+acc = f64 0.0f64
+for k ulong 32
+if not gpuSweep N beta 2
+exit 24
+end
+downloadBox 8 0 8
+acc = add acc evalPlaqBox 0 8 0 8 0
+end
+pMean = div acc 32.0f64
+put calBeta idx f64 beta
+put calPlaq idx pMean
+uPrintF64 f64 beta
+uPrint tTab
+uPrintF64 pMean
+uPrint tNl
+end
+
+fn invertBetaEff p f64 to f64
+if le p get calPlaq 0
+ret mul get calBeta 0 div p get calPlaq 0
+end
+for i ulong 9
+p0 = get calPlaq i
+p1 = get calPlaq add i 1
+if le p p1
+b0 = get calBeta i
+b1 = get calBeta add i 1
+dp = sub p1 p0
+if le dp 0.000001f64
+ret b0
+end
+ret add b0 mul sub b1 b0 div sub p p0 dp
+end
+end
+ret get calBeta 9
+end
+
+note =========================================================================
+note Statistics (16-Block Jackknife over 256 Measurements + Bulk Sigma)
+note =========================================================================
+fn storeMeas8 k ulong to void
+downloadBox 16 1 15
+v = new f64 5 0.0f64
+evalMultiScale v
+b = mul k 5
+for o ulong 5
+put tsData add b o get v o
+end
+end
+
+fn sumBlk8 o ulong st ulong blkSz ulong to f64
+s = f64 0.0f64
+for j ulong blkSz bound 32
+s = add s get tsData add mul add st j 5 o
+end
+ret s
+end
+
+fn summarizeOne8 o ulong nMeas ulong to void
+blkSz = div nMeas 16
+tot = f64 0.0f64
+for k ulong nMeas bound 256
+tot = add tot get tsData add mul k 5 o
+end
+mean = div tot f64 nMeas
+put curMean o mean
+vSum = f64 0.0f64
+for k ulong nMeas bound 256
+dv = sub get tsData add mul k 5 o mean
+vSum = add vSum mul dv dv
+end
+put curSig o uSqrt64 div vSum f64 sub nMeas 1
+jkSum = f64 0.0f64
+for b ulong 16
+bs = sumBlk8 o mul b blkSz blkSz
+d = sub div sub tot bs f64 sub nMeas blkSz mean
+jkSum = add jkSum mul d d
+end
+put curErr o uSqrt64 mul 0.9375f64 jkSum
+end
+
+fn summarizeTs8 nMeas ulong to void
+for o ulong 5
+summarizeOne8 o nMeas
+end
+end
+
+fn computeDiffZR8 cid ulong to void
+if eq cid 0
+for o ulong 5
+put baseMean o get curMean o
+put baseErr o get curErr o
+put baseSig o get curSig o
+put curDelta o 0.0f64
+put curZ o 0.0f64
+put curRBulk o 0.0f64
+end
+ret
+end
+for o ulong 5
+diff = uAbs64 sub get curMean o get baseMean o
+se = uSqrt64 add mul get curErr o get curErr o mul get baseErr o get baseErr o
+z = f64 0.0f64
+if gt se 0.0000001f64
+z = div diff se
+end
+rBulk = f64 0.0f64
+sb = get baseSig o
+if gt sb 0.0000001f64
+rBulk = div diff sb
+end
+put curDelta o diff
+put curZ o z
+put curRBulk o rBulk
+end
+end
+
+fn printRow8 cid ulong nMeas ulong us ulong to void
+uPrintF64 f64 get armBeta 0
+uPrint tTab
+if eq cid 0
+uPrint tK0
+end
+if eq cid 3
+uPrint tK3
+end
+if eq cid 8
+uPrint tK8
+end
+uPrint tTab
+uPrintU nMeas
+uPrint tTab
+uPrintF64 get curMean 0
+uPrint tTab
+uPrintF64 get curMean 1
+uPrint tTab
+uPrintF64 get curMean 2
+uPrint tTab
+uPrintF64 invertBetaEff get curMean 0
+uPrint tTab
+uPrintF64 invertBetaEff get curMean 1
+uPrint tTab
+uPrintF64 invertBetaEff get curMean 2
+for o ulong 5
+uPrint tTab
+uPrintF64 get curRBulk o
+uPrint tTab
+uPrintF64 get curZ o
+end
+uPrint tTab
+uPrintU us
+uPrint tNl
+end
+
+fn runArm8 beta f32 cid ulong nTherm ulong nMeas ulong to void
+t0 = monons
+put armBeta 0 beta
+seed = get armSeed 0
+N = ulong 65536
+if not seedGpuRng N add seed mul cid 7919
+exit 31
+end
+if not initLattice 16 cid true add seed mul cid 104729
+exit 32
+end
+for sw ulong nTherm bound 128
+if not gpuSweep N beta 3
+exit 33
+end
+end
+for k ulong nMeas bound 256
+if not gpuSweep N beta 2
+exit 34
+end
+if not gpuSweep N beta 2
+exit 35
+end
+storeMeas8 k
+end
+summarizeTs8 nMeas
+computeDiffZR8 cid
+us = div ulong sub monons t0 1000
+printRow8 cid nMeas us
+end
+
+fn runBeta8 beta f32 seed ulong to void
+put armSeed 0 seed
+runArm8 beta 0 64 256
+runArm8 beta 3 64 256
+runArm8 beta 8 64 256
+end
+
+fn allocBuf bytes ulong cached bool to long
+m = nvalloc bytes cached
+if le m 0
+uPrint tC8Err
+uPrintU ulong get nvstage 0
+uPrint tNl
+exit 6
+end
+ret m
+end
+
+fn main to int
+uPrint tC8Hdr
+if not gbopen 1
+uPrint tC8Err
+uPrintU ulong get nvstage 0
+uPrint tNl
+ret 2
+end
+if not gbbopen
+ret 3
+end
+put uCodeMap 0 0
+uEmitAllKernels
+csize = mul div add get uCodePos 0 4095 4096 4096
+cm = nvalloc csize false
+if le cm 0
+ret 4
+end
+put uCodeMap 0 cm
+put uCodeFail 0 0
+uEmitAllKernels
+if ne get uCodeFail 0 0
+ret 5
+end
+
+put dLinks 0 allocBuf 4194304 true
+put dStaples 0 allocBuf 4194304 true
+put dFlags 0 allocBuf 1048576 true
+put dNbSite 0 allocBuf 2097152 true
+put dRng 0 allocBuf 262144 true
+
+note Self-checks on 16^4 host RG blocking before touching GPU MC
+assertRgGaugeCov
+assertZeroContact8
+
+note Step 1: In-situ 10-point periodic 8^4 SU(2) calibration curve
+uPrint tC8CalHdr
+uPrint tC8CalCols
+if not buildNbTable 8
+rc = nvmclose
+ret 10
+end
+if not buildFlags 8 false
+rc = nvmclose
+ret 11
+end
+runCalPoint 0 0.25f32
+runCalPoint 1 0.50f32
+runCalPoint 2 1.00f32
+runCalPoint 3 1.50f32
+runCalPoint 4 2.00f32
+runCalPoint 5 2.30f32
+runCalPoint 6 2.50f32
+runCalPoint 7 3.00f32
+runCalPoint 8 4.00f32
+runCalPoint 9 6.00f32
+
+note Step 2: Frozen-collar 16^4 Multi-Scale RG Flow (16^4 -> 8^4 -> 4^4)
+uPrint tC8RgHdr
+uPrint tC8Cols
+if not buildNbTable 16
+rc = nvmclose
+ret 12
+end
+if not buildFlags 16 true
+rc = nvmclose
+ret 13
+end
+runBeta8 1.50f32 0x80010001
+runBeta8 2.00f32 0x80020001
+runBeta8 2.30f32 0x80030001
+runBeta8 2.50f32 0x80040001
+runBeta8 2.70f32 0x80050001
+runBeta8 6.00f32 0x80060001
+
+uPrint tC8Done
+rc = nvmclose
+ret 0
+end

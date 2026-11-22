@@ -1,0 +1,27 @@
+Lean (version 4.32.0, aarch64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)
+ℹ [8658/8660] Replayed OpenAiYmBridge
+info: OpenAiYmBridge.lean:1062:0: 'YangMills.UfbiBridge.ufbi_collapses_phase_mixture' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: OpenAiYmBridge.lean:1063:0: 'YangMills.UfbiBridge.ufbi_collapses_character_space' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: OpenAiYmBridge.lean:1064:0: 'YangMills.UfbiBridge.exponential_decay_kills_energy_strip_measure' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: OpenAiYmBridge.lean:1065:0: 'YangMills.UfbiBridge.uniform_decay_implies_energy_gap' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: OpenAiYmBridge.lean:1066:0: 'YangMills.UfbiBridge.energy_gap_implies_relativistic_mass_gap' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: OpenAiYmBridge.lean:1067:0: 'YangMills.UfbiBridge.uniform_decay_implies_relativistic_mass_gap' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: OpenAiYmBridge.lean:1068:0: 'YangMills.UfbiBridge.part1_conditional_mass_gap_over_openai_ym' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+ℹ [8659/8660] Built DobrushinShlosman (3.3s)
+info: DobrushinShlosman.lean:402:0: 'YangMills.PhaseTwo.finite_volume_ufbi_implies_phase_insensitivity' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: DobrushinShlosman.lean:403:0: 'YangMills.PhaseTwo.gibbs_tilt_tv_le_tanh' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: DobrushinShlosman.lean:404:0: 'YangMills.PhaseTwo.su2_4d_dobrushin_window' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: DobrushinShlosman.lean:405:0: 'YangMills.PhaseTwo.dobrushin_shlosman_exponential_decay' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: DobrushinShlosman.lean:406:0: 'YangMills.PhaseTwo.rg_flow_into_ds_implies_uniform_mass_gap' depends on axioms: [propext, Classical.choice, Quot.sound]
+Build completed successfully (8660 jobs).
+LEAN_DOBRUSHIN_SHLOSMAN status=PASS
