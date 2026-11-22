@@ -240,6 +240,42 @@ elif [ "$MODE" = "check6" ]; then
     cat '$REMOTE_DIR/evidence/check6_gb10_run.tsv'
     exit \$rc
   "
+elif [ "$MODE" = "check7" ]; then
+  echo "=== Building pure OM-2 Zero-CUDA ufbi_check7_gb10 on Spark ==="
+  ssh spark "set -eu
+    cd '$OMEGA_DIR'
+    OMC=seed/out/omc
+    {
+      printf 'om2\n'
+      cat \
+        gpu/nvidia/native/nvrm/context.om \
+        gpu/nvidia/native/blackwell/vector.om \
+        gpu/nvidia/native/blackwell/launch.om \
+        gpu/nvidia/native/blackwell/batch.om \
+        om/encoder/bw_enc_sm121.om \
+        '$REMOTE_DIR/src/ufbi_math.om' \
+        '$REMOTE_DIR/src/ufbi_check3_kernels.om' \
+        '$REMOTE_DIR/src/ufbi_check7_gb10.om'
+    } | \"\$OMC\" > '$REMOTE_DIR/build/ufbi_check7_gb10'
+    chmod 755 '$REMOTE_DIR/build/ufbi_check7_gb10'
+    ls -la '$REMOTE_DIR/build/ufbi_check7_gb10'
+    sha256sum '$REMOTE_DIR/build/ufbi_check7_gb10'
+    file '$REMOTE_DIR/build/ufbi_check7_gb10'
+  "
+  echo "=== Running ufbi_check7_gb10 on live GB10 under spark-window + spark-receipt ==="
+  ssh spark "set -eu
+    echo \"\$(date -u +%FT%H:%MZ) CLAIM agy-yang ufbi-check7-gb10 to all: GB10 chip lock (lease 15m, --quiet none) for pure-OM-2 Zero-CUDA Check #7 smooth k=0 IR collars + UV-regular Wave-3 observable\" >> ~/handoffs/BOARD.md
+    WID=\$(spark-window open ufbi-check7-gb10 --wait --lease 15 --gb10 exclusive --quiet none | tail -n 1)
+    cleanup() {
+      spark-window close \"\$WID\" >/dev/null 2>&1 || true
+      echo \"\$(date -u +%FT%H:%MZ) RELEASE agy-yang ufbi-check7-gb10: done, GPU idle\" >> ~/handoffs/BOARD.md
+    }
+    trap cleanup EXIT
+    spark-window run spark-receipt ufbi-check7-gb10 --idle 5 -- sh -c '$REMOTE_DIR/build/ufbi_check7_gb10 > $REMOTE_DIR/evidence/check7_gb10_run.tsv'
+    rc=\$?
+    cat '$REMOTE_DIR/evidence/check7_gb10_run.tsv'
+    exit \$rc
+  "
 elif [ "$MODE" = "proofs" ]; then
   echo "=== Checking zero-dependency Lean 4 bridge proofs/UfbiMassGap.lean on Spark ==="
   ssh spark "set -eu
@@ -258,6 +294,6 @@ elif [ "$MODE" = "openai_bridge" ]; then
     echo 'LEAN_OPENAI_YM_BRIDGE status=PASS'
   "
 else
-  echo "usage: $0 check1 | obs_synth | obs_synth_w2 | obs_synth_w3 | check3 | check4 | check5 | check6 | proofs | openai_bridge" >&2
+  echo "usage: $0 check1 | obs_synth | obs_synth_w2 | obs_synth_w3 | check3 | check4 | check5 | check6 | check7 | proofs | openai_bridge" >&2
   exit 2
 fi
