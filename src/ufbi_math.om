@@ -1,0 +1,248 @@
+note SPDX-License-Identifier: Apache-2.0
+note src/ufbi_math.om: Pure Seeded-OM-2 f64/f32 math, PRNG, and formatting helpers.
+note Zero libc, zero libm, zero external runtime.
+
+text umMinus "-"
+text umDot "."
+text umInf "INF"
+
+fn uPrint s view uchar * to void
+r = write 1 s 0 len s
+end
+
+fn uPrintU x ulong to void
+b = new uchar 24 0
+pos = ulong 24
+v = x
+while true bound 24
+pos = sub pos 1
+put b pos uchar add 48 rem v 10
+v = div v 10
+if eq v 0
+break
+end
+end
+r = write 1 b pos sub 24 pos
+end
+
+fn uPrintI x long to void
+if lt x 0
+uPrint umMinus
+uPrintU ulong sub 0 x
+ret
+end
+uPrintU ulong x
+end
+
+note Print f64 with 6 decimal digits (e.g. -0.123456)
+fn uPrintF64 v f64 to void
+buf = new uchar 6 48
+x = v
+if lt x 0.0f64
+uPrint umMinus
+x = sub 0.0f64 x
+end
+if gt x 1000000000000.0f64
+uPrint umInf
+ret
+end
+scaled = ulong add mul x 1000000.0f64 0.5f64
+ip = div scaled 1000000
+fp = rem scaled 1000000
+uPrintU ip
+uPrint umDot
+p = ulong 6
+f = fp
+while gt p 0 bound 8
+p = sub p 1
+put buf p uchar add 48 rem f 10
+f = div f 10
+end
+r = write 1 buf 0 6
+end
+
+fn uAbs64 x f64 to f64
+if lt x 0.0f64
+ret sub 0.0f64 x
+end
+ret x
+end
+
+fn uSqrt64 x f64 to f64
+if le x 0.0f64
+ret 0.0f64
+end
+ret fsqrt x
+end
+
+fn uPi to f64
+ret bitcast f64 ulong 0x400921fb54442d18
+end
+
+fn uTwoPi to f64
+ret bitcast f64 ulong 0x401921fb54442d18
+end
+
+fn uHalfPi to f64
+ret bitcast f64 ulong 0x3ff921fb54442d18
+end
+
+fn uLn2 to f64
+ret bitcast f64 ulong 0x3fe62e42fefa39ef
+end
+
+fn uInvLn2 to f64
+ret bitcast f64 ulong 0x3ff71547652b82fe
+end
+
+fn uExp64 x f64 to f64
+v = x
+if gt v 700.0f64
+ret bitcast f64 ulong 0x7e37e43c8800759c
+end
+if lt v neg 700.0f64
+ret 0.0f64
+end
+kf = mul v uInvLn2
+ki = long 0
+if ge kf 0.0f64
+ki = long add kf 0.5f64
+else
+ki = long sub kf 0.5f64
+end
+r = sub v mul f64 ki uLn2
+p = f64 1.0f64
+p = add 1.0f64 mul r div p 12.0f64
+p = add 1.0f64 mul r div p 11.0f64
+p = add 1.0f64 mul r div p 10.0f64
+p = add 1.0f64 mul r div p 9.0f64
+p = add 1.0f64 mul r div p 8.0f64
+p = add 1.0f64 mul r div p 7.0f64
+p = add 1.0f64 mul r div p 6.0f64
+p = add 1.0f64 mul r div p 5.0f64
+p = add 1.0f64 mul r div p 4.0f64
+p = add 1.0f64 mul r div p 3.0f64
+p = add 1.0f64 mul r div p 2.0f64
+p = add 1.0f64 mul r p
+eb = shl ulong add ki 1023 52
+ret mul p bitcast f64 eb
+end
+
+note Abramowitz-Stegun 7.1.26 erf(x), max error < 1.5e-7
+fn uErf64 x f64 to f64
+sgn = f64 1.0f64
+ax = x
+if lt ax 0.0f64
+sgn = neg 1.0f64
+ax = sub 0.0f64 ax
+end
+if gt ax 6.0f64
+ret sgn
+end
+t = div 1.0f64 add 1.0f64 mul 0.3275911f64 ax
+y = mul t 1.061405429f64
+y = mul t sub y 1.453152027f64
+y = mul t add y 1.421413741f64
+y = mul t sub y 0.284496736f64
+y = mul t add y 0.254829592f64
+res = sub 1.0f64 mul y uExp64 neg mul ax ax
+ret mul sgn res
+end
+
+note Gaussian Total Variation distance: erf(delta / (2 * sqrt(2)))
+fn uGaussTv delta f64 to f64
+ret uErf64 mul delta 0.3535533905932738f64
+end
+
+note Pure OM-2 sin(x) in f64 via range reduction to [-pi/2, pi/2] + 15th-order Taylor
+fn uSin64 theta f64 to f64
+pi = uPi
+twopi = uTwoPi
+halfpi = uHalfPi
+k = long div theta twopi
+x = sub theta mul f64 k twopi
+while gt x pi bound 8
+x = sub x twopi
+end
+while lt x neg pi bound 8
+x = add x twopi
+end
+if gt x halfpi
+x = sub pi x
+end
+if lt x neg halfpi
+x = sub neg pi x
+end
+x2 = mul x x
+s = f64 1.0f64
+s = sub 1.0f64 div mul x2 s 210.0f64
+s = sub 1.0f64 div mul x2 s 156.0f64
+s = sub 1.0f64 div mul x2 s 110.0f64
+s = sub 1.0f64 div mul x2 s 72.0f64
+s = sub 1.0f64 div mul x2 s 42.0f64
+s = sub 1.0f64 div mul x2 s 20.0f64
+s = sub 1.0f64 div mul x2 s 6.0f64
+ret mul x s
+end
+
+fn uCos64 theta f64 to f64
+ret uSin64 add theta uHalfPi
+end
+
+fn uLog64 x f64 to f64
+if le x 0.0f64
+ret neg 700.0f64
+end
+bits = bitcast ulong x
+e = sub long and shr bits 52 2047 1023
+mbits = or and bits 0x000fffffffffffff 0x3ff0000000000000
+m = bitcast f64 mbits
+if gt m 1.4142135623730951f64
+m = mul m 0.5f64
+e = add e 1
+end
+t = div sub m 1.0f64 add m 1.0f64
+t2 = mul t t
+s = div 1.0f64 15.0f64
+s = add div 1.0f64 13.0f64 mul t2 s
+s = add div 1.0f64 11.0f64 mul t2 s
+s = add div 1.0f64 9.0f64 mul t2 s
+s = add div 1.0f64 7.0f64 mul t2 s
+s = add div 1.0f64 5.0f64 mul t2 s
+s = add div 1.0f64 3.0f64 mul t2 s
+s = add 1.0f64 mul t2 s
+ret add mul f64 e uLn2 mul 2.0f64 mul t s
+end
+
+note Deterministic splitmix64 PRNG for host thermal collar / Box-Muller normal draws
+global uRngState ulong 1
+
+fn uRngSeed s ulong to void
+put uRngState 0 s
+end
+
+fn uRngNext to ulong
+z = add get uRngState 0 0x9e3779b97f4a7c15
+put uRngState 0 z
+z = mul xor z shr z 30 0xbf58476d1ce4e5b9
+z = mul xor z shr z 27 0x94d049bb133111eb
+ret xor z shr z 31
+end
+
+fn uRngUnit64 to f64
+r = shr uRngNext 11
+inv53 = bitcast f64 ulong 0x3ca0000000000000
+ret mul f64 r inv53
+end
+
+note Box-Muller standard normal N(0,1)
+fn uRngNorm64 to f64
+u1 = uRngUnit64
+eps = bitcast f64 ulong 0x3cd203af9ee75616
+if lt u1 eps
+u1 = eps
+end
+u2 = uRngUnit64
+rad = uSqrt64 mul neg 2.0f64 uLog64 u1
+ret mul rad uCos64 mul uTwoPi u2
+end

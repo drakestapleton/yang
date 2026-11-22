@@ -1,0 +1,904 @@
+note SPDX-License-Identifier: Apache-2.0
+note src/ufbi_check1_gb10.om: Pure Seeded-OM-2 Zero-CUDA GB10 Runner for UFBI Check #1
+note (4D Massive Free Scalar UV-Divergence Test: Exact 4D DST-I Oracle + Native SM121 CG).
+note
+note Composed after:
+note   gpu/nvidia/native/nvrm/context.om
+note   gpu/nvidia/native/blackwell/vector.om
+note   gpu/nvidia/native/blackwell/launch.om
+note   gpu/nvidia/native/blackwell/batch.om
+note   om/encoder/bw_enc_sm121.om
+note   src/ufbi_math.om
+note   src/ufbi_check1_kernels.om
+
+global uCodePos ulong 1
+global uEntry ulong 8
+global uSmem ulong 8
+global uCodeMap long 1
+global uCodeFail uint 1
+global uBind uint 32
+global uBindN ulong 1
+global uDirty uint 1
+
+note Device unified-memory buffers (allocated for max N = 64^4 = 16,777,216 floats = 64 MiB each)
+global dX long 1
+global dB long 1
+global dR long 1
+global dP long 1
+global dAp long 1
+global dMaskFull long 1
+global dMaskInt long 1
+global dMaskOut long 1
+global dEta long 1
+global dH long 1
+global dObs long 1
+global dPart long 1
+global uStaging uchar 65536
+
+note Exact 4D DST-I CPU Oracle buffers for L=8 (interior M = 6, M^4 = 1296 sites)
+global dstSin f64 64
+global dstEig f64 16
+global dstB f64 1296
+global dstT f64 1296
+global dstH f64 1296
+
+text tHdr "=== UFBI CHECK #1: 4D MASSIVE FREE SCALAR UV-DIVERGENCE (PURE OM-2 ZERO-CUDA GB10) ===\n"
+text tOpenErr "FAIL: GB10 native NVRM open/alloc error stage="
+text tSubErr "FAIL: GB10 kernel submit error stage="
+text tOracleOk "ORACLE_4D_DST1_L8: PASS max_abs_err="
+text tOracleBad "ORACLE_4D_DST1_L8: FAIL max_abs_err="
+text tCols "L\tml\tcollar\tcg_h_it\tcg_w_it\tDelta_raw\tTV_raw\tBlockAvg_d\tBlockAvg_TV\tGauss_d\tGauss_TV\tDipole_d\tDipole_TV\tQuad_d\tQuad_TV\tSite_d\tSite_TV\tus_total\n"
+text tTab "\t"
+text tNl "\n"
+text tC0 "const"
+text tC1 "sin1"
+text tC2 "uv_chk"
+text tC3 "rand_N01"
+text tDone "CHECK1_GB10_DONE status=PASS\n"
+
+fn uCodeWrite w view ulong 4 to void
+p = get uCodePos 0
+b = new uchar 16 0
+if gt get uCodeMap 0 0
+for i ulong 16
+put b i uchar and shr get w div i 4 mul rem i 4 8 255
+end
+if ne mapwrite get uCodeMap 0 p b 0 16 16
+put uCodeFail 0 1
+end
+end
+put uCodePos 0 add p 16
+end
+
+fn uEmitAllKernels to void
+put uCodePos 0 0
+for id ulong 4
+p = mul div add get uCodePos 0 255 256 256
+put uEntry id p
+put uCodePos 0 p
+put uPc 0 0
+put uGuard 0 0
+ok = false
+if eq id 0
+ok = uEmitHelm4d
+end
+if eq id 1
+ok = uEmitDotCta
+end
+if eq id 2
+ok = uEmitAxpy
+end
+if eq id 3
+ok = uEmitMaskCopy
+end
+if not ok
+exit 4
+end
+uDone
+end
+put uSmem 0 0
+put uSmem 1 256
+put uSmem 2 0
+put uSmem 3 0
+end
+
+fn uArg u uint to void
+i = get uBindN 0
+put uBind i u
+put uBindN 0 add i 1
+end
+
+fn uPtr va ulong to void
+uArg gblo va
+uArg gbhi va
+end
+
+fn uRecord id ulong gx uint bx uint to bool
+gbqmd 1
+a = add mapaddr get uCodeMap 0 get uEntry id
+put gbq1 32 gblo shr a 4
+put gbq1 33 or uint and shr a 36 2097151 20971520
+put gbq1 59 gblo shr a 8
+put gbq1 34 or uint 65536 bx
+put gbq1 35 or uint 131073 shl uint 64 8
+sm = get uSmem id
+s7 = ulong 8
+if ne sm 0
+s7 = div add sm 127 128
+end
+put gbq1 36 uint or 78923776 s7
+put gbq1 37 0
+put gbq1 39 gx
+put gbq1 40 1
+put gbq1 41 1
+put gbcb 216 bx
+put gbcb 220 gx
+put gbcb 221 1
+put gbcb 222 1
+cb = mapaddr get gbmem 1
+words = get uBindN 0
+endva = add cb add 896 mul words 4
+put gbcb 212 gbhi endva
+put gbcb 213 gblo endva
+put gbused 0 0
+gbsetup
+if ne get uDirty 0 0
+gbmth 0 40 4
+gbemit 0
+gbemit 0
+gbemit 0
+gbemit 2281701376
+put uDirty 0 0
+end
+gbdma cb 224
+for j ulong 224
+gbemit get gbcb j
+end
+gbdma add cb 896 uint words
+for j ulong words bound 32
+gbemit get uBind j
+end
+q = mapaddr get gbmem 2
+gbinline q false
+gbdma add q 8192 1
+gbemit 1
+gbinline add q 4096 true
+gbrel add mapaddr get gbmem 3 32 6
+put uBindN 0 0
+ret gbappend id get gbst 1
+end
+
+fn uRunKernel id ulong gx uint bx uint to bool
+put uDirty 0 1
+if not gbbegin 1
+ret false
+end
+if not uRecord id gx bx
+ret false
+end
+ret gbbsubmit 2000000000
+end
+
+note Fast zero-fill of a GPU buffer via 64 KiB chunks
+fn uZeroBuf m long nFloats ulong to bool
+bytes = mul nFloats 4
+for i ulong 65536
+put uStaging i 0
+end
+off = ulong 0
+while lt off bytes bound 4096
+n = sub bytes off
+if gt n 65536
+n = ulong 65536
+end
+if ne mapwrite m off uStaging 0 n long n
+ret false
+end
+off = add off n
+end
+ret true
+end
+
+note Write f32 value to staging buffer at float slot k (0..16383)
+fn uStagePut k ulong v f32 to void
+bits = bitcast uint v
+base = mul k 4
+put uStaging base uchar and bits 255
+put uStaging add base 1 uchar and shr bits 8 255
+put uStaging add base 2 uchar and shr bits 16 255
+put uStaging add base 3 uchar and shr bits 24 255
+end
+
+fn uStageFlush m long offBytes ulong nFloats ulong to bool
+nb = mul nFloats 4
+ret eq mapwrite m offBytes uStaging 0 nb long nb
+end
+
+note GPU primitives wrapped cleanly
+fn gpuHelm4d xM long yM long mM long L ulong diag f32 to bool
+L2 = mul L L
+L3 = mul L2 L
+N = mul L3 L
+gx = uint div add N 255 256
+uPtr mapaddr xM
+uPtr mapaddr yM
+uPtr mapaddr mM
+uArg uint N
+uArg uint L
+uArg uint L2
+uArg uint L3
+uArg uint sub 4294967296 L
+uArg uint sub 4294967296 L2
+uArg uint sub 4294967296 L3
+uArg bitcast uint diag
+ret uRunKernel 0 gx 256
+end
+
+fn gpuAxpy xM long yM long N ulong a f32 b f32 to bool
+gx = uint div add N 255 256
+uPtr mapaddr xM
+uPtr mapaddr yM
+uArg uint N
+uArg bitcast uint a
+uArg bitcast uint b
+ret uRunKernel 2 gx 256
+end
+
+fn gpuMaskCopy xM long yM long mM long N ulong to bool
+gx = uint div add N 255 256
+uPtr mapaddr xM
+uPtr mapaddr yM
+uPtr mapaddr mM
+uArg uint N
+ret uRunKernel 3 gx 256
+end
+
+note Exact f64 reduction on Grace CPU over CTA partial sums from GB10
+fn gpuDot64 uM long vM long N ulong to f64
+gx = div add N 255 256
+uPtr mapaddr uM
+uPtr mapaddr vM
+uPtr mapaddr get dPart 0
+uArg uint N
+if not uRunKernel 1 uint gx 256
+exit 21
+end
+acc = f64 0.0f64
+pm = get dPart 0
+for i ulong gx bound 131072
+v = bitcast f32 uint mapget pm mul i 4 4
+acc = add acc f64 v
+end
+ret acc
+end
+
+note Solve masked A x = b on GB10 via Conjugate Gradient with f64 dot products
+global cgCfg ulong 4
+global cgTol f64 2
+
+fn cgStep xM long mM long L ulong diag f32 to bool
+N = get cgCfg 0
+if not gpuHelm4d get dP 0 get dAp 0 mM L diag
+exit 25
+end
+pAp = gpuDot64 get dP 0 get dAp 0 N
+if le pAp bitcast f64 ulong 0x39b0692313b315d2
+ret false
+end
+rr = get cgTol 0
+alpha = div rr pAp
+if not gpuAxpy get dP 0 xM N f32 alpha 1.0f32
+exit 26
+end
+if not gpuAxpy get dAp 0 get dR 0 N f32 neg alpha 1.0f32
+exit 27
+end
+rrNew = gpuDot64 get dR 0 get dR 0 N
+put cgTol 0 rrNew
+if le rrNew get cgTol 1
+ret false
+end
+beta = div rrNew rr
+if not gpuAxpy get dR 0 get dP 0 N 1.0f32 f32 beta
+exit 28
+end
+ret true
+end
+
+fn gpuSolveCG bM long xM long mM long L ulong diag f32 maxIt ulong to ulong
+N = mul mul L L mul L L
+put cgCfg 0 N
+if not uZeroBuf xM N
+exit 22
+end
+if not gpuAxpy bM get dR 0 N 1.0f32 0.0f32
+exit 23
+end
+if not gpuAxpy bM get dP 0 N 1.0f32 0.0f32
+exit 24
+end
+rr = gpuDot64 get dR 0 get dR 0 N
+if le rr bitcast f64 ulong 0x3af3017d8a34c436
+ret 0
+end
+put cgTol 0 rr
+put cgTol 1 mul rr bitcast f64 ulong 0x3d719799812dea11
+it = ulong 0
+while lt it maxIt bound 4096
+it = add it 1
+if not cgStep xM mM L diag
+break
+end
+end
+ret it
+end
+
+note =========================================================================
+note Populate 4D region masks on GPU in 64 KiB streaming chunks
+note =========================================================================
+fn coordIsFull idx ulong L ulong to bool
+x3 = rem idx L
+t = div idx L
+x2 = rem t L
+t = div t L
+x1 = rem t L
+x0 = div t L
+lm1 = sub L 1
+if or eq x0 0 eq x0 lm1
+ret false
+end
+if or eq x1 0 eq x1 lm1
+ret false
+end
+if or eq x2 0 eq x2 lm1
+ret false
+end
+if or eq x3 0 eq x3 lm1
+ret false
+end
+ret true
+end
+
+fn coordIsInt idx ulong L ulong to bool
+lo = div L 4
+hi = sub L lo
+x3 = rem idx L
+t = div idx L
+x2 = rem t L
+t = div t L
+x1 = rem t L
+x0 = div t L
+if or lt x0 lo ge x0 hi
+ret false
+end
+if or lt x1 lo ge x1 hi
+ret false
+end
+if or lt x2 lo ge x2 hi
+ret false
+end
+if or lt x3 lo ge x3 hi
+ret false
+end
+ret true
+end
+
+fn buildMasks L ulong to bool
+N = mul mul L L mul L L
+for pass ulong 3
+tgt = get dMaskFull 0
+if eq pass 1
+tgt = get dMaskInt 0
+end
+if eq pass 2
+tgt = get dMaskOut 0
+end
+off = ulong 0
+while lt off N bound 2048
+cnt = sub N off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+idx = add off k
+isF = coordIsFull idx L
+isI = coordIsInt idx L
+val = f32 0.0f32
+if eq pass 0
+if isF
+val = f32 1.0f32
+end
+end
+if eq pass 1
+if isI
+val = f32 1.0f32
+end
+end
+if eq pass 2
+if and isF not isI
+val = f32 1.0f32
+end
+end
+uStagePut k val
+end
+if not uStageFlush tgt mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+end
+ret true
+end
+
+note Populate boundary collar eta on dEta (0 on interior, collar pattern on boundary)
+note mode: 0=const(1.0), 1=sin1, 2=uv_checkerboard, 3=rand_N01
+fn collarVal idx ulong L ulong mode ulong to f32
+if coordIsFull idx L
+ret 0.0f32
+end
+if eq mode 0
+ret 1.0f32
+end
+if eq mode 3
+ret f32 uRngNorm64
+end
+x3 = rem idx L
+t = div idx L
+x2 = rem t L
+t = div t L
+x1 = rem t L
+x0 = div t L
+if eq mode 2
+if eq and add add x0 x1 add x2 x3 1 0
+ret 1.0f32
+end
+ret neg 1.0f32
+end
+pf = div uPi f64 sub L 1
+acc = uSin64 mul pf f64 x0
+acc = add acc uSin64 mul pf f64 x1
+acc = add acc uSin64 mul pf f64 x2
+acc = add acc uSin64 mul pf f64 x3
+ret f32 acc
+end
+
+fn buildCollar L ulong mode ulong to bool
+N = mul mul L L mul L L
+uRngSeed add 0x517cc1b727220a95 mul L 131
+off = ulong 0
+while lt off N bound 2048
+cnt = sub N off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+uStagePut k collarVal add off k L mode
+end
+if not uStageFlush get dEta 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+note Populate linear CentralObs probe K(x) supported inside Lambda_int onto dObs
+note obsKind: 0=BlockAvg, 1=GaussSmear(sigma=L/8), 2=Dipole, 3=Quadrupole, 4=SingleSite
+fn obsGauss x0 ulong x1 ulong x2 ulong x3 ulong L ulong obsKind ulong to f32
+ctr = mul 0.5f64 f64 sub L 1
+sig = div f64 L 8.0f64
+d = sub f64 x0 ctr
+r2 = mul d d
+d = sub f64 x1 ctr
+r2 = add r2 mul d d
+d = sub f64 x2 ctr
+r2 = add r2 mul d d
+d = sub f64 x3 ctr
+r2 = add r2 mul d d
+g = uExp64 neg div mul 0.5f64 r2 mul sig sig
+if eq obsKind 1
+ret f32 g
+end
+if eq obsKind 2
+ret f32 mul sub f64 x0 ctr g
+end
+d = sub f64 x0 ctr
+sig = sub f64 x1 ctr
+ret f32 mul sub mul d d mul sig sig g
+end
+
+fn obsVal idx ulong L ulong obsKind ulong to f32
+if not coordIsInt idx L
+ret 0.0f32
+end
+if eq obsKind 0
+ret 1.0f32
+end
+x3 = rem idx L
+t = div idx L
+x2 = rem t L
+t = div t L
+x1 = rem t L
+x0 = div t L
+if eq obsKind 4
+mid = div L 2
+if and and and eq x0 mid eq x1 mid eq x2 mid eq x3 mid
+ret 1.0f32
+end
+ret 0.0f32
+end
+ret obsGauss x0 x1 x2 x3 L obsKind
+end
+
+fn buildObs L ulong obsKind ulong to bool
+N = mul mul L L mul L L
+off = ulong 0
+while lt off N bound 2048
+cnt = sub N off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+uStagePut k obsVal add off k L obsKind
+end
+if not uStageFlush get dObs 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+note =========================================================================
+note Exact 4D DST-I Spectral Oracle on L=8 (M = L-2 = 6 interior sites/axis)
+note =========================================================================
+fn idx4 a ulong b ulong c ulong d ulong M ulong to ulong
+r = add mul a M b
+r = add mul r M c
+ret add mul r M d
+end
+
+fn dst1dOne ax ulong idx ulong to f64
+i3 = rem idx 6
+i2 = rem div idx 6 6
+i1 = rem div idx 36 6
+i0 = div idx 216
+acc = f64 0.0f64
+for j ulong 6
+if eq ax 0
+s = get dstSin add mul i0 6 j
+k = idx4 j i1 i2 i3 6
+acc = add acc mul s get dstB k
+end
+if eq ax 1
+s = get dstSin add mul i1 6 j
+k = idx4 i0 j i2 i3 6
+acc = add acc mul s get dstB k
+end
+if eq ax 2
+s = get dstSin add mul i2 6 j
+k = idx4 i0 i1 j i3 6
+acc = add acc mul s get dstB k
+end
+if eq ax 3
+s = get dstSin add mul i3 6 j
+k = idx4 i0 i1 i2 j 6
+acc = add acc mul s get dstB k
+end
+end
+ret acc
+end
+
+fn dst1dAxis4 to void
+for ax ulong 4
+for idx ulong 1296
+put dstT idx dst1dOne ax idx
+end
+for idx ulong 1296
+put dstB idx get dstT idx
+end
+end
+end
+
+fn dstBuildTables to void
+pi = uPi
+norm = uSqrt64 div 2.0f64 7.0f64
+for k ulong 6
+kf = f64 add k 1
+sn = uSin64 div mul pi kf 14.0f64
+put dstEig k mul 4.0f64 mul sn sn
+for j ulong 6
+jf = f64 add j 1
+put dstSin add mul k 6 j mul norm uSin64 div mul pi mul kf jf 7.0f64
+end
+end
+end
+
+fn dstBuildRhs to void
+for idx ulong 1296
+i3 = rem idx 6
+t = div idx 6
+i2 = rem t 6
+t = div t 6
+i1 = rem t 6
+i0 = div t 6
+bc = f64 0.0f64
+if eq i0 0
+bc = add bc 1.0f64
+end
+if eq i0 5
+bc = add bc 1.0f64
+end
+if eq i1 0
+bc = add bc 1.0f64
+end
+if eq i1 5
+bc = add bc 1.0f64
+end
+if eq i2 0
+bc = add bc 1.0f64
+end
+if eq i2 5
+bc = add bc 1.0f64
+end
+if eq i3 0
+bc = add bc 1.0f64
+end
+if eq i3 5
+bc = add bc 1.0f64
+end
+put dstB idx bc
+end
+end
+
+fn dstDivEig ma2 f64 to void
+for idx ulong 1296
+lam = add ma2 get dstEig div idx 216
+lam = add lam get dstEig rem div idx 36 6
+lam = add lam get dstEig rem div idx 6 6
+lam = add lam get dstEig rem idx 6
+put dstB idx div get dstB idx lam
+end
+end
+
+fn dstMaxErrL8 to f64
+maxErr = f64 0.0f64
+hm = get dH 0
+for idx ulong 1296
+a = add div idx 216 1
+b = add rem div idx 36 6 1
+c = add rem div idx 6 6 1
+d = add rem idx 6 1
+gIdx = idx4 a b c d 8
+gpuV = f64 bitcast f32 uint mapget hm mul gIdx 4 4
+err = uAbs64 sub gpuV get dstH idx
+if gt err maxErr
+maxErr = err
+end
+end
+ret maxErr
+end
+
+fn runDst1OracleL8 ml f64 to bool
+ma = div ml 8.0f64
+ma2 = mul ma ma
+diag = f32 add 8.0f64 ma2
+dstBuildTables
+dstBuildRhs
+dst1dAxis4
+dstDivEig ma2
+dst1dAxis4
+for k ulong 1296
+put dstH k get dstB k
+end
+if not buildMasks 8
+ret false
+end
+if not buildCollar 8 0
+ret false
+end
+if not gpuHelm4d get dEta 0 get dB 0 get dMaskFull 0 8 diag
+ret false
+end
+if not gpuAxpy get dB 0 get dB 0 4096 neg 1.0f32 0.0f32
+ret false
+end
+it = gpuSolveCG get dB 0 get dH 0 get dMaskFull 0 8 diag 500
+maxErr = dstMaxErrL8
+if le maxErr 0.0001f64
+uPrint tOracleOk
+uPrintF64 maxErr
+uPrint tNl
+ret true
+end
+uPrint tOracleBad
+uPrintF64 maxErr
+uPrint tNl
+ret false
+end
+
+note =========================================================================
+note Run one (L, m*ell, collarMode) experiment on GB10
+note =========================================================================
+fn runObsProbes L ulong diag f32 to bool
+N = mul mul L L mul L L
+for obsKind ulong 5
+if not buildObs L obsKind
+ret false
+end
+dMu = uAbs64 gpuDot64 get dObs 0 get dH 0 N
+itO = gpuSolveCG get dObs 0 get dX 0 get dMaskFull 0 L diag 1200
+sig2 = gpuDot64 get dObs 0 get dX 0 N
+dObsVal = f64 0.0f64
+if gt sig2 bitcast f64 ulong 0x3af3017d8a34c436
+dObsVal = div dMu uSqrt64 sig2
+end
+uPrint tTab
+uPrintF64 dObsVal
+uPrint tTab
+uPrintF64 uGaussTv dObsVal
+end
+ret true
+end
+
+fn printCollarName collarMode ulong to void
+if eq collarMode 0
+uPrint tC0
+end
+if eq collarMode 1
+uPrint tC1
+end
+if eq collarMode 2
+uPrint tC2
+end
+if eq collarMode 3
+uPrint tC3
+end
+end
+
+fn runExperiment L ulong ml f64 collarMode ulong to bool
+t0 = monons
+N = mul mul L L mul L L
+ma = div ml f64 L
+diag = f32 add 8.0f64 mul ma ma
+if not buildCollar L collarMode
+ret false
+end
+if not gpuHelm4d get dEta 0 get dB 0 get dMaskFull 0 L diag
+ret false
+end
+if not gpuAxpy get dB 0 get dB 0 N neg 1.0f32 0.0f32
+ret false
+end
+itH = gpuSolveCG get dB 0 get dH 0 get dMaskFull 0 L diag 1200
+if not gpuMaskCopy get dH 0 get dObs 0 get dMaskInt 0 N
+ret false
+end
+if not gpuHelm4d get dObs 0 get dB 0 get dMaskOut 0 L diag
+ret false
+end
+if not gpuAxpy get dB 0 get dB 0 N neg 1.0f32 0.0f32
+ret false
+end
+itW = gpuSolveCG get dB 0 get dX 0 get dMaskOut 0 L diag 1200
+if not gpuAxpy get dObs 0 get dX 0 N 1.0f32 1.0f32
+ret false
+end
+if not gpuHelm4d get dX 0 get dB 0 get dMaskInt 0 L diag
+ret false
+end
+dRaw = uSqrt64 gpuDot64 get dObs 0 get dB 0 N
+uPrintU L
+uPrint tTab
+uPrintF64 ml
+uPrint tTab
+printCollarName collarMode
+uPrint tTab
+uPrintU itH
+uPrint tTab
+uPrintU itW
+uPrint tTab
+uPrintF64 dRaw
+uPrint tTab
+uPrintF64 uGaussTv dRaw
+if not runObsProbes L diag
+ret false
+end
+us = div ulong sub monons t0 1000
+uPrint tTab
+uPrintU us
+uPrint tNl
+ret true
+end
+
+fn allocField bytes ulong cached bool to long
+m = nvalloc bytes cached
+if le m 0
+uPrint tOpenErr
+uPrintU ulong get nvstage 0
+uPrint tNl
+exit 6
+end
+ret m
+end
+
+fn main to int
+uPrint tHdr
+if not gbopen 1
+uPrint tOpenErr
+uPrintU ulong get nvstage 0
+uPrint tNl
+ret 2
+end
+if not gbbopen
+uPrint tOpenErr
+uPrintU ulong get nvstage 0
+uPrint tNl
+ret 3
+end
+put uCodeMap 0 0
+uEmitAllKernels
+csize = mul div add get uCodePos 0 4095 4096 4096
+cm = nvalloc csize false
+if le cm 0
+ret 4
+end
+put uCodeMap 0 cm
+put uCodeFail 0 0
+uEmitAllKernels
+if ne get uCodeFail 0 0
+ret 5
+end
+
+note Max lattice L=64 -> 16,777,216 floats = 67,108,864 bytes (64 MiB) per buffer
+note Total 11 buffers x 64 MiB = 704 MiB (< 0.6% of GB10 128 GB unified memory!)
+maxBytes = ulong 67108864
+put dX 0 allocField maxBytes true
+put dB 0 allocField maxBytes true
+put dR 0 allocField maxBytes true
+put dP 0 allocField maxBytes true
+put dAp 0 allocField maxBytes true
+put dMaskFull 0 allocField maxBytes true
+put dMaskInt 0 allocField maxBytes true
+put dMaskOut 0 allocField maxBytes true
+put dEta 0 allocField maxBytes true
+put dH 0 allocField maxBytes true
+put dObs 0 allocField maxBytes true
+note Partial sums: up to 65536 CTAs x 4 B = 262,144 B (uncached for instant CPU f64 sum)
+put dPart 0 allocField 262144 false
+
+note 1. Self-verify GB10 CG solver against exact 4D DST-I spectral oracle on L=8
+if not runDst1OracleL8 2.0f64
+rc = nvmclose
+ret 10
+end
+
+note 2. Run UV-divergence scaling sweep across L = 8, 16, 32, 64
+uPrint tCols
+ls = new ulong 4 8
+put ls 1 16
+put ls 2 32
+put ls 3 64
+for li ulong 4
+L = get ls li
+if not buildMasks L
+rc = nvmclose
+ret 11
+end
+for mi ulong 2
+ml = f64 2.0f64
+if eq mi 1
+ml = f64 4.0f64
+end
+for cmode ulong 4
+if not runExperiment L ml cmode
+rc = nvmclose
+ret 12
+end
+end
+end
+end
+uPrint tDone
+rc = nvmclose
+ret 0
+end

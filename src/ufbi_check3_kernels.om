@@ -1,0 +1,649 @@
+note SPDX-License-Identifier: Apache-2.0
+note src/ufbi_check3_kernels.om: Pure Seeded-OM-2 SM121 Direct SASS Emitter for Check #3
+note (4D SU(2) Quaternion Lattice Monte Carlo: 6-Staple Sum, Exact 4-FMA Overrelaxation,
+note and Exact Trigonometric-Free Kennedy-Pendleton Heatbath on GB10).
+note Composed after om/encoder/bw_enc_sm121.om.
+note Honors all SM121 silicon laws (Antibodies #13-#15: 6-cycle ALU floor, disjoint
+note LDG/STG address registers before uW0/uW1, 4-aligned LDG.E.128, zero B0 nesting).
+
+const UZ ulong 255
+global uPc ulong 1
+global uGuard ulong 1
+global uCodeBuf ulong 16384
+
+fn ucw st ulong wb ulong rbar ulong wt ulong yld ulong to ulong
+a = or shl st 9 shl yld 13
+b = or shl wb 14 shl rbar 17
+ret or or a b shl wt 20
+end
+
+fn uAlu4 to ulong
+ret ucw 6 7 7 0 0
+end
+fn uCmp to ulong
+ret ucw 14 7 7 0 0
+end
+fn uLd to ulong
+ret ucw 2 0 1 0 1
+end
+fn uSt to ulong
+ret ucw 4 7 1 0 1
+end
+fn uW0 to ulong
+ret ucw 6 7 7 1 0
+end
+fn uW1 to ulong
+ret ucw 6 7 7 2 0
+end
+fn uWall to ulong
+ret ucw 6 7 7 7 0
+end
+fn uMufu to ulong
+ret ucw 4 0 7 0 1
+end
+fn uSafe to ulong
+ret ucw 6 7 7 7 0
+end
+
+fn uEmitRaw o edit ulong 16 atPc ulong to void
+w = new ulong 4 0
+if ne get uGuard 0 0
+put o 9 1
+end
+if eq get uGuard 0 2
+put o 10 1
+end
+put uGuard 0 0
+if ne get o 2 UZ
+put o 12 1
+end
+if ne get o 3 UZ
+put o 13 1
+end
+if ne enc1 o w 0
+exit 3
+end
+base = mul atPc 4
+for i ulong 4
+put uCodeBuf add base i get w i
+end
+end
+
+fn uic op ulong dst ulong a ulong b ulong imm ulong ctrl ulong to void
+o = new ulong 16 0
+put o 0 op
+put o 1 dst
+put o 2 a
+put o 3 b
+put o 4 UZ
+put o 5 4
+put o 6 and imm 0xffffffff
+put o 7 ctrl
+pc = get uPc 0
+uEmitRaw o pc
+put uPc 0 add pc 1
+end
+
+fn uic4 op ulong dst ulong a ulong b ulong c ulong ctrl ulong to void
+o = new ulong 16 0
+put o 0 op
+put o 1 dst
+put o 2 a
+put o 3 b
+put o 4 c
+put o 5 4
+put o 6 0
+put o 7 ctrl
+pc = get uPc 0
+uEmitRaw o pc
+put uPc 0 add pc 1
+end
+
+fn uicImm op ulong dst ulong a ulong c ulong imm ulong ctrl ulong to void
+o = new ulong 16 0
+put o 0 op
+put o 1 dst
+put o 2 a
+put o 3 UZ
+put o 4 c
+put o 5 4
+put o 6 and imm 0xffffffff
+put o 7 ctrl
+pc = get uPc 0
+uEmitRaw o pc
+put uPc 0 add pc 1
+end
+
+fn uBraFwd gd ulong to ulong
+pos = get uPc 0
+put uGuard 0 gd
+uic 46 UZ UZ UZ 0 uAlu4
+ret pos
+end
+
+fn uBraBack targetPc ulong gd ulong to void
+pos = get uPc 0
+put uGuard 0 gd
+delta = and sub targetPc pos 0xffffffff
+uic 46 UZ UZ UZ delta uAlu4
+end
+
+fn uPatch pos ulong gd ulong to void
+o = new ulong 16 0
+put o 0 46
+put o 1 UZ
+put o 2 UZ
+put o 3 UZ
+put o 4 UZ
+put o 5 4
+put o 6 and sub get uPc 0 pos 0xffffffff
+put o 7 uAlu4
+put uGuard 0 gd
+uEmitRaw o pos
+end
+
+fn uLit d ulong x ulong to void
+uic 2 d UZ UZ x uAlu4
+end
+
+fn uNum d ulong x f32 to void
+uLit d ulong bitcast uint x
+end
+
+fn uParam d ulong off ulong to void
+uic 4 d UZ UZ add 896 off ucw 4 0 7 0 1
+uic 0 UZ UZ UZ 0 uW0
+end
+
+fn uStart ptrs ulong to void
+uic 7 4 UZ UZ 856 ucw 4 2 7 0 1
+for i ulong ptrs bound 8
+uic 5 mul i 2 UZ UZ add 896 mul i 8 ucw 4 0 7 0 1
+end
+uic 3 14 UZ UZ 33 ucw 4 0 7 0 1
+uic 3 15 UZ UZ 37 ucw 4 0 7 0 1
+uic 0 UZ UZ UZ 0 uWall
+end
+
+fn uDone to void
+uic 0 UZ UZ UZ 0 uWall
+uic 45 UZ UZ UZ 0 uSafe
+while or lt get uPc 0 32 ne rem get uPc 0 8 0 bound 4096
+uic 0 UZ UZ UZ 0 uSafe
+end
+w = new ulong 4 0
+n = get uPc 0
+for pc ulong n bound 4096
+base = mul pc 4
+for i ulong 4
+put w i get uCodeBuf add base i
+end
+uCodeWrite w
+end
+end
+
+note =========================================================================
+note SM121 Quaternion Macro Helpers
+note All quaternions are 4 consecutive GPRs: q0, q1, q2, q3
+note =========================================================================
+
+note Emit Hamilton product dst[0..3] = a[0..3] * b[0..3] using tmp reg t
+note Requires dst disjoint from a, b, and t.
+fn uEmitQMul dst ulong a ulong b ulong t ulong to void
+note dst0 = a0*b0 - a1*b1 - a2*b2 - a3*b3
+uic 32 dst a b 0 uAlu4
+uic 32 t add a 1 add b 1 0 uAlu4
+uic 31 dst dst t 0 uAlu4
+uic 32 t add a 2 add b 2 0 uAlu4
+uic 31 dst dst t 0 uAlu4
+uic 32 t add a 3 add b 3 0 uAlu4
+uic 31 dst dst t 0 uAlu4
+note dst1 = a0*b1 + a1*b0 + a2*b3 - a3*b2
+uic 32 add dst 1 a add b 1 0 uAlu4
+uic4 33 add dst 1 add a 1 b add dst 1 uAlu4
+uic4 33 add dst 1 add a 2 add b 3 add dst 1 uAlu4
+uic 32 t add a 3 add b 2 0 uAlu4
+uic 31 add dst 1 add dst 1 t 0 uAlu4
+note dst2 = a0*b2 - a1*b3 + a2*b0 + a3*b1
+uic 32 add dst 2 a add b 2 0 uAlu4
+uic 32 t add a 1 add b 3 0 uAlu4
+uic 31 add dst 2 add dst 2 t 0 uAlu4
+uic4 33 add dst 2 add a 2 b add dst 2 uAlu4
+uic4 33 add dst 2 add a 3 add b 1 add dst 2 uAlu4
+note dst3 = a0*b3 + a1*b2 - a2*b1 + a3*b0
+uic 32 add dst 3 a add b 3 0 uAlu4
+uic4 33 add dst 3 add a 1 add b 2 add dst 3 uAlu4
+uic 32 t add a 2 add b 1 0 uAlu4
+uic 31 add dst 3 add dst 3 t 0 uAlu4
+uic4 33 add dst 3 add a 3 b add dst 3 uAlu4
+end
+
+note Emit quaternion conjugate in-place: q1 = -q1, q2 = -q2, q3 = -q3 (using zero reg zReg)
+fn uEmitQConj q ulong zReg ulong to void
+uic 31 add q 1 zReg add q 1 0 uAlu4
+uic 31 add q 2 zReg add q 2 0 uAlu4
+uic 31 add q 3 zReg add q 3 0 uAlu4
+end
+
+note Load link quaternion (siteReg, dirReg) from links ptr (R0:R1) into 4-aligned dst (LDG.E.128)
+note Clobbers tmpIdx and addrPair (even register)
+fn uEmitLoadLink dst ulong siteReg ulong dirReg ulong tmpIdx ulong addrPair ulong to void
+uicImm 8 tmpIdx siteReg dirReg 4 uAlu4
+uicImm 9 addrPair tmpIdx 0 16 uAlu4
+uic 57 dst addrPair UZ 0 uLd
+end
+
+note Load nb_site[siteReg * 8 + dirOffReg] from nb_site ptr (R6:R7) into dstSite
+fn uEmitLoadNb dstSite ulong siteReg ulong dirOffReg ulong tmpIdx ulong addrPair ulong to void
+uicImm 8 tmpIdx siteReg dirOffReg 8 uAlu4
+uicImm 9 addrPair tmpIdx 6 4 uAlu4
+uic 11 dstSite addrPair UZ 0 uLd
+end
+
+note =========================================================================
+note Kernel 0: k_su2_staple (Compute 6-staple conjugate sum A_mu(x) on checkerboard)
+note Args:
+note   ptr0 (R0:R1) = links   (f32[N * 16])
+note   ptr1 (R2:R3) = staples (f32[N * 16])
+note   ptr2 (R4:R5) = flags   (u32[N * 4]: 0=even, 1=odd, 2=frozen)
+note   ptr3 (R6:R7) = nb_site (u32[N * 8]: 0=+0,1=-0,2=+1,3=-1,4=+2,5=-2,6=+3,7=-3)
+note   off 32 = N
+note   off 36 = mu
+note   off 40 = parity (0 or 1)
+note   off 44 = nu0
+note   off 48 = nu1
+note   off 52 = nu2
+note =========================================================================
+fn uEmitStapleOneDir nuReg ulong to void
+note Uses: R16=s, R17=mu, R18=xp (s+mu), R19=zero_f32
+note       R24..27=t1, R28..31=t2, R32..35=t3, R36..39=p1, R40..43=acc, R44..47=p2
+note       R48..57=scratch indices/addrs, R58=one_u32, R59=mul_tmp
+note Forward staple: U_nu(s) * U_mu(s+nu) * U_nu^dag(s+mu)
+note plus_off = nu * 2 (R48), minus_off = nu * 2 + 1 (R49)
+uicImm 8 48 nuReg UZ 2 uAlu4
+uic 14 49 48 58 0 uAlu4
+note Load xn = nb[s, +nu] into R50
+uEmitLoadNb 50 16 48 52 54
+uic 0 UZ UZ UZ 0 uW0
+note Batch load t1=U(s,nu), t2=U(xn,mu), t3=U(xp,nu)
+uEmitLoadLink 24 16 nuReg 52 54
+uic 0 UZ UZ UZ 0 uW1
+uEmitLoadLink 28 50 17 52 54
+uic 0 UZ UZ UZ 0 uW1
+uEmitLoadLink 32 18 nuReg 52 54
+uic 0 UZ UZ UZ 0 uW0
+uEmitQConj 32 19
+uEmitQMul 36 24 28 59
+uEmitQMul 44 36 32 59
+for c ulong 4
+uic 30 add 40 c add 40 c add 44 c 0 uAlu4
+end
+
+note Backward staple: U_nu^dag(s-nu) * U_mu(s-nu) * U_nu(s+mu-nu)
+note Load xm = nb[s, -nu] (R50) and xpm = nb[xp, -nu] (R51)
+uEmitLoadNb 50 16 49 52 54
+uic 0 UZ UZ UZ 0 uW1
+uEmitLoadNb 51 18 49 52 56
+uic 0 UZ UZ UZ 0 uW0
+uEmitLoadLink 24 50 nuReg 52 54
+uic 0 UZ UZ UZ 0 uW1
+uEmitLoadLink 28 50 17 52 54
+uic 0 UZ UZ UZ 0 uW1
+uEmitLoadLink 32 51 nuReg 52 54
+uic 0 UZ UZ UZ 0 uW0
+uEmitQConj 24 19
+uEmitQMul 36 24 28 59
+uEmitQMul 44 36 32 59
+for c ulong 4
+uic 30 add 40 c add 40 c add 44 c 0 uAlu4
+end
+end
+
+fn uEmitSu2Staple to bool
+uStart 4
+uParam 20 32
+uParam 17 36
+uParam 21 40
+uParam 22 44
+uParam 23 48
+uParam 60 52
+note s (R16) = CTAID.X * 256 + TID.X
+uicImm 8 16 15 14 256 uAlu4
+uic 28 UZ 16 20 0 uCmp
+bOob = uBraFwd 1
+
+note Check flags[s * 4 + mu] == parity
+uicImm 8 52 16 17 4 uAlu4
+uicImm 9 54 52 4 4 uAlu4
+uic 11 53 54 UZ 0 uLd
+uic 0 UZ UZ UZ 0 uW0
+note XOR flags with parity: 0 iff equal; if >= 1 then skip!
+uic 29 53 53 21 0 uAlu4
+uLit 58 1
+uic 28 UZ 53 58 0 uCmp
+bSkip = uBraFwd 1
+
+note Load xp = nb[s, +mu] into R18
+uicImm 8 48 17 UZ 2 uAlu4
+uEmitLoadNb 18 16 48 52 54
+uic 0 UZ UZ UZ 0 uW0
+
+note Zero accumulator acc (R40..43) and zero_f32 (R19)
+uic 1 19 UZ UZ 0 uAlu4
+uic 1 40 UZ UZ 0 uAlu4
+uic 1 41 UZ UZ 0 uAlu4
+uic 1 42 UZ UZ 0 uAlu4
+uic 1 43 UZ UZ 0 uAlu4
+
+note Sum all 3 orthogonal staple pairs (nu0=R22, nu1=R23, nu2=R60)
+uEmitStapleOneDir 22
+uEmitStapleOneDir 23
+uEmitStapleOneDir 60
+
+note Store acc[0..3] to staples[s * 4 + mu] (ptr1 = R2:R3)
+uicImm 8 52 16 17 4 uAlu4
+uicImm 9 54 52 2 16 uAlu4
+uic 12 UZ 54 40 0 uSt
+uic 12 UZ 54 41 4 uSt
+uic 12 UZ 54 42 8 uSt
+uic 12 UZ 54 43 12 uSt
+uic 0 UZ UZ UZ 0 uW1
+
+uPatch bSkip 1
+uPatch bOob 1
+ret true
+end
+
+note =========================================================================
+note Kernel 1: k_su2_overrelax (Exact 4-FMA Microcanonical Reflection U' = 2(U.V)V - U)
+note Args:
+note   ptr0 (R0:R1) = links
+note   ptr1 (R2:R3) = staples
+note   ptr2 (R4:R5) = flags
+note   off 24 = N, off 28 = mu, off 32 = parity
+note =========================================================================
+fn uEmitSu2Overrelax to bool
+uStart 3
+uParam 20 24
+uParam 17 28
+uParam 21 32
+uicImm 8 16 15 14 256 uAlu4
+uic 28 UZ 16 20 0 uCmp
+bOob = uBraFwd 1
+
+uicImm 8 52 16 17 4 uAlu4
+uicImm 9 54 52 4 4 uAlu4
+uic 11 53 54 UZ 0 uLd
+uic 0 UZ UZ UZ 0 uW0
+uic 29 53 53 21 0 uAlu4
+uLit 58 1
+uic 28 UZ 53 58 0 uCmp
+bSkip = uBraFwd 1
+
+note Load U (R24..27) and A (R28..31)
+uicImm 9 54 52 0 16 uAlu4
+uicImm 9 56 52 2 16 uAlu4
+uic 57 24 54 UZ 0 uLd
+uic 57 28 56 UZ 0 uLd
+uic 0 UZ UZ UZ 0 uW0
+
+note k2 = A.A (R32)
+uic 32 32 28 28 0 uAlu4
+uic4 33 32 29 29 32 uAlu4
+uic4 33 32 30 30 32 uAlu4
+uic4 33 32 31 31 32 uAlu4
+uNum 33 0.0000000001f32
+uic 34 0 33 32 0 uCmp
+bTiny = uBraFwd 1
+
+note invK = rsqrt(k2), V = A * invK (in-place R28..31)
+uic 41 34 32 UZ 0 uMufu
+uic 0 UZ UZ UZ 0 uW0
+for c ulong 4
+uic 32 add 28 c add 28 c 34 0 uAlu4
+end
+
+note dot = U.V (R35), d2 = 2.0 * dot (R35)
+uic 32 35 24 28 0 uAlu4
+uic4 33 35 25 29 35 uAlu4
+uic4 33 35 26 30 35 uAlu4
+uic4 33 35 27 31 35 uAlu4
+uic 30 35 35 35 0 uAlu4
+
+note U' = d2 * V - U (R36..39)
+for c ulong 4
+uic 32 add 36 c 35 add 28 c 0 uAlu4
+uic 31 add 36 c add 36 c add 24 c 0 uAlu4
+end
+
+note Renormalize U' once for f32 stability
+uic 32 32 36 36 0 uAlu4
+uic4 33 32 37 37 32 uAlu4
+uic4 33 32 38 38 32 uAlu4
+uic4 33 32 39 39 32 uAlu4
+uic 41 34 32 UZ 0 uMufu
+uic 0 UZ UZ UZ 0 uW0
+for c ulong 4
+uic 32 add 36 c add 36 c 34 0 uAlu4
+end
+
+note Store U' back to links[s*4+mu]
+uic 12 UZ 54 36 0 uSt
+uic 12 UZ 54 37 4 uSt
+uic 12 UZ 54 38 8 uSt
+uic 12 UZ 54 39 12 uSt
+uic 0 UZ UZ UZ 0 uW1
+
+uPatch bTiny 1
+uPatch bSkip 1
+uPatch bOob 1
+ret true
+end
+
+note =========================================================================
+note Kernel 2: k_su2_heatbath (Exact Trigonometric-Free Kennedy-Pendleton Heatbath)
+note Args:
+note   ptr0 (R0:R1) = links
+note   ptr1 (R2:R3) = staples
+note   ptr2 (R4:R5) = flags
+note   ptr3 (R6:R7) = rng (u32[N])
+note   off 32 = N, off 36 = mu, off 40 = parity, off 44 = beta_f32_bits
+note =========================================================================
+note Advance xorshift32 state in rSt, produce u in (0, 1) in rOut (clobbers rTmp, rSh)
+fn uEmitRand01 rSt ulong rOut ulong rTmp ulong rSh ulong rScale ulong rEps ulong to void
+uLit rSh 13
+uic 52 rTmp rSt rSh 0 uAlu4
+uic 29 rSt rSt rTmp 0 uAlu4
+uic 17 rTmp rSt UZ 17 uAlu4
+uic 29 rSt rSt rTmp 0 uAlu4
+uLit rSh 5
+uic 52 rTmp rSt rSh 0 uAlu4
+uic 29 rSt rSt rTmp 0 uAlu4
+note Convert top 24 bits (non-negative s32) to f32 in [eps, 1.0)
+uic 17 rTmp rSt UZ 8 uAlu4
+uic 38 rOut rTmp UZ 0 uAlu4
+uic4 33 rOut rOut rScale rEps uAlu4
+end
+
+fn uEmitHbDisk to void
+uLit 48 0
+uLit 49 16
+uNum 37 0.5f32
+lblDisk = get uPc 0
+uEmitRand01 18 38 50 51 19 23
+uEmitRand01 18 39 50 51 19 23
+uic4 33 38 45 38 44 uAlu4
+uic 31 38 38 45 0 uAlu4
+uic4 33 39 45 39 44 uAlu4
+uic 31 39 39 45 0 uAlu4
+uic 32 38 38 38 0 uAlu4
+uic4 33 39 39 39 38 uAlu4
+uic 34 0 39 44 0 uCmp
+bR1 = uBraFwd 1
+uic 34 0 23 39 0 uCmp
+bR2 = uBraFwd 1
+uic 40 39 39 UZ 0 uMufu
+uic 0 UZ UZ UZ 0 uW0
+uic 32 37 38 39 0 uAlu4
+bDone = uBraFwd 0
+uPatch bR1 1
+uPatch bR2 1
+uic 14 48 48 58 0 uAlu4
+uic 28 UZ 48 49 0 uCmp
+uBraBack lblDisk 2
+uPatch bDone 0
+end
+
+fn uEmitHbKpLoop to void
+uLit 47 0
+uLit 59 48
+uNum 36 0.0f32
+lblKp = get uPc 0
+uEmitHbDisk
+uEmitRand01 18 38 50 51 19 23
+uEmitRand01 18 39 50 51 19 23
+uEmitRand01 18 40 50 51 19 23
+uic 59 38 38 UZ 0 uMufu
+uic 0 UZ UZ UZ 0 uW0
+uic 59 39 39 UZ 0 uMufu
+uic 0 UZ UZ UZ 0 uW0
+uic4 33 38 37 39 38 uAlu4
+uic 32 36 46 38 0 uAlu4
+uic 31 38 44 36 0 uAlu4
+uic 32 40 40 40 0 uAlu4
+uic 34 0 38 40 0 uCmp
+bKpOk = uBraFwd 1
+uic 14 47 47 58 0 uAlu4
+uic 28 UZ 47 59 0 uCmp
+uBraBack lblKp 2
+uNum 36 0.0f32
+uPatch bKpOk 1
+end
+
+fn uEmitHbSphere to void
+uLit 47 0
+uLit 59 32
+uNum 25 1.0f32
+uNum 26 0.0f32
+uNum 27 0.0f32
+lblSph = get uPc 0
+uEmitRand01 18 38 50 51 19 23
+uEmitRand01 18 39 50 51 19 23
+uEmitRand01 18 40 50 51 19 23
+uic4 33 38 45 38 44 uAlu4
+uic 31 38 38 45 0 uAlu4
+uic4 33 39 45 39 44 uAlu4
+uic 31 39 39 45 0 uAlu4
+uic4 33 40 45 40 44 uAlu4
+uic 31 40 40 45 0 uAlu4
+uic 32 41 38 38 0 uAlu4
+uic4 33 41 39 39 41 uAlu4
+uic4 33 41 40 40 41 uAlu4
+uic 34 0 41 44 0 uCmp
+bR1 = uBraFwd 1
+uic 34 0 23 41 0 uCmp
+bR2 = uBraFwd 1
+uic 41 42 41 UZ 0 uMufu
+uic 0 UZ UZ UZ 0 uW0
+uic 32 42 42 37 0 uAlu4
+uic 32 25 38 42 0 uAlu4
+uic 32 26 39 42 0 uAlu4
+uic 32 27 40 42 0 uAlu4
+bDone = uBraFwd 0
+uPatch bR1 1
+uPatch bR2 1
+uic 14 47 47 58 0 uAlu4
+uic 28 UZ 47 59 0 uCmp
+uBraBack lblSph 2
+uPatch bDone 0
+end
+
+fn uEmitSu2Heatbath to bool
+uStart 4
+uParam 20 32
+uParam 17 36
+uParam 21 40
+uParam 22 44
+uicImm 8 16 15 14 256 uAlu4
+uic 28 UZ 16 20 0 uCmp
+bOob = uBraFwd 1
+
+uicImm 8 52 16 17 4 uAlu4
+uicImm 9 54 52 4 4 uAlu4
+uic 11 53 54 UZ 0 uLd
+uic 0 UZ UZ UZ 0 uW0
+uic 29 53 53 21 0 uAlu4
+uLit 58 1
+uic 28 UZ 53 58 0 uCmp
+bSkip = uBraFwd 1
+
+uicImm 9 56 52 2 16 uAlu4
+uicImm 9 54 16 6 4 uAlu4
+uic 57 28 56 UZ 0 uLd
+uic 11 18 54 UZ 0 uLd
+uic 0 UZ UZ UZ 0 uW0
+
+uic 32 32 28 28 0 uAlu4
+uic4 33 32 29 29 32 uAlu4
+uic4 33 32 30 30 32 uAlu4
+uic4 33 32 31 31 32 uAlu4
+uNum 35 0.0000000001f32
+uic 34 0 35 32 0 uCmp
+bTiny = uBraFwd 1
+
+uic 41 33 32 UZ 0 uMufu
+uic 0 UZ UZ UZ 0 uW0
+uic 32 34 32 33 0 uAlu4
+for c ulong 4
+uic 32 add 28 c add 28 c 33 0 uAlu4
+end
+
+uNum 19 0.000000059604645f32
+uNum 23 0.0000001f32
+uNum 44 1.0f32
+uNum 45 2.0f32
+uic 32 35 22 34 0 uAlu4
+uic 30 35 35 35 0 uAlu4
+uic 40 35 35 UZ 0 uMufu
+uic 0 UZ UZ UZ 0 uW0
+uNum 46 neg 0.69314718f32
+uic 32 46 46 35 0 uAlu4
+
+uEmitHbKpLoop
+
+uic 30 36 36 36 0 uAlu4
+uic 31 24 44 36 0 uAlu4
+uic 32 37 24 24 0 uAlu4
+uic 31 37 44 37 0 uAlu4
+uNum 38 0.00000001f32
+uic 37 37 37 38 0 uAlu4
+uic 41 38 37 UZ 0 uMufu
+uic 0 UZ UZ UZ 0 uW0
+uic 32 37 37 38 0 uAlu4
+
+uEmitHbSphere
+
+uEmitQMul 36 24 28 50
+uic 32 32 36 36 0 uAlu4
+uic4 33 32 37 37 32 uAlu4
+uic4 33 32 38 38 32 uAlu4
+uic4 33 32 39 39 32 uAlu4
+uic 41 33 32 UZ 0 uMufu
+uic 0 UZ UZ UZ 0 uW0
+for c ulong 4
+uic 32 add 36 c add 36 c 33 0 uAlu4
+end
+
+uicImm 9 56 52 0 16 uAlu4
+uic 12 UZ 56 36 0 uSt
+uic 12 UZ 56 37 4 uSt
+uic 12 UZ 56 38 8 uSt
+uic 12 UZ 56 39 12 uSt
+uic 12 UZ 54 18 0 uSt
+uic 0 UZ UZ UZ 0 uW1
+
+uPatch bTiny 1
+uPatch bSkip 1
+uPatch bOob 1
+ret true
+end

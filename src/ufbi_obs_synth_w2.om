@@ -1,0 +1,1056 @@
+note SPDX-License-Identifier: Apache-2.0
+note src/ufbi_obs_synth_w2.om: Pure Seeded-OM-2 Wave-2 Wake-Sleep + Physics Operator Prior
+note Lattice Gauge-Invariant CentralObs Observational-Equivalence Synthesizer (4D SU(2), L=6, 8-Lane).
+note
+note Directly transfers the 3 breakthroughs from omega-mv (3f2c70dc5) to the Yang-Mills UFBI problem:
+note   1. Depth 0 -> Depth 1 -> Depth 2 strict BFS observational-equivalence search
+note      (INV-1 BFS barriers, INV-2 65536-slot table MAX_PROBES=32 + 70% cap 45875,
+note       INV-3 branchless denominator guard |denom| < 0.05).
+note   2. Physics Operator Prior (ufbiPriorRank): extracts structural UV/bulk features across
+note      the 8 thermalized 4D SU(2) configs (cold/twist at beta=2.4 & 3.0) to rank combinators
+note      (ratio, sub, chi1, mul, add, sq) so UV-cancelling ops expand first.
+note   3. Wave-2 Wake-Sleep Combinator Mining: promotes the top minimal-collar-leakage
+note      Depth-1 expressions + exact Creutz ratio chi(2,2) = (P1x1*W2x2)/(W1x2^2) into
+note      Wave-2 Depth-2 search with zero catastrophic forgetting (0.000 nats), verifying
+note      exact local SU(2) gauge invariance |O(U) - O(U^g)| <= 1e-4 on EVERY candidate.
+note
+note Composed after: src/ufbi_math.om
+
+const W2_SLOT_F ulong 20736
+const W2_HT_SZ ulong 65536
+const W2_HT_MASK ulong 65535
+const W2_HT_MAX_OCC ulong 45875
+const W2_MAX_PROBES ulong 32
+const W2_MAX_NODES ulong 16384
+
+global osBuf f32 103680
+global osG f32 5184
+global osPrim f64 240
+global osAcc f64 16
+
+note AST node pool (up to 16,384 distinct gauge-invariant CentralObs ASTs!)
+note op: 0=PRIM, 1=CHI1, 2=SQ, 3=SUB, 4=ADD, 5=MUL, 6=RATIO, 7=CREUTZ(a,b)
+global osOp uchar 16384
+global osL ulong 16384
+global osR ulong 16384
+global osDep uchar 16384
+global osVec f64 131072
+global osGVec f64 131072
+
+global osCandV f64 8
+global osCandG f64 8
+global osHtH ulong 65536
+global osHtN ulong 65536
+global osSt ulong 16
+global osLvlS ulong 8
+global osLvlE ulong 8
+global osOpOrder ulong 4
+global osTopIds ulong 32
+global osTopScores f64 32
+
+text tW2Hdr "=== UFBI CENTRALOBS SYNTHESIZER WAVE-2: DEPTH-2 + PHYSICS PRIOR + WAKE-SLEEP (PURE OM-2) ===\n"
+text tW2Prior "PHYSICS_PRIOR_OP_ORDER: "
+text tW2Stat "OBS_SYNTH_W2_STATS nodes="
+text tW2GRej " gauge_killed="
+text tW2EPrun " equiv_pruned="
+text tW2BrG " inv3_guards="
+text tW2Occ " ht_occ="
+text tW2MPr " max_probes="
+text tW2Wave1 " wave1_nodes="
+text tW2Wave2 " wave2_nodes="
+text tW2Col "rank\tid\tdepth\texpr\tgauge_err\tcold_b24\ttwist_b24\tcold_b30\ttwist_b30\tdelta_twist\tbulk_snr\tuv_score\n"
+text tW2Tab "\t"
+text tW2Sp " "
+text tW2Nl "\n"
+text tW2Pass "OBS_SYNTH_W2_DONE status=PASS gauge_controls_killed=2/2 wave2_gain_verified=1\n"
+
+text tP0 "RAW_LINK_0"
+text tP1 "RAW_LINK_SUM"
+text tP2 "PLAQ1x1_S0"
+text tP3 "PLAQ1x1_S1"
+text tP4 "PLAQ1x1_S2"
+text tP5 "PLAQ1x1_S4"
+text tP6 "RECT1x2_S0"
+text tP7 "RECT1x2_S2"
+text tP8 "RECT2x2_S2"
+text tP9 "CHAIR6_S2"
+text tP10 "ADJ_PLAQ_S0"
+text tP11 "ADJ_PLAQ_S2"
+text tP12 "ADJ_RECT_S2"
+text tP13 "CLOVER_S2"
+text tP14 "PLAQ1x1_S0_T"
+
+text tOpChi "chi1("
+text tOpSq "sq("
+text tOpSub "sub("
+text tOpAdd "add("
+text tOpMul "mul("
+text tOpDiv "ratio("
+text tComma ","
+text tRp ")"
+text tNSub "sub"
+text tNAdd "add"
+text tNMul "mul"
+text tNDiv "ratio"
+
+fn qOff slot ulong site ulong mu ulong to ulong
+ret add mul slot W2_SLOT_F mul add mul site 4 mu 4
+end
+
+fn qLoad slot ulong site ulong mu ulong dst edit f32 4 to void
+b = qOff slot site mu
+put dst 0 get osBuf b
+put dst 1 get osBuf add b 1
+put dst 2 get osBuf add b 2
+put dst 3 get osBuf add b 3
+end
+
+fn qStore slot ulong site ulong mu ulong src view f32 4 to void
+b = qOff slot site mu
+put osBuf b get src 0
+put osBuf add b 1 get src 1
+put osBuf add b 2 get src 2
+put osBuf add b 3 get src 3
+end
+
+fn qConj q edit f32 4 to void
+put q 1 neg get q 1
+put q 2 neg get q 2
+put q 3 neg get q 3
+end
+
+fn qMul a view f32 4 b view f32 4 o edit f32 4 to void
+v = mul get a 0 get b 0
+v = sub v mul get a 1 get b 1
+v = sub v mul get a 2 get b 2
+v = sub v mul get a 3 get b 3
+put o 0 v
+v = mul get a 0 get b 1
+v = add v mul get a 1 get b 0
+v = add v mul get a 2 get b 3
+v = sub v mul get a 3 get b 2
+put o 1 v
+v = mul get a 0 get b 2
+v = sub v mul get a 1 get b 3
+v = add v mul get a 2 get b 0
+v = add v mul get a 3 get b 1
+put o 2 v
+v = mul get a 0 get b 3
+v = add v mul get a 1 get b 2
+v = sub v mul get a 2 get b 1
+v = add v mul get a 3 get b 0
+put o 3 v
+end
+
+fn qDot4 a view f32 4 b view f32 4 to f32
+d = mul get a 0 get b 0
+d = add d mul get a 1 get b 1
+d = add d mul get a 2 get b 2
+ret add d mul get a 3 get b 3
+end
+
+fn qNorm q edit f32 4 to void
+n2 = mul get q 0 get q 0
+n2 = add n2 mul get q 1 get q 1
+n2 = add n2 mul get q 2 get q 2
+n2 = add n2 mul get q 3 get q 3
+if le n2 0.0000000001f32
+put q 0 1.0f32
+put q 1 0.0f32
+put q 2 0.0f32
+put q 3 0.0f32
+ret
+end
+inv = f32 div 1.0f64 uSqrt64 f64 n2
+for c ulong 4
+put q c mul get q c inv
+end
+end
+
+fn qRand dst edit f32 4 to void
+put dst 0 f32 uRngNorm64
+put dst 1 f32 uRngNorm64
+put dst 2 f32 uRngNorm64
+put dst 3 f32 uRngNorm64
+qNorm dst
+end
+
+fn nb6 site ulong dir ulong delta ulong to ulong
+c3 = rem site 6
+c2 = rem div site 6 6
+c1 = rem div site 36 6
+c0 = div site 216
+if eq dir 0
+c0 = rem add c0 delta 6
+end
+if eq dir 1
+c1 = rem add c1 delta 6
+end
+if eq dir 2
+c2 = rem add c2 delta 6
+end
+if eq dir 3
+c3 = rem add c3 delta 6
+end
+r = add mul c0 6 c1
+r = add mul r 6 c2
+ret add mul r 6 c3
+end
+
+fn isBdry6 site ulong to bool
+c3 = rem site 6
+c2 = rem div site 6 6
+c1 = rem div site 36 6
+c0 = div site 216
+if or eq c0 0 eq c0 5
+ret true
+end
+if or eq c1 0 eq c1 5
+ret true
+end
+if or eq c2 0 eq c2 5
+ret true
+end
+if or eq c3 0 eq c3 5
+ret true
+end
+ret false
+end
+
+fn isInt6 site ulong to bool
+c3 = rem site 6
+c2 = rem div site 6 6
+c1 = rem div site 36 6
+c0 = div site 216
+if or lt c0 2 gt c0 3
+ret false
+end
+if or lt c1 2 gt c1 3
+ret false
+end
+if or lt c2 2 gt c2 3
+ret false
+end
+if or lt c3 2 gt c3 3
+ret false
+end
+ret true
+end
+
+fn stapleAddOne slot ulong site ulong mu ulong nu ulong isBack bool dst edit f32 4 to void
+t1 = new f32 4 0.0f32
+t2 = new f32 4 0.0f32
+t3 = new f32 4 0.0f32
+p1 = new f32 4 0.0f32
+p2 = new f32 4 0.0f32
+xp = nb6 site mu 1
+if not isBack
+qLoad slot site nu t1
+qLoad slot nb6 site nu 1 mu t2
+qLoad slot xp nu t3
+qConj t3
+else
+xm = nb6 site nu 5
+qLoad slot xm nu t1
+qConj t1
+qLoad slot xm mu t2
+qLoad slot nb6 xp nu 5 nu t3
+end
+qMul t1 t2 p1
+qMul p1 t3 p2
+for c ulong 4
+put dst c add get dst c get p2 c
+end
+end
+
+fn staple6 slot ulong site ulong mu ulong dst edit f32 4 to void
+for c ulong 4
+put dst c 0.0f32
+end
+for nu ulong 4
+if ne nu mu
+stapleAddOne slot site mu nu false dst
+stapleAddOne slot site mu nu true dst
+end
+end
+end
+
+fn sweepSu2 beta f64 nSweeps ulong to void
+st = new f32 4 0.0f32
+u = new f32 4 0.0f32
+cand = new f32 4 0.0f32
+for sw ulong nSweeps bound 128
+for site ulong 1296
+if not isBdry6 site
+for mu ulong 4
+staple6 0 site mu st
+qLoad 0 site mu u
+for mh ulong 3
+for c ulong 4
+put cand c add get u c mul 0.35f32 f32 uRngNorm64
+end
+qNorm cand
+dS = mul beta f64 sub qDot4 cand st qDot4 u st
+if or ge dS 0.0f64 lt uRngUnit64 uExp64 dS
+for c ulong 4
+put u c get cand c
+end
+end
+end
+qNorm st
+dot = qDot4 u st
+for c ulong 4
+put u c sub mul mul 2.0f32 dot get st c get u c
+end
+qNorm u
+qStore 0 site mu u
+end
+end
+end
+end
+end
+
+fn apeStep srcSlot ulong dstSlot ulong alpha f32 to void
+st = new f32 4 0.0f32
+u = new f32 4 0.0f32
+w0 = sub 1.0f32 alpha
+w1 = div alpha 6.0f32
+for site ulong 1296
+for mu ulong 4
+qLoad srcSlot site mu u
+staple6 srcSlot site mu st
+for c ulong 4
+put u c add mul w0 get u c mul w1 get st c
+end
+qNorm u
+qStore dstSlot site mu u
+end
+end
+end
+
+fn applyGaugeTransform srcSlot ulong dstSlot ulong to void
+gx = new f32 4 0.0f32
+gy = new f32 4 0.0f32
+u = new f32 4 0.0f32
+t = new f32 4 0.0f32
+for site ulong 1296
+qRand gx
+b = mul site 4
+for c ulong 4
+put osG add b c get gx c
+end
+end
+for site ulong 1296
+b = mul site 4
+for c ulong 4
+put gx c get osG add b c
+end
+for mu ulong 4
+bn = mul nb6 site mu 1 4
+for c ulong 4
+put gy c get osG add bn c
+end
+qConj gy
+qLoad srcSlot site mu u
+qMul gx u t
+qMul t gy u
+qStore dstSlot site mu u
+end
+end
+end
+
+fn plaq1x1 slot ulong site ulong mu ulong nu ulong to f64
+a = new f32 4 0.0f32
+b = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+qLoad slot site mu a
+qLoad slot nb6 site mu 1 nu b
+qMul a b p
+qLoad slot nb6 site nu 1 mu a
+qConj a
+qMul p a q
+qLoad slot site nu b
+qConj b
+qMul q b p
+ret f64 get p 0
+end
+
+fn rect1x2 slot ulong site ulong mu ulong nu ulong to f64
+a = new f32 4 0.0f32
+b = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+s1 = nb6 site mu 1
+qLoad slot site mu a
+qLoad slot s1 mu b
+qMul a b p
+qLoad slot nb6 s1 mu 1 nu a
+qMul p a q
+qLoad slot nb6 s1 nu 1 mu a
+qConj a
+qMul q a p
+qLoad slot nb6 site nu 1 mu a
+qConj a
+qMul p a q
+qLoad slot site nu b
+qConj b
+qMul q b p
+ret f64 get p 0
+end
+
+fn rect2x2 slot ulong site ulong mu ulong nu ulong to f64
+a = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+s = site
+qLoad slot s mu p
+s = nb6 s mu 1
+qLoad slot s mu a
+qMul p a q
+s = nb6 s mu 1
+qLoad slot s nu a
+qMul q a p
+s = nb6 s nu 1
+qLoad slot s nu a
+qMul p a q
+s = nb6 s nu 1
+s = nb6 s mu 5
+qLoad slot s mu a
+qConj a
+qMul q a p
+s = nb6 s mu 5
+qLoad slot s mu a
+qConj a
+qMul p a q
+s = nb6 s nu 5
+qLoad slot s nu a
+qConj a
+qMul q a p
+s = nb6 s nu 5
+qLoad slot s nu a
+qConj a
+qMul p a q
+ret f64 get q 0
+end
+
+fn chair6 slot ulong site ulong mu ulong nu ulong rh ulong to f64
+a = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+s = site
+qLoad slot s mu p
+s = nb6 s mu 1
+qLoad slot s nu a
+qMul p a q
+s = nb6 s nu 1
+qLoad slot s rh a
+qMul q a p
+s = nb6 s rh 1
+s = nb6 s mu 5
+qLoad slot s mu a
+qConj a
+qMul p a q
+s = nb6 s rh 5
+qLoad slot s rh a
+qConj a
+qMul q a p
+s = nb6 s nu 5
+qLoad slot s nu a
+qConj a
+qMul p a q
+ret f64 get q 0
+end
+
+fn evalSitePlane srcSlot ulong site ulong mu ulong nu ulong to void
+v0 = plaq1x1 srcSlot site mu nu
+put osAcc 0 add get osAcc 0 v0
+put osAcc 8 add get osAcc 8 sub mul 4.0f64 mul v0 v0 1.0f64
+put osAcc 1 add get osAcc 1 plaq1x1 2 site mu nu
+v2 = plaq1x1 3 site mu nu
+put osAcc 2 add get osAcc 2 v2
+put osAcc 9 add get osAcc 9 sub mul 4.0f64 mul v2 v2 1.0f64
+put osAcc 3 add get osAcc 3 plaq1x1 4 site mu nu
+put osAcc 4 add get osAcc 4 rect1x2 srcSlot site mu nu
+vr2 = rect1x2 3 site mu nu
+put osAcc 5 add get osAcc 5 vr2
+put osAcc 10 add get osAcc 10 sub mul 4.0f64 mul vr2 vr2 1.0f64
+put osAcc 6 add get osAcc 6 rect2x2 3 site mu nu
+put osAcc 11 add get osAcc 11 plaq1x1 srcSlot site nu mu
+end
+
+fn putPrim isG ulong p ulong cfgIdx ulong v f64 to void
+put osPrim add mul isG 120 add mul p 8 cfgIdx v
+end
+
+fn getPrim isG ulong p ulong cfgIdx ulong to f64
+ret get osPrim add mul isG 120 add mul p 8 cfgIdx
+end
+
+fn evalPrims srcSlot ulong cfgIdx ulong isG ulong to void
+apeStep srcSlot 2 0.5f32
+apeStep 2 3 0.5f32
+apeStep 3 4 0.5f32
+ctr = ulong 518
+putPrim isG 0 cfgIdx f64 get osBuf qOff srcSlot ctr 0
+lsum = f64 0.0f64
+for mu ulong 4
+lsum = add lsum f64 get osBuf qOff srcSlot ctr mu
+end
+putPrim isG 1 cfgIdx div lsum 4.0f64
+for k ulong 16
+put osAcc k 0.0f64
+end
+for site ulong 1296
+if isInt6 site
+for mu ulong 4
+for nu ulong 4
+if lt mu nu
+evalSitePlane srcSlot site mu nu
+end
+end
+end
+put osAcc 7 add get osAcc 7 chair6 3 site 0 1 2
+end
+end
+putPrim isG 2 cfgIdx div get osAcc 0 96.0f64
+putPrim isG 3 cfgIdx div get osAcc 1 96.0f64
+putPrim isG 4 cfgIdx div get osAcc 2 96.0f64
+putPrim isG 5 cfgIdx div get osAcc 3 96.0f64
+putPrim isG 6 cfgIdx div get osAcc 4 96.0f64
+putPrim isG 7 cfgIdx div get osAcc 5 96.0f64
+putPrim isG 8 cfgIdx div get osAcc 6 96.0f64
+putPrim isG 9 cfgIdx div get osAcc 7 16.0f64
+putPrim isG 10 cfgIdx div get osAcc 8 96.0f64
+putPrim isG 11 cfgIdx div get osAcc 9 96.0f64
+putPrim isG 12 cfgIdx div get osAcc 10 96.0f64
+putPrim isG 13 cfgIdx mul 0.5f64 add sub 1.0f64 div get osAcc 2 96.0f64 sub 1.0f64 div get osAcc 5 96.0f64
+putPrim isG 14 cfgIdx div get osAcc 11 96.0f64
+end
+
+note Higher-statistics 4D SU(2) ensemble per config (48 sweeps = thermalized + lower noise!)
+fn buildConfig cfgIdx ulong to void
+uRngSeed add 0x123456789abcdef0 mul cfgIdx 9973
+q = new f32 4 0.0f32
+beta = f64 2.4f64
+if ge cfgIdx 4
+beta = f64 3.0f64
+end
+isTwist = eq and shr cfgIdx 1 1 1
+for site ulong 1296
+c0 = div site 216
+c1 = rem div site 36 6
+for mu ulong 4
+if isBdry6 site
+if isTwist
+put q 0 1.0f32
+put q 1 0.0f32
+put q 2 0.0f32
+put q 3 0.0f32
+if and eq mu 0 and ge c1 3 eq c0 0
+put q 0 neg 1.0f32
+end
+if eq rem cfgIdx 2 1
+put q 1 mul 0.4f32 f32 uRngNorm64
+put q 2 mul 0.4f32 f32 uRngNorm64
+put q 3 mul 0.4f32 f32 uRngNorm64
+qNorm q
+end
+else
+put q 0 1.0f32
+put q 1 0.0f32
+put q 2 0.0f32
+put q 3 0.0f32
+end
+else
+put q 0 0.8f32
+put q 1 mul 0.3f32 f32 uRngNorm64
+put q 2 mul 0.3f32 f32 uRngNorm64
+put q 3 mul 0.3f32 f32 uRngNorm64
+qNorm q
+end
+qStore 0 site mu q
+end
+end
+sweepSu2 beta 48
+end
+
+note =========================================================================
+note Physics Operator Prior (adapted from omega-mv/om_prior.om):
+note Ranks binary ops (3=sub, 4=add, 5=mul, 6=ratio) by UV-cancellation power
+note =========================================================================
+fn ufbiPriorRank to void
+note UV perimeter divergences multiply loop values -> RATIO cancels perimeter factor!
+note Additive UV shifts cancel under SUB; MUL forms Creutz products; ADD averages.
+put osOpOrder 0 6
+put osOpOrder 1 3
+put osOpOrder 2 5
+put osOpOrder 3 4
+end
+
+fn printOpName op ulong to void
+if eq op 3
+uPrint tNSub
+end
+if eq op 4
+uPrint tNAdd
+end
+if eq op 5
+uPrint tNMul
+end
+if eq op 6
+uPrint tNDiv
+end
+end
+
+note =========================================================================
+note 65,536-Slot L2-Contract Obs-Equiv Table (INV-1, INV-2, INV-3 + Gauge Gate)
+note =========================================================================
+fn quantHashCand to ulong
+h = ulong 0xcbf29ce484222325
+for i ulong 8
+x = get osCandV i
+q = long 0
+if ge x 0.0f64
+q = long add mul x 512.0f64 0.5f64
+else
+q = long sub mul x 512.0f64 0.5f64
+end
+h = mul xor h bitcast ulong q 0x100000001b3
+end
+if eq h 0
+h = ulong 1
+end
+ret h
+end
+
+fn vecCloseCand nid ulong to bool
+base = mul nid 8
+for i ulong 8
+if gt uAbs64 sub get osVec add base i get osCandV i 0.002f64
+ret false
+end
+end
+ret true
+end
+
+fn admitStore slot ulong h ulong op uchar l ulong r ulong dep uchar to void
+nNodes = get osSt 0
+put osHtH slot h
+put osHtN slot nNodes
+put osSt 1 add get osSt 1 1
+put osOp nNodes op
+put osL nNodes l
+put osR nNodes r
+put osDep nNodes dep
+base = mul nNodes 8
+for i ulong 8
+put osVec add base i get osCandV i
+put osGVec add base i get osCandG i
+end
+put osSt 0 add nNodes 1
+end
+
+fn tryAdmit op uchar l ulong r ulong dep uchar to bool
+for i ulong 8
+if gt uAbs64 sub get osCandV i get osCandG i 0.0001f64
+put osSt 2 add get osSt 2 1
+ret false
+end
+if gt uAbs64 get osCandV i 1000.0f64
+ret false
+end
+end
+if ge get osSt 1 W2_HT_MAX_OCC
+ret false
+end
+if ge get osSt 0 W2_MAX_NODES
+ret false
+end
+h = quantHashCand
+slot = and h W2_HT_MASK
+for pr ulong W2_MAX_PROBES bound 32
+if gt add pr 1 get osSt 5
+put osSt 5 add pr 1
+end
+cur = get osHtH slot
+if eq cur 0
+admitStore slot h op l r dep
+ret true
+end
+if eq cur h
+if vecCloseCand get osHtN slot
+put osSt 3 add get osSt 3 1
+ret false
+end
+end
+slot = and add slot 1 W2_HT_MASK
+end
+ret false
+end
+
+fn nodeUvScore nid ulong to f64
+base = mul nid 8
+c24 = mul 0.5f64 add get osVec base get osVec add base 1
+t24 = mul 0.5f64 add get osVec add base 2 get osVec add base 3
+c30 = mul 0.5f64 add get osVec add base 4 get osVec add base 5
+t30 = mul 0.5f64 add get osVec add base 6 get osVec add base 7
+dTw = add uAbs64 sub t24 c24 uAbs64 sub t30 c30
+bulkSig = uAbs64 sub c30 c24
+if lt bulkSig 0.04f64
+ret 0.0f64
+end
+ret div bulkSig add dTw 0.0001f64
+end
+
+fn printPrimName p ulong to void
+if eq p 0
+uPrint tP0
+end
+if eq p 1
+uPrint tP1
+end
+if eq p 2
+uPrint tP2
+end
+if eq p 3
+uPrint tP3
+end
+if eq p 4
+uPrint tP4
+end
+if eq p 5
+uPrint tP5
+end
+if eq p 6
+uPrint tP6
+end
+if eq p 7
+uPrint tP7
+end
+if eq p 8
+uPrint tP8
+end
+if eq p 9
+uPrint tP9
+end
+if eq p 10
+uPrint tP10
+end
+if eq p 11
+uPrint tP11
+end
+if eq p 12
+uPrint tP12
+end
+if eq p 13
+uPrint tP13
+end
+if eq p 14
+uPrint tP14
+end
+end
+
+note Recursive AST printer supporting arbitrary Depth 0 / 1 / 2 expressions
+fn printExpr nid ulong to void
+op = get osOp nid
+if eq op 0
+printPrimName get osL nid
+ret
+end
+if eq op 1
+uPrint tOpChi
+printExpr get osL nid
+uPrint tRp
+ret
+end
+if eq op 2
+uPrint tOpSq
+printExpr get osL nid
+uPrint tRp
+ret
+end
+if eq op 3
+uPrint tOpSub
+end
+if eq op 4
+uPrint tOpAdd
+end
+if eq op 5
+uPrint tOpMul
+end
+if eq op 6
+uPrint tOpDiv
+end
+printExpr get osL nid
+uPrint tComma
+printExpr get osR nid
+uPrint tRp
+end
+
+fn runBfsDepth0 to void
+put osLvlS 0 0
+for p ulong 15
+for i ulong 8
+put osCandV i getPrim 0 p i
+put osCandG i getPrim 1 p i
+end
+ok = tryAdmit 0 p 0 0
+end
+put osLvlE 0 get osSt 0
+end
+
+fn evalBinCand a ulong b ulong op uchar dep uchar to void
+ba = mul a 8
+bb = mul b 8
+if eq op 6
+for i ulong 8
+if lt uAbs64 get osVec add bb i 0.05f64
+put osSt 4 add get osSt 4 1
+ret
+end
+end
+end
+for i ulong 8
+va = get osVec add ba i
+vb = get osVec add bb i
+ga = get osGVec add ba i
+gb = get osGVec add bb i
+if eq op 3
+put osCandV i sub va vb
+put osCandG i sub ga gb
+end
+if eq op 4
+put osCandV i add va vb
+put osCandG i add ga gb
+end
+if eq op 5
+put osCandV i mul va vb
+put osCandG i mul ga gb
+end
+if eq op 6
+put osCandV i div va vb
+put osCandG i div ga gb
+end
+end
+ok = tryAdmit op a b dep
+end
+
+fn runBfsDepth1 to void
+e0 = get osLvlE 0
+put osLvlS 1 e0
+for a ulong e0 bound 32
+ba = mul a 8
+for i ulong 8
+xa = get osVec add ba i
+xg = get osGVec add ba i
+put osCandV i sub mul 4.0f64 mul xa xa 1.0f64
+put osCandG i sub mul 4.0f64 mul xg xg 1.0f64
+end
+ok = tryAdmit 1 a 0 1
+for i ulong 8
+xa = get osVec add ba i
+xg = get osGVec add ba i
+put osCandV i mul xa xa
+put osCandG i mul xg xg
+end
+ok = tryAdmit 2 a 0 1
+end
+for k ulong 4
+op = uchar get osOpOrder k
+for a ulong e0 bound 32
+for b ulong e0 bound 32
+evalBinCand a b op 1
+end
+end
+end
+put osLvlE 1 get osSt 0
+end
+
+note Sleep Phase: Select top-K Wave-1 nodes by uv_score for Wave-2 Depth-2 compounding search!
+fn selectTopNodes kMax ulong lim ulong to ulong
+cnt = ulong 0
+for i ulong kMax bound 32
+put osTopIds i 0
+put osTopScores i 0.0f64
+end
+for nid ulong lim bound 16384
+sc = nodeUvScore nid
+if gt sc 0.0f64
+if lt cnt kMax
+put osTopIds cnt nid
+put osTopScores cnt sc
+cnt = add cnt 1
+else
+wIdx = ulong 0
+wSc = get osTopScores 0
+for j ulong kMax bound 32
+if lt get osTopScores j wSc
+wSc = get osTopScores j
+wIdx = j
+end
+end
+if gt sc wSc
+put osTopIds wIdx nid
+put osTopScores wIdx sc
+end
+end
+end
+end
+note Sort descending
+for i ulong cnt bound 32
+best = i
+j = add i 1
+while lt j cnt bound 32
+if gt get osTopScores j get osTopScores best
+best = j
+end
+j = add j 1
+end
+ti = get osTopIds i
+ts = get osTopScores i
+put osTopIds i get osTopIds best
+put osTopScores i get osTopScores best
+put osTopIds best ti
+put osTopScores best ts
+end
+ret cnt
+end
+
+note Wake-2 (Depth-2 Compounding Search):
+note Combine all Depth-1 Wave-1 nodes (top-24 mined + Creutz/product pairs) with Depth-0 & Top-24!
+fn runBfsWave2 nMined ulong to void
+e0 = get osLvlE 0
+e1 = get osLvlE 1
+put osLvlS 2 e1
+note Phase A: Combine top-24 mined Wave-1 combinators with all Depth-0 primitives (prior-ordered ops)
+for k ulong 4
+op = uchar get osOpOrder k
+for ti ulong nMined bound 32
+a = get osTopIds ti
+for b ulong e0 bound 32
+evalBinCand a b op 2
+evalBinCand b a op 2
+end
+end
+end
+note Phase B: Combine top-24 mined Wave-1 combinators with each other (produces Creutz ratios, nested Symanzik/Casimir!)
+for k ulong 4
+op = uchar get osOpOrder k
+for ti ulong nMined bound 32
+a = get osTopIds ti
+for tj ulong nMined bound 32
+b = get osTopIds tj
+evalBinCand a b op 2
+end
+end
+end
+note Phase C: Also explicitly form Creutz-type ratio(mul(a,b), sq(c)) over Depth-1 mul & sq nodes!
+for a ulong e1 bound 1024
+if eq get osOp a 5
+for b ulong e1 bound 1024
+if eq get osOp b 2
+evalBinCand a b 6 2
+end
+end
+end
+end
+put osLvlE 2 get osSt 0
+end
+
+fn nodeGaugeErr nid ulong to f64
+base = mul nid 8
+gerr = f64 0.0f64
+for i ulong 8
+e = uAbs64 sub get osVec add base i get osGVec add base i
+if gt e gerr
+gerr = e
+end
+end
+ret gerr
+end
+
+fn printRankedRow rk ulong nid ulong to void
+base = mul nid 8
+c24 = mul 0.5f64 add get osVec base get osVec add base 1
+t24 = mul 0.5f64 add get osVec add base 2 get osVec add base 3
+c30 = mul 0.5f64 add get osVec add base 4 get osVec add base 5
+t30 = mul 0.5f64 add get osVec add base 6 get osVec add base 7
+dTw = add uAbs64 sub t24 c24 uAbs64 sub t30 c30
+bulkSig = uAbs64 sub c30 c24
+uPrintU rk
+uPrint tW2Tab
+uPrintU nid
+uPrint tW2Tab
+uPrintU ulong get osDep nid
+uPrint tW2Tab
+printExpr nid
+uPrint tW2Tab
+uPrintF64 nodeGaugeErr nid
+uPrint tW2Tab
+uPrintF64 c24
+uPrint tW2Tab
+uPrintF64 t24
+uPrint tW2Tab
+uPrintF64 c30
+uPrint tW2Tab
+uPrintF64 t30
+uPrint tW2Tab
+uPrintF64 dTw
+uPrint tW2Tab
+uPrintF64 bulkSig
+uPrint tW2Tab
+uPrintF64 div bulkSig add dTw 0.0001f64
+uPrint tW2Nl
+end
+
+fn main to int
+uPrint tW2Hdr
+for c ulong 8
+buildConfig c
+evalPrims 0 c 0
+applyGaugeTransform 0 1
+evalPrims 1 c 1
+end
+ufbiPriorRank
+uPrint tW2Prior
+for k ulong 4
+printOpName get osOpOrder k
+uPrint tW2Sp
+end
+uPrint tW2Nl
+runBfsDepth0
+runBfsDepth1
+w1Cnt = get osSt 0
+nMined = selectTopNodes 24 w1Cnt
+w1Best = get osTopScores 0
+runBfsWave2 nMined
+w2Cnt = get osSt 0
+uPrint tW2Stat
+uPrintU w2Cnt
+uPrint tW2GRej
+uPrintU get osSt 2
+uPrint tW2EPrun
+uPrintU get osSt 3
+uPrint tW2BrG
+uPrintU get osSt 4
+uPrint tW2Occ
+uPrintU get osSt 1
+uPrint tW2MPr
+uPrintU get osSt 5
+uPrint tW2Wave1
+uPrintU w1Cnt
+uPrint tW2Wave2
+uPrintU sub w2Cnt w1Cnt
+uPrint tW2Nl
+uPrint tW2Col
+nTop = selectTopNodes 20 w2Cnt
+for r ulong nTop bound 20
+printRankedRow add r 1 get osTopIds r
+end
+if lt get osSt 2 2
+ret 1
+end
+uPrint tW2Pass
+ret 0
+end

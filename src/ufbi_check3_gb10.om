@@ -1,0 +1,1052 @@
+note SPDX-License-Identifier: Apache-2.0
+note src/ufbi_check3_gb10.om: Pure Seeded-OM-2 Zero-CUDA GB10 Runner for UFBI Check #3
+note (4D SU(2) Adversarial Twisted-Collar Search: Creutz Calibration Oracle +
+note  Trickster Collar Zoo + Evolutionary Mutations + Held-Out Independent-Seed Judge).
+note
+note Composed after:
+note   gpu/nvidia/native/nvrm/context.om
+note   gpu/nvidia/native/blackwell/vector.om
+note   gpu/nvidia/native/blackwell/launch.om
+note   gpu/nvidia/native/blackwell/batch.om
+note   om/encoder/bw_enc_sm121.om
+note   src/ufbi_math.om
+note   src/ufbi_check3_kernels.om
+
+global uCodePos ulong 1
+global uEntry ulong 8
+global uCodeMap long 1
+global uCodeFail uint 1
+global uBind uint 32
+global uBindN ulong 1
+global uDirty uint 1
+
+note Device unified-memory buffers (max L=16 -> N=65536 sites, 262144 links = 4 MiB)
+global dLinks long 1
+global dStaples long 1
+global dFlags long 1
+global dNbSite long 1
+global dRng long 1
+
+note Host mirror / measurement buffers (L=16 -> 65536 sites, 262144 links)
+global hLinks f32 1048576
+global hNb uint 524288
+global hStage uchar 65536
+
+note Per-collar measurement time series (up to 400 sweeps x 4 observables)
+note obs: 0=P1x1_int, 1=W1x2_int, 2=AdjP_int, 3=W2x2_int
+global tsData f64 1600
+global baseMean f64 4
+global baseStd f64 4
+global curMean f64 4
+global curErr f64 4
+global curZ f64 4
+
+text tC3Hdr "=== UFBI CHECK #3: 4D SU(2) ADVERSARIAL TWISTED-COLLAR SEARCH (PURE OM-2 ZERO-CUDA GB10) ===\n"
+text tC3Err "FAIL: GB10 native NVRM/kernel error stage="
+text tC3CalOk "ORACLE_SU2_CREUTZ_L8_B230: PASS <P>="
+text tC3CalBad "ORACLE_SU2_CREUTZ_L8_B230: FAIL <P>="
+text tC3CalRef " (published_ref=0.6023 err="
+text tC3Rp ")\n"
+text tC3Cols "stage\tL\tbeta\tcollar\tsweeps\tP1x1\tP1x1_err\tdP_Z\tW1x2\tdW1x2_Z\tAdjP\tdAdj_Z\tW2x2\tdW2x2_Z\tmax_Z\tus_total\n"
+text tTab "\t"
+text tNl "\n"
+text tS1 "screen"
+text tS2 "heldout"
+text tK0 "C0_cold"
+text tK1 "C1_z2_vortex"
+text tK2 "C2_z2_dual"
+text tK3 "C3_hot_haar"
+text tK4 "C4_frust_chk"
+text tK5 "C5_nonab_twist"
+text tK6 "C6_trick_vort"
+text tK7 "C7_trick_mut"
+text tC3Done "CHECK3_GB10_DONE status=PASS\n"
+
+fn uCodeWrite w view ulong 4 to void
+p = get uCodePos 0
+b = new uchar 16 0
+if gt get uCodeMap 0 0
+for i ulong 16
+put b i uchar and shr get w div i 4 mul rem i 4 8 255
+end
+if ne mapwrite get uCodeMap 0 p b 0 16 16
+put uCodeFail 0 1
+end
+end
+put uCodePos 0 add p 16
+end
+
+fn uEmitAllKernels to void
+put uCodePos 0 0
+for id ulong 3
+p = mul div add get uCodePos 0 255 256 256
+put uEntry id p
+put uCodePos 0 p
+put uPc 0 0
+put uGuard 0 0
+ok = false
+if eq id 0
+ok = uEmitSu2Staple
+end
+if eq id 1
+ok = uEmitSu2Overrelax
+end
+if eq id 2
+ok = uEmitSu2Heatbath
+end
+if not ok
+exit 4
+end
+uDone
+end
+end
+
+fn uArg u uint to void
+i = get uBindN 0
+put uBind i u
+put uBindN 0 add i 1
+end
+
+fn uPtr va ulong to void
+uArg gblo va
+uArg gbhi va
+end
+
+fn uRecord id ulong gx uint bx uint to bool
+gbqmd 1
+a = add mapaddr get uCodeMap 0 get uEntry id
+put gbq1 32 gblo shr a 4
+put gbq1 33 or uint and shr a 36 2097151 20971520
+put gbq1 59 gblo shr a 8
+put gbq1 34 or uint 65536 bx
+put gbq1 35 or uint 131073 shl uint 64 8
+put gbq1 36 78923784
+put gbq1 37 0
+put gbq1 39 gx
+put gbq1 40 1
+put gbq1 41 1
+put gbcb 216 bx
+put gbcb 220 gx
+put gbcb 221 1
+put gbcb 222 1
+cb = mapaddr get gbmem 1
+words = get uBindN 0
+endva = add cb add 896 mul words 4
+put gbcb 212 gbhi endva
+put gbcb 213 gblo endva
+put gbused 0 0
+gbsetup
+if ne get uDirty 0 0
+gbmth 0 40 4
+gbemit 0
+gbemit 0
+gbemit 0
+gbemit 2281701376
+put uDirty 0 0
+end
+gbdma cb 224
+for j ulong 224
+gbemit get gbcb j
+end
+gbdma add cb 896 uint words
+for j ulong words bound 32
+gbemit get uBind j
+end
+q = mapaddr get gbmem 2
+gbinline q false
+gbdma add q 8192 1
+gbemit 1
+gbinline add q 4096 true
+gbrel add mapaddr get gbmem 3 32 6
+put uBindN 0 0
+ret gbappend id get gbst 1
+end
+
+fn uRunKernel id ulong gx uint bx uint to bool
+put uDirty 0 1
+if not gbbegin 1
+ret false
+end
+if not uRecord id gx bx
+ret false
+end
+ret gbbsubmit 2000000000
+end
+
+note =========================================================================
+note Host Staging Helpers
+note =========================================================================
+fn stageU32 k ulong v uint to void
+b = mul k 4
+put hStage b uchar and v 255
+put hStage add b 1 uchar and shr v 8 255
+put hStage add b 2 uchar and shr v 16 255
+put hStage add b 3 uchar and shr v 24 255
+end
+
+fn stageF32 k ulong v f32 to void
+stageU32 k bitcast uint v
+end
+
+fn flushStage m long offBytes ulong nWords ulong to bool
+nb = mul nWords 4
+ret eq mapwrite m offBytes hStage 0 nb long nb
+end
+
+fn uploadLinks N ulong to bool
+totalF = mul N 16
+off = ulong 0
+while lt off totalF bound 128
+cnt = sub totalF off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+stageF32 k get hLinks add off k
+end
+if not flushStage get dLinks 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn downloadLinks N ulong to void
+totalF = mul N 16
+lm = get dLinks 0
+for i ulong totalF bound 1048576
+put hLinks i bitcast f32 uint mapget lm mul i 4 4
+end
+end
+
+note Build 4D periodic neighbor table on host & upload to dNbSite
+fn coordIdx c0 ulong c1 ulong c2 ulong c3 ulong L ulong to ulong
+r = add mul c0 L c1
+r = add mul r L c2
+ret add mul r L c3
+end
+
+fn buildNbTable L ulong to bool
+N = mul mul L L mul L L
+for s ulong N bound 65536
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+b = mul s 8
+put hNb b uint coordIdx rem add c0 1 L c1 c2 c3 L
+put hNb add b 1 uint coordIdx rem add c0 sub L 1 L c1 c2 c3 L
+put hNb add b 2 uint coordIdx c0 rem add c1 1 L c2 c3 L
+put hNb add b 3 uint coordIdx c0 rem add c1 sub L 1 L c2 c3 L
+put hNb add b 4 uint coordIdx c0 c1 rem add c2 1 L c3 L
+put hNb add b 5 uint coordIdx c0 c1 rem add c2 sub L 1 L c3 L
+put hNb add b 6 uint coordIdx c0 c1 c2 rem add c3 1 L L
+put hNb add b 7 uint coordIdx c0 c1 c2 rem add c3 sub L 1 L L
+end
+totalW = mul N 8
+off = ulong 0
+while lt off totalW bound 64
+cnt = sub totalW off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+stageU32 k get hNb add off k
+end
+if not flushStage get dNbSite 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn isBdryL s ulong L ulong to bool
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+lm1 = sub L 1
+if or eq c0 0 eq c0 lm1
+ret true
+end
+if or eq c1 0 eq c1 lm1
+ret true
+end
+if or eq c2 0 eq c2 lm1
+ret true
+end
+if or eq c3 0 eq c3 lm1
+ret true
+end
+ret false
+end
+
+fn isIntL s ulong L ulong to bool
+lo = div L 4
+hi = sub L lo
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+if or lt c0 lo ge c0 hi
+ret false
+end
+if or lt c1 lo ge c1 hi
+ret false
+end
+if or lt c2 lo ge c2 hi
+ret false
+end
+if or lt c3 lo ge c3 hi
+ret false
+end
+ret true
+end
+
+fn siteFlag s ulong L ulong freezeCollar bool to uint
+if and freezeCollar isBdryL s L
+ret uint 2
+end
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+ret uint and add add c0 c1 add c2 c3 1
+end
+
+fn buildFlags L ulong freezeCollar bool to bool
+N = mul mul L L mul L L
+totalW = mul N 4
+off = ulong 0
+while lt off totalW bound 32
+cnt = sub totalW off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+stageU32 k siteFlag div add off k 4 L freezeCollar
+end
+if not flushStage get dFlags 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn seedGpuRng N ulong seed ulong to bool
+uRngSeed seed
+off = ulong 0
+while lt off N bound 16
+cnt = sub N off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+r = uint and uRngNext 0xffffffff
+if eq r 0
+r = uint 0x9e3779b9
+end
+stageU32 k r
+end
+if not flushStage get dRng 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+note =========================================================================
+note Collar Zoo Initialization (C0..C7)
+note =========================================================================
+fn qNormHost base ulong to void
+a0 = get hLinks base
+a1 = get hLinks add base 1
+a2 = get hLinks add base 2
+a3 = get hLinks add base 3
+n2 = add add mul a0 a0 mul a1 a1 add mul a2 a2 mul a3 a3
+if le n2 0.0000000001f32
+put hLinks base 1.0f32
+put hLinks add base 1 0.0f32
+put hLinks add base 2 0.0f32
+put hLinks add base 3 0.0f32
+ret
+end
+inv = f32 div 1.0f64 uSqrt64 f64 n2
+put hLinks base mul a0 inv
+put hLinks add base 1 mul a1 inv
+put hLinks add base 2 mul a2 inv
+put hLinks add base 3 mul a3 inv
+end
+
+fn setCollarAdv s ulong mu ulong L ulong cid ulong base ulong to void
+c3 = rem s L
+c2 = rem div s L L
+c1 = rem div s mul L L L
+c0 = div s mul mul L L L
+if eq cid 5
+if eq mu 0
+put hLinks base 0.0f32
+put hLinks add base 1 1.0f32
+end
+if eq mu 1
+put hLinks base 0.0f32
+put hLinks add base 2 1.0f32
+end
+if eq mu 2
+put hLinks base 0.0f32
+put hLinks add base 3 1.0f32
+end
+if eq mu 3
+put hLinks base 0.5f32
+put hLinks add base 1 0.5f32
+put hLinks add base 2 0.5f32
+put hLinks add base 3 0.5f32
+end
+ret
+end
+if eq cid 6
+if eq and add c0 c1 1 1
+put hLinks base neg 0.5f32
+put hLinks add base 1 0.5f32
+put hLinks add base 2 neg 0.5f32
+put hLinks add base 3 0.5f32
+else
+put hLinks base 0.0f32
+put hLinks add base 1 neg 0.70710678f32
+put hLinks add base 2 0.70710678f32
+put hLinks add base 3 0.0f32
+end
+ret
+end
+if or eq c0 0 eq c1 0
+put hLinks base neg 1.0f32
+end
+if or eq c2 0 eq c3 0
+put hLinks base 0.0f32
+put hLinks add base 1 f32 uRngNorm64
+put hLinks add base 2 f32 uRngNorm64
+put hLinks add base 3 f32 uRngNorm64
+qNormHost base
+end
+end
+
+fn setCollarLink s ulong mu ulong L ulong cid ulong to void
+base = mul add mul s 4 mu 4
+put hLinks base 1.0f32
+put hLinks add base 1 0.0f32
+put hLinks add base 2 0.0f32
+put hLinks add base 3 0.0f32
+if eq cid 0
+ret
+end
+if ge cid 5
+setCollarAdv s mu L cid base
+ret
+end
+if eq cid 3
+put hLinks base f32 uRngNorm64
+put hLinks add base 1 f32 uRngNorm64
+put hLinks add base 2 f32 uRngNorm64
+put hLinks add base 3 f32 uRngNorm64
+qNormHost base
+ret
+end
+c3 = rem s L
+c2 = rem div s L L
+c1 = rem div s mul L L L
+c0 = div s mul mul L L L
+if eq cid 4
+par = and add add c0 c1 add c2 c3 1
+if eq par 1
+if or eq mu 0 eq mu 2
+put hLinks base neg 1.0f32
+end
+end
+ret
+end
+if and eq c0 0 eq mu 0
+if ge c1 div L 2
+put hLinks base neg 1.0f32
+end
+end
+if eq cid 2
+if and eq c2 0 eq mu 2
+if ge c3 div L 2
+put hLinks base neg 1.0f32
+end
+end
+end
+end
+
+fn initLattice L ulong cid ulong freezeCollar bool seed ulong to bool
+N = mul mul L L mul L L
+uRngSeed seed
+for s ulong N bound 65536
+isB = and freezeCollar isBdryL s L
+for mu ulong 4
+if isB
+setCollarLink s mu L cid
+else
+base = mul add mul s 4 mu 4
+note Start interior near identity + small perturbation
+put hLinks base 0.85f32
+put hLinks add base 1 mul 0.25f32 f32 uRngNorm64
+put hLinks add base 2 mul 0.25f32 f32 uRngNorm64
+put hLinks add base 3 mul 0.25f32 f32 uRngNorm64
+qNormHost base
+end
+end
+end
+ret uploadLinks N
+end
+
+note =========================================================================
+note Live GB10 SU(2) Monte Carlo Sweep: 1 Heatbath + nOr Overrelaxation passes
+note =========================================================================
+fn gpuRunStaple N ulong mu ulong par ulong to bool
+gx = uint div add N 255 256
+nu0 = ulong 0
+nu1 = ulong 1
+nu2 = ulong 2
+if eq mu 0
+nu0 = ulong 1
+nu1 = ulong 2
+nu2 = ulong 3
+end
+if eq mu 1
+nu0 = ulong 0
+nu1 = ulong 2
+nu2 = ulong 3
+end
+if eq mu 2
+nu0 = ulong 0
+nu1 = ulong 1
+nu2 = ulong 3
+end
+uPtr mapaddr get dLinks 0
+uPtr mapaddr get dStaples 0
+uPtr mapaddr get dFlags 0
+uPtr mapaddr get dNbSite 0
+uArg uint N
+uArg uint mu
+uArg uint par
+uArg uint nu0
+uArg uint nu1
+uArg uint nu2
+ret uRunKernel 0 gx 256
+end
+
+fn gpuRunOverrelax N ulong mu ulong par ulong to bool
+gx = uint div add N 255 256
+uPtr mapaddr get dLinks 0
+uPtr mapaddr get dStaples 0
+uPtr mapaddr get dFlags 0
+uArg uint N
+uArg uint mu
+uArg uint par
+ret uRunKernel 1 gx 256
+end
+
+fn gpuRunHeatbath N ulong mu ulong par ulong beta f32 to bool
+gx = uint div add N 255 256
+uPtr mapaddr get dLinks 0
+uPtr mapaddr get dStaples 0
+uPtr mapaddr get dFlags 0
+uPtr mapaddr get dRng 0
+uArg uint N
+uArg uint mu
+uArg uint par
+uArg bitcast uint beta
+ret uRunKernel 2 gx 256
+end
+
+fn gpuSweep N ulong beta f32 nOr ulong to bool
+for mu ulong 4
+for par ulong 2
+if not gpuRunStaple N mu par
+ret false
+end
+if not gpuRunHeatbath N mu par beta
+ret false
+end
+for r ulong nOr bound 8
+if not gpuRunStaple N mu par
+ret false
+end
+if not gpuRunOverrelax N mu par
+ret false
+end
+end
+end
+end
+ret true
+end
+
+note =========================================================================
+note Host Measurement of Central Observables (P1x1, W1x2, AdjP, W2x2)
+note =========================================================================
+fn hQMul a view f32 4 b view f32 4 o edit f32 4 to void
+v = mul get a 0 get b 0
+v = sub v mul get a 1 get b 1
+v = sub v mul get a 2 get b 2
+v = sub v mul get a 3 get b 3
+put o 0 v
+v = mul get a 0 get b 1
+v = add v mul get a 1 get b 0
+v = add v mul get a 2 get b 3
+v = sub v mul get a 3 get b 2
+put o 1 v
+v = mul get a 0 get b 2
+v = sub v mul get a 1 get b 3
+v = add v mul get a 2 get b 0
+v = add v mul get a 3 get b 1
+put o 2 v
+v = mul get a 0 get b 3
+v = add v mul get a 1 get b 2
+v = sub v mul get a 2 get b 1
+v = add v mul get a 3 get b 0
+put o 3 v
+end
+
+fn hQLoad s ulong mu ulong dst edit f32 4 to void
+b = mul add mul s 4 mu 4
+put dst 0 get hLinks b
+put dst 1 get hLinks add b 1
+put dst 2 get hLinks add b 2
+put dst 3 get hLinks add b 3
+end
+
+fn hQConj q edit f32 4 to void
+put q 1 neg get q 1
+put q 2 neg get q 2
+put q 3 neg get q 3
+end
+
+fn getNb s ulong dir ulong isMinus ulong to ulong
+ret ulong get hNb add mul s 8 add mul dir 2 isMinus
+end
+
+fn hPlaq s ulong mu ulong nu ulong to f64
+a = new f32 4 0.0f32
+b = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+hQLoad s mu a
+hQLoad getNb s mu 0 nu b
+hQMul a b p
+hQLoad getNb s nu 0 mu a
+hQConj a
+hQMul p a q
+hQLoad s nu b
+hQConj b
+hQMul q b p
+ret f64 get p 0
+end
+
+fn hRect1x2 s ulong mu ulong nu ulong to f64
+a = new f32 4 0.0f32
+b = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+s1 = getNb s mu 0
+s2 = getNb s1 mu 0
+hQLoad s mu a
+hQLoad s1 mu b
+hQMul a b p
+hQLoad s2 nu a
+hQMul p a q
+hQLoad getNb s1 nu 0 mu a
+hQConj a
+hQMul q a p
+hQLoad getNb s nu 0 mu a
+hQConj a
+hQMul p a q
+hQLoad s nu b
+hQConj b
+hQMul q b p
+ret f64 get p 0
+end
+
+fn hRect2x2 s ulong mu ulong nu ulong to f64
+a = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+cur = s
+hQLoad cur mu p
+cur = getNb cur mu 0
+hQLoad cur mu a
+hQMul p a q
+cur = getNb cur mu 0
+hQLoad cur nu a
+hQMul q a p
+cur = getNb cur nu 0
+hQLoad cur nu a
+hQMul p a q
+cur = getNb cur nu 0
+cur = getNb cur mu 1
+hQLoad cur mu a
+hQConj a
+hQMul q a p
+cur = getNb cur mu 1
+hQLoad cur mu a
+hQConj a
+hQMul p a q
+cur = getNb cur nu 1
+hQLoad cur nu a
+hQConj a
+hQMul q a p
+cur = getNb cur nu 1
+hQLoad cur nu a
+hQConj a
+hQMul p a q
+ret f64 get q 0
+end
+
+global mcAcc f64 4
+global mcCnt ulong 1
+
+fn measureSite s ulong to void
+for mu ulong 4
+for nu ulong 4
+if lt mu nu
+vp = hPlaq s mu nu
+put mcAcc 0 add get mcAcc 0 vp
+put mcAcc 2 add get mcAcc 2 sub mul 4.0f64 mul vp vp 1.0f64
+put mcAcc 1 add get mcAcc 1 hRect1x2 s mu nu
+put mcAcc 3 add get mcAcc 3 hRect2x2 s mu nu
+put mcCnt 0 add get mcCnt 0 1
+end
+end
+end
+end
+
+fn measureCentral L ulong k ulong fullBox bool to void
+N = mul mul L L mul L L
+downloadLinks N
+for o ulong 4
+put mcAcc o 0.0f64
+end
+put mcCnt 0 0
+for s ulong N bound 65536
+if or fullBox isIntL s L
+measureSite s
+end
+end
+fc = f64 get mcCnt 0
+b = mul k 4
+for o ulong 4
+put tsData add b o div get mcAcc o fc
+end
+end
+
+fn sumBlk o ulong st ulong blkSz ulong to f64
+s = f64 0.0f64
+for j ulong blkSz bound 64
+s = add s get tsData add mul add st j 4 o
+end
+ret s
+end
+
+fn summarizeOne o ulong nMeas ulong to void
+blkSz = div nMeas 8
+tot = f64 0.0f64
+for k ulong nMeas bound 400
+tot = add tot get tsData add mul k 4 o
+end
+mean = div tot f64 nMeas
+put curMean o mean
+jkSum = f64 0.0f64
+for b ulong 8
+bs = sumBlk o mul b blkSz blkSz
+d = sub div sub tot bs f64 sub nMeas blkSz mean
+jkSum = add jkSum mul d d
+end
+put curErr o uSqrt64 mul 0.875f64 jkSum
+end
+
+fn summarizeTs nMeas ulong to void
+for o ulong 4
+summarizeOne o nMeas
+end
+end
+
+fn printCollarTag cid ulong to void
+if eq cid 0
+uPrint tK0
+end
+if eq cid 1
+uPrint tK1
+end
+if eq cid 2
+uPrint tK2
+end
+if eq cid 3
+uPrint tK3
+end
+if eq cid 4
+uPrint tK4
+end
+if eq cid 5
+uPrint tK5
+end
+if eq cid 6
+uPrint tK6
+end
+if eq cid 7
+uPrint tK7
+end
+end
+
+note =========================================================================
+note Physics Calibration Oracle: Periodic 8^4 SU(2) at beta=2.30 (Creutz ref ~0.6023)
+note =========================================================================
+fn runCreutzOracle to bool
+L = ulong 8
+N = ulong 4096
+if not buildNbTable L
+ret false
+end
+if not buildFlags L false
+ret false
+end
+if not seedGpuRng N 0xdeadbeef12345678
+ret false
+end
+if not initLattice L 0 false 0x1122334455667788
+ret false
+end
+note 50 thermalization sweeps (1 HB + 3 OR each)
+for sw ulong 50
+if not gpuSweep N 2.30f32 3
+ret false
+end
+end
+note 64 measurement sweeps
+for k ulong 64
+if not gpuSweep N 2.30f32 2
+ret false
+end
+measureCentral L k true
+end
+summarizeTs 64
+p = get curMean 0
+e = get curErr 0
+if and ge p 0.590f64 le p 0.615f64
+uPrint tC3CalOk
+uPrintF64 p
+uPrint tC3CalRef
+uPrintF64 e
+uPrint tC3Rp
+ret true
+end
+uPrint tC3CalBad
+uPrintF64 p
+uPrint tC3CalRef
+uPrintF64 e
+uPrint tC3Rp
+ret false
+end
+
+global armBeta f32 1
+global armSeed ulong 1
+
+fn computeZScores cid ulong to f64
+if eq cid 0
+for o ulong 4
+put baseMean o get curMean o
+put baseStd o get curErr o
+end
+end
+maxZ = f64 0.0f64
+for o ulong 4
+diff = uAbs64 sub get curMean o get baseMean o
+se = uSqrt64 add mul get curErr o get curErr o mul get baseStd o get baseStd o
+z = f64 0.0f64
+if gt se 0.000001f64
+z = div diff se
+end
+put curZ o z
+if gt z maxZ
+maxZ = z
+end
+end
+ret maxZ
+end
+
+fn printArmRow isHeld bool L ulong cid ulong nMeas ulong maxZ f64 us ulong to void
+if isHeld
+uPrint tS2
+else
+uPrint tS1
+end
+uPrint tTab
+uPrintU L
+uPrint tTab
+uPrintF64 f64 get armBeta 0
+uPrint tTab
+printCollarTag cid
+uPrint tTab
+uPrintU nMeas
+uPrint tTab
+uPrintF64 get curMean 0
+uPrint tTab
+uPrintF64 get curErr 0
+uPrint tTab
+uPrintF64 get curZ 0
+uPrint tTab
+uPrintF64 get curMean 1
+uPrint tTab
+uPrintF64 get curZ 1
+uPrint tTab
+uPrintF64 get curMean 2
+uPrint tTab
+uPrintF64 get curZ 2
+uPrint tTab
+uPrintF64 get curMean 3
+uPrint tTab
+uPrintF64 get curZ 3
+uPrint tTab
+uPrintF64 maxZ
+uPrint tTab
+uPrintU us
+uPrint tNl
+end
+
+fn runCollarArm isHeld bool L ulong cid ulong nTherm ulong nMeas ulong to f64
+t0 = monons
+beta = get armBeta 0
+seed = get armSeed 0
+N = mul mul L L mul L L
+if not seedGpuRng N add seed mul cid 7919
+exit 31
+end
+if not initLattice L cid true add seed mul cid 104729
+exit 32
+end
+for sw ulong nTherm bound 200
+if not gpuSweep N beta 3
+exit 33
+end
+end
+for k ulong nMeas bound 400
+if not gpuSweep N beta 2
+exit 34
+end
+measureCentral L k false
+end
+summarizeTs nMeas
+maxZ = computeZScores cid
+us = div ulong sub monons t0 1000
+printArmRow isHeld L cid nMeas maxZ us
+ret maxZ
+end
+
+fn allocBuf bytes ulong cached bool to long
+m = nvalloc bytes cached
+if le m 0
+uPrint tC3Err
+uPrintU ulong get nvstage 0
+uPrint tNl
+exit 6
+end
+ret m
+end
+
+fn runBetaSweep L ulong beta f32 to void
+bestCid = ulong 1
+bestZ = f64 0.0f64
+nTh = ulong 32
+nMs = ulong 48
+if eq L 16
+nTh = ulong 24
+nMs = ulong 32
+end
+put armBeta 0 beta
+put armSeed 0 0x1000001
+for cid ulong 8
+z = runCollarArm false L cid nTh nMs
+if and gt cid 0 gt z bestZ
+bestZ = z
+bestCid = cid
+end
+end
+put armSeed 0 0x99999991
+z0 = runCollarArm true L 0 mul nTh 2 mul nMs 3
+zW = runCollarArm true L bestCid mul nTh 2 mul nMs 3
+end
+
+fn runLSweep L ulong to bool
+if not buildNbTable L
+ret false
+end
+if not buildFlags L true
+ret false
+end
+runBetaSweep L 2.30f32
+runBetaSweep L 2.60f32
+runBetaSweep L 3.00f32
+ret true
+end
+
+fn main to int
+uPrint tC3Hdr
+if not gbopen 1
+uPrint tC3Err
+uPrintU ulong get nvstage 0
+uPrint tNl
+ret 2
+end
+if not gbbopen
+ret 3
+end
+put uCodeMap 0 0
+uEmitAllKernels
+csize = mul div add get uCodePos 0 4095 4096 4096
+cm = nvalloc csize false
+if le cm 0
+ret 4
+end
+put uCodeMap 0 cm
+put uCodeFail 0 0
+uEmitAllKernels
+if ne get uCodeFail 0 0
+ret 5
+end
+
+put dLinks 0 allocBuf 4194304 true
+put dStaples 0 allocBuf 4194304 true
+put dFlags 0 allocBuf 1048576 true
+put dNbSite 0 allocBuf 2097152 true
+put dRng 0 allocBuf 262144 true
+
+if not runCreutzOracle
+rc = nvmclose
+ret 10
+end
+
+uPrint tC3Cols
+if not runLSweep 8
+rc = nvmclose
+ret 11
+end
+if not runLSweep 16
+rc = nvmclose
+ret 12
+end
+
+uPrint tC3Done
+rc = nvmclose
+ret 0
+end

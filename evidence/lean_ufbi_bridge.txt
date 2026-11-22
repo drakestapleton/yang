@@ -1,0 +1,8 @@
+Lean (version 4.36.0, aarch64-unknown-linux-gnu, commit 611c117bfaf7b7ae1cfcf246ce6fba31e8f509e9, Release)
+'UfbiMassGap.ast_gauge_invariant' depends on axioms: [propext, Classical.choice, Quot.sound]
+'UfbiMassGap.raw_link_not_gauge_invariant' depends on axioms: [propext, Classical.choice, Quot.sound]
+'UfbiMassGap.ufbi_implies_connected_clustering' depends on axioms: [propext, Classical.choice, Quot.sound]
+'UfbiMassGap.exponential_decay_implies_spectral_gap' depends on axioms: [propext, Classical.choice, Quot.sound]
+'UfbiMassGap.massless_mode_violates_decay' depends on axioms: [propext, Classical.choice, Quot.sound]
+'UfbiMassGap.schur_uv_divergence_unbounded' depends on axioms: [propext, Classical.choice, Quot.sound]
+LEAN_PROOF_CHECK status=PASS file=proofs/UfbiMassGap.lean
