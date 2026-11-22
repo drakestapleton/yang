@@ -42,11 +42,12 @@ global maxVperpHi f64 1
 
 text tIvHdr "=== PHASE III-A ZERO-MONTE-CARLO INTERVAL-ARITHMETIC 4D SU(2) CONTRACTION VERIFIER (PURE OM-2) ===\n"
 text tIvNote "# Outward-rounded [lo, hi] enclosures (rel=1e-12, abs=1e-15), 2048 theta-boxes x 32 r-boxes covering ALL r in [0, 6*beta]\n"
-text tIvCols "beta\tTV_osc_hi\tTV_S3L1_hi\tW1_geod_hi\tu12_lo\tu12_hi\tu1_hi\tKP_surf_hi\tdecim_u12_4_hi\tcert_tier\n"
+text tIvCols "beta\tTV_osc_hi\tTV_S3L1_hi\tW1_geod_hi\tTG14_W1_hi\tu12_lo\tu12_hi\tu1_hi\tKP_surf_hi\tdecim_u12_4_hi\tcert_tier\n"
 text tIvT0 "NONE"
 text tIvT1 "T1_TV_OSC"
 text tIvT2 "T2_TV_S3L1"
 text tIvT3 "T3_W1_GEOD"
+text tIvT3B "T3B_TG14_W1"
 text tIvT4 "T4_KP_CHAR"
 text tTab "\t"
 text tNl "\n"
@@ -271,6 +272,7 @@ put ivU1 1 ivInflateHi div sub mul 4.0f64 get ivM2 1 1.0f64 3.0f64
 tvOscHi = ivInflateHi mul 18.0f64 uTanhHi beta
 tvS3L1Hi = ivInflateHi mul 18.0f64 mul beta get maxMadHi 0
 w1GeodHi = ivInflateHi mul 18.0f64 mul beta get maxW1Hi 0
+tg14W1Hi = ivInflateHi mul 14.0f64 mul beta get maxW1Hi 0
 qKP = ivInflateHi mul 13.591409143f64 get ivU12 1
 kpHi = 999.0f64
 if lt qKP 0.999f64
@@ -288,6 +290,8 @@ uPrint tTab
 uPrintF64 tvS3L1Hi
 uPrint tTab
 uPrintF64 w1GeodHi
+uPrint tTab
+uPrintF64 tg14W1Hi
 uPrint tTab
 uPrintF64 get ivU12 0
 uPrint tTab
@@ -308,10 +312,14 @@ else
 if lt w1GeodHi 1.0f64
 uPrint tIvT3
 else
+if lt tg14W1Hi 1.0f64
+uPrint tIvT3B
+else
 if lt kpHi 1.0f64
 uPrint tIvT4
 else
 uPrint tIvT0
+end
 end
 end
 end
@@ -334,6 +342,7 @@ certifyBeta 0.135f64
 certifyBeta 0.140f64
 certifyBeta 0.150f64
 certifyBeta 0.160f64
+certifyBeta 0.170f64
 certifyBeta 0.180f64
 certifyBeta 0.200f64
 certifyBeta 0.250f64
