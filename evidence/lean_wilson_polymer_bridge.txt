@@ -1,0 +1,46 @@
+ℹ [8658/8661] Replayed OpenAiYmBridge
+info: OpenAiYmBridge.lean:1062:0: 'YangMills.UfbiBridge.ufbi_collapses_phase_mixture' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: OpenAiYmBridge.lean:1063:0: 'YangMills.UfbiBridge.ufbi_collapses_character_space' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: OpenAiYmBridge.lean:1064:0: 'YangMills.UfbiBridge.exponential_decay_kills_energy_strip_measure' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: OpenAiYmBridge.lean:1065:0: 'YangMills.UfbiBridge.uniform_decay_implies_energy_gap' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: OpenAiYmBridge.lean:1066:0: 'YangMills.UfbiBridge.energy_gap_implies_relativistic_mass_gap' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: OpenAiYmBridge.lean:1067:0: 'YangMills.UfbiBridge.uniform_decay_implies_relativistic_mass_gap' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: OpenAiYmBridge.lean:1068:0: 'YangMills.UfbiBridge.part1_conditional_mass_gap_over_openai_ym' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+ℹ [8659/8661] Replayed DobrushinShlosman
+info: DobrushinShlosman.lean:768:0: 'YangMills.PhaseTwo.finite_volume_ufbi_implies_phase_insensitivity' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: DobrushinShlosman.lean:769:0: 'YangMills.PhaseTwo.gibbs_tilt_tv_le_tanh' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: DobrushinShlosman.lean:770:0: 'YangMills.PhaseTwo.su2_4d_dobrushin_window' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: DobrushinShlosman.lean:771:0: 'YangMills.PhaseTwo.su2_s3_haar_l1_moment' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: DobrushinShlosman.lean:772:0: 'YangMills.PhaseTwo.su2_s3_parallel_var_le_quarter' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: DobrushinShlosman.lean:773:0: 'YangMills.PhaseTwo.su2_s3_transverse_var_le_quarter' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: DobrushinShlosman.lean:774:0: 'YangMills.PhaseTwo.su2_4d_dobrushin_window_s3_widened' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: DobrushinShlosman.lean:775:0: 'YangMills.PhaseTwo.dobrushin_shlosman_exponential_decay' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: DobrushinShlosman.lean:776:0: 'YangMills.PhaseTwo.rg_flow_into_ds_implies_uniform_mass_gap' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [8660/8661] Built WilsonPolymerBridge (7.3s)
+info: WilsonPolymerBridge.lean:945:0: 'YangMills.WilsonPolymer.gibbs_tilt_tv_le_half_sup_l1' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: WilsonPolymerBridge.lean:946:0: 'YangMills.WilsonPolymer.gibbs_tilt_tv_le_half_sup_sqrt_var' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: WilsonPolymerBridge.lean:947:0: 'YangMills.WilsonPolymer.plaquette_gauge_covariant' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: WilsonPolymerBridge.lean:948:0: 'YangMills.WilsonPolymer.wilsonEnergy_gauge_invariant' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: WilsonPolymerBridge.lean:949:0: 'YangMills.WilsonPolymer.su2_4d_multiloop_dobrushin_window' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: WilsonPolymerBridge.lean:950:0: 'YangMills.WilsonPolymer.su2_4d_multiloop_open_ball' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: WilsonPolymerBridge.lean:951:0: 'YangMills.WilsonPolymer.PolymerModel.kotecky_preiss_partition_nonvanishing_and_ratio' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: WilsonPolymerBridge.lean:952:0: 'YangMills.WilsonPolymer.PolymerModel.kotecky_preiss_boundary_ratio_bound' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: WilsonPolymerBridge.lean:953:0: 'YangMills.WilsonPolymer.su2_s3_geodesic_par_haar_integral' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: WilsonPolymerBridge.lean:954:0: 'YangMills.WilsonPolymer.su2_s3_geodesic_perp_uniform_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: WilsonPolymerBridge.lean:955:0: 'YangMills.WilsonPolymer.su2_4d_w1_geodesic_dobrushin_window' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: WilsonPolymerBridge.lean:956:0: 'YangMills.WilsonPolymer.su2_4d_multiloop_w1_open_ball' depends on axioms: [propext, Classical.choice, Quot.sound]
+Build completed successfully (8661 jobs).

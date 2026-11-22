@@ -1,0 +1,1217 @@
+note SPDX-License-Identifier: Apache-2.0
+note src/ufbi_check10_gb10.om: Pure Seeded-OM-2 Zero-CUDA GB10 Runner for UFBI Check #10
+note (Phase II Exact S^3 Schwinger-Dyson 5-Operator Hamiltonian Coupling Extraction:
+note  F [1x1], A [Adj], R [1x2], W22 [2x2], Cr [3D 6-link Crown] + Multi-Loop Dobrushin Norm alpha_ML
+note  across 16^4 -> 8^4 -> 4^4 and 32^4 -> 16^4 -> 8^4 -> 4^4, ZERO calibration table needed!).
+note
+note Exact S^3 Lie-algebraic Schwinger-Dyson / Score-Matching equations:
+note   For left-invariant generators L_a (a=1,2,3) on SU(2) ~= S^3:
+note     L_a(W_0) = -W_a,     Delta(W_0) = -3 W_0
+note     L_a(4 W_0^2 - 1) = -8 W_0 W_a,  Delta(4 W_0^2 - 1) = -8 (4 W_0^2 - 1)
+note   Integration by parts under S^3 Haar measure yields the exact 5x5 symmetric PSD system:
+note     M_{beta, alpha} * c_alpha = b_beta
+note   where M_{beta,alpha} = < sum_{a=1}^3 (L_a Phi^(beta)_e)(L_a Phi^(alpha)_e) >,
+note         b_beta         = -< Delta_e Phi^(beta)_e >.
+note   Built-in exact self-verification: at k=0 (bare Wilson lattice), M c = b MUST recover
+note   (beta_F, beta_A, beta_R, beta_22, beta_Cr) = (beta_bare, 0, 0, 0, 0)!
+note   Evaluates Lean-certified multi-loop Dobrushin norm directly on every blocked scale:
+note     alpha_ML = 9|beta_F| + 18 tanh(2|beta_A|) + 45|beta_R| + 42|beta_22| + 60|beta_Cr|.
+note
+note Composed after:
+note   gpu/nvidia/native/nvrm/context.om
+note   gpu/nvidia/native/blackwell/vector.om
+note   gpu/nvidia/native/blackwell/launch.om
+note   gpu/nvidia/native/blackwell/batch.om
+note   om/encoder/bw_enc_sm121.om
+note   src/ufbi_math.om
+note   src/ufbi_check3_kernels.om
+
+global uCodePos ulong 1
+global uEntry ulong 8
+global uCodeMap long 1
+global uCodeFail uint 1
+global uBind uint 32
+global uBindN ulong 1
+global uDirty uint 1
+
+global dLinks long 1
+global dStaples long 1
+global dFlags long 1
+global dNbSite long 1
+global dRng long 1
+
+note Host link levels (max 16^4 = 1,048,576 f32; lvl 3 = direct GPU dLinks read for 32^4!)
+global hL1 f32 1048576
+global hL2 f32 65536
+global hL3 f32 4096
+global hStage uchar 65536
+
+note Schwinger-Dyson 5-operator accumulators across 4 scales (k=0..3)
+note sdM: 4 scales x 25 (5x5 matrix) = 100 f64; sdB: 4 scales x 5 = 20 f64; sdCnt: 4 ulong
+global sdM f64 100
+global sdB f64 20
+global sdCnt ulong 4
+note Per-link temporary gradient 5x3 = 15 f64 and laplacian 5 f64
+global linkG f64 15
+global linkL f64 5
+note 5x5 linear solver scratch: aug 5x6 = 30 f64, sol 5 f64
+global linA f64 30
+global linX f64 5
+
+global rgSrcLvl ulong 1
+global rgDstLvl ulong 1
+global rgLf ulong 1
+global walkCur ulong 1
+global walkLvl ulong 1
+global walkL ulong 1
+global walkQ f32 4
+
+text tC10Hdr "=== UFBI CHECK #10: EXACT S^3 SCHWINGER-DYSON 5-OPERATOR BLOCKED HAMILTONIAN TOMOGRAPHY (PURE OM-2 GB10) ===\n"
+text tC10Err "FAIL: GB10 native NVRM/kernel error stage="
+text tC10H16 "=== 16^4 -> 8^4 -> 4^4 EXACT 5-OPERATOR SCHWINGER-DYSON RG FLOW (64 MEAS, ZERO CALIBRATION TABLE) ===\n"
+text tC10H32 "=== 32^4 -> 16^4 -> 8^4 -> 4^4 DEEP k=3 SCHWINGER-DYSON RG FLOW (1,048,576 SITES, 16 MEAS) ===\n"
+text tC10Cols "L_base\tbeta\tk\tbeta_SD1\tbeta_F\tbeta_A\tbeta_R\tbeta_22\tbeta_Cr\talpha_ML\tus\n"
+text tTab "\t"
+text tNl "\n"
+text tC10Done "CHECK10_GB10_DONE status=PASS\n"
+
+fn uCodeWrite w view ulong 4 to void
+p = get uCodePos 0
+b = new uchar 16 0
+if gt get uCodeMap 0 0
+for i ulong 16
+put b i uchar and shr get w div i 4 mul rem i 4 8 255
+end
+if ne mapwrite get uCodeMap 0 p b 0 16 16
+put uCodeFail 0 1
+end
+end
+put uCodePos 0 add p 16
+end
+
+fn uEmitAllKernels to void
+put uCodePos 0 0
+for id ulong 3
+p = mul div add get uCodePos 0 255 256 256
+put uEntry id p
+put uCodePos 0 p
+put uPc 0 0
+put uGuard 0 0
+ok = false
+if eq id 0
+ok = uEmitSu2Staple
+end
+if eq id 1
+ok = uEmitSu2Overrelax
+end
+if eq id 2
+ok = uEmitSu2Heatbath
+end
+if not ok
+exit 4
+end
+uDone
+end
+end
+
+fn uArg u uint to void
+i = get uBindN 0
+put uBind i u
+put uBindN 0 add i 1
+end
+
+fn uPtr va ulong to void
+uArg gblo va
+uArg gbhi va
+end
+
+fn uRecord id ulong gx uint bx uint to bool
+gbqmd 1
+a = add mapaddr get uCodeMap 0 get uEntry id
+put gbq1 32 gblo shr a 4
+put gbq1 33 or uint and shr a 36 2097151 20971520
+put gbq1 59 gblo shr a 8
+put gbq1 34 or uint 65536 bx
+put gbq1 35 or uint 131073 shl uint 64 8
+put gbq1 36 78923784
+put gbq1 37 0
+put gbq1 39 gx
+put gbq1 40 1
+put gbq1 41 1
+put gbcb 216 bx
+put gbcb 220 gx
+put gbcb 221 1
+put gbcb 222 1
+cb = mapaddr get gbmem 1
+words = get uBindN 0
+endva = add cb add 896 mul words 4
+put gbcb 212 gbhi endva
+put gbcb 213 gblo endva
+put gbused 0 0
+gbsetup
+if ne get uDirty 0 0
+gbmth 0 40 4
+gbemit 0
+gbemit 0
+gbemit 0
+gbemit 2281701376
+put uDirty 0 0
+end
+gbdma cb 224
+for j ulong 224
+gbemit get gbcb j
+end
+gbdma add cb 896 uint words
+for j ulong words bound 32
+gbemit get uBind j
+end
+q = mapaddr get gbmem 2
+gbinline q false
+gbdma add q 8192 1
+gbemit 1
+gbinline add q 4096 true
+gbrel add mapaddr get gbmem 3 32 6
+put uBindN 0 0
+ret gbappend id get gbst 1
+end
+
+fn uRunKernel id ulong gx uint bx uint to bool
+put uDirty 0 1
+if not gbbegin 1
+ret false
+end
+if not uRecord id gx bx
+ret false
+end
+ret gbbsubmit 2000000000
+end
+
+fn stageU32 k ulong v uint to void
+b = mul k 4
+put hStage b uchar and v 255
+put hStage add b 1 uchar and shr v 8 255
+put hStage add b 2 uchar and shr v 16 255
+put hStage add b 3 uchar and shr v 24 255
+end
+
+fn stageF32 k ulong v f32 to void
+stageU32 k bitcast uint v
+end
+
+fn flushStage m long offBytes ulong nWords ulong to bool
+nb = mul nWords 4
+ret eq mapwrite m offBytes hStage 0 nb long nb
+end
+
+fn coordIdx c0 ulong c1 ulong c2 ulong c3 ulong L ulong to ulong
+r = add mul c0 L c1
+r = add mul r L c2
+ret add mul r L c3
+end
+
+fn stepCoord s ulong L ulong dir ulong delta ulong to ulong
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+if eq dir 0
+c0 = rem add c0 delta L
+end
+if eq dir 1
+c1 = rem add c1 delta L
+end
+if eq dir 2
+c2 = rem add c2 delta L
+end
+if eq dir 3
+c3 = rem add c3 delta L
+end
+ret coordIdx c0 c1 c2 c3 L
+end
+
+fn isBox4 s ulong L ulong lo ulong hi ulong to bool
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+if or lt c0 lo ge c0 hi
+ret false
+end
+if or lt c1 lo ge c1 hi
+ret false
+end
+if or lt c2 lo ge c2 hi
+ret false
+end
+if or lt c3 lo ge c3 hi
+ret false
+end
+ret true
+end
+
+fn stageSiteNb kSite ulong s ulong L ulong to void
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+b = mul kSite 8
+stageU32 b uint coordIdx rem add c0 1 L c1 c2 c3 L
+stageU32 add b 1 uint coordIdx rem add c0 sub L 1 L c1 c2 c3 L
+stageU32 add b 2 uint coordIdx c0 rem add c1 1 L c2 c3 L
+stageU32 add b 3 uint coordIdx c0 rem add c1 sub L 1 L c2 c3 L
+stageU32 add b 4 uint coordIdx c0 c1 rem add c2 1 L c3 L
+stageU32 add b 5 uint coordIdx c0 c1 rem add c2 sub L 1 L c3 L
+stageU32 add b 6 uint coordIdx c0 c1 c2 rem add c3 1 L L
+stageU32 add b 7 uint coordIdx c0 c1 c2 rem add c3 sub L 1 L L
+end
+
+fn buildNbTableStream L ulong to bool
+N = mul mul L L mul L L
+off = ulong 0
+while lt off N bound 512
+cnt = sub N off
+if gt cnt 2048
+cnt = ulong 2048
+end
+for k ulong cnt bound 2048
+stageSiteNb k add off k L
+end
+if not flushStage get dNbSite 0 mul off 32 mul cnt 8
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn siteParity s ulong L ulong to uint
+c3 = rem s L
+t = div s L
+c2 = rem t L
+t = div t L
+c1 = rem t L
+c0 = div t L
+ret uint and add add c0 c1 add c2 c3 1
+end
+
+fn buildFlagsStream L ulong to bool
+N = mul mul L L mul L L
+totalW = mul N 4
+off = ulong 0
+while lt off totalW bound 256
+cnt = sub totalW off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+stageU32 k siteParity div add off k 4 L
+end
+if not flushStage get dFlags 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn seedGpuRngStream N ulong seed ulong to bool
+uRngSeed seed
+off = ulong 0
+while lt off N bound 64
+cnt = sub N off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for k ulong cnt bound 16384
+r = uint and uRngNext 0xffffffff
+if eq r 0
+r = uint 0x9e3779b9
+end
+stageU32 k r
+end
+if not flushStage get dRng 0 mul off 4 cnt
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn stageRandLink kLink ulong to void
+a0 = f32 0.85f32
+a1 = mul 0.25f32 f32 uRngNorm64
+a2 = mul 0.25f32 f32 uRngNorm64
+a3 = mul 0.25f32 f32 uRngNorm64
+n2 = add add mul a0 a0 mul a1 a1 add mul a2 a2 mul a3 a3
+inv = f32 div 1.0f64 uSqrt64 f64 n2
+b = mul kLink 4
+stageF32 b mul a0 inv
+stageF32 add b 1 mul a1 inv
+stageF32 add b 2 mul a2 inv
+stageF32 add b 3 mul a3 inv
+end
+
+fn initLatticeStream L ulong seed ulong to bool
+N = mul mul L L mul L L
+uRngSeed seed
+totalLinks = mul N 4
+off = ulong 0
+while lt off totalLinks bound 1024
+cnt = sub totalLinks off
+if gt cnt 4096
+cnt = ulong 4096
+end
+for k ulong cnt bound 4096
+stageRandLink k
+end
+if not flushStage get dLinks 0 mul off 16 mul cnt 4
+ret false
+end
+off = add off cnt
+end
+ret true
+end
+
+fn gpuRunStaple N ulong mu ulong par ulong to bool
+gx = uint div add N 255 256
+nu0 = ulong 0
+nu1 = ulong 1
+nu2 = ulong 2
+if eq mu 0
+nu0 = ulong 1
+nu1 = ulong 2
+nu2 = ulong 3
+end
+if eq mu 1
+nu0 = ulong 0
+nu1 = ulong 2
+nu2 = ulong 3
+end
+if eq mu 2
+nu0 = ulong 0
+nu1 = ulong 1
+nu2 = ulong 3
+end
+uPtr mapaddr get dLinks 0
+uPtr mapaddr get dStaples 0
+uPtr mapaddr get dFlags 0
+uPtr mapaddr get dNbSite 0
+uArg uint N
+uArg uint mu
+uArg uint par
+uArg uint nu0
+uArg uint nu1
+uArg uint nu2
+ret uRunKernel 0 gx 256
+end
+
+fn gpuRunOverrelax N ulong mu ulong par ulong to bool
+gx = uint div add N 255 256
+uPtr mapaddr get dLinks 0
+uPtr mapaddr get dStaples 0
+uPtr mapaddr get dFlags 0
+uArg uint N
+uArg uint mu
+uArg uint par
+ret uRunKernel 1 gx 256
+end
+
+fn gpuRunHeatbath N ulong mu ulong par ulong beta f32 to bool
+gx = uint div add N 255 256
+uPtr mapaddr get dLinks 0
+uPtr mapaddr get dStaples 0
+uPtr mapaddr get dFlags 0
+uPtr mapaddr get dRng 0
+uArg uint N
+uArg uint mu
+uArg uint par
+uArg bitcast uint beta
+ret uRunKernel 2 gx 256
+end
+
+fn gpuSweep N ulong beta f32 nOr ulong to bool
+for mu ulong 4
+for par ulong 2
+if not gpuRunStaple N mu par
+ret false
+end
+if not gpuRunHeatbath N mu par beta
+ret false
+end
+for r ulong nOr bound 8
+if not gpuRunStaple N mu par
+ret false
+end
+if not gpuRunOverrelax N mu par
+ret false
+end
+end
+end
+end
+ret true
+end
+
+fn downloadAllToL1 N ulong to void
+lm = get dLinks 0
+nf = mul N 16
+for i ulong nf bound 1048576
+put hL1 i bitcast f32 uint mapget lm mul i 4 4
+end
+end
+
+note =========================================================================
+note Quaternion Algebra & Gauge-Covariant Swendsen 2x RG Blocking
+note =========================================================================
+fn hQMul a view f32 4 b view f32 4 dst edit f32 4 to void
+v = mul get a 0 get b 0
+v = sub v mul get a 1 get b 1
+v = sub v mul get a 2 get b 2
+v = sub v mul get a 3 get b 3
+put dst 0 v
+v = mul get a 0 get b 1
+v = add v mul get a 1 get b 0
+v = add v mul get a 2 get b 3
+v = sub v mul get a 3 get b 2
+put dst 1 v
+v = mul get a 0 get b 2
+v = sub v mul get a 1 get b 3
+v = add v mul get a 2 get b 0
+v = add v mul get a 3 get b 1
+put dst 2 v
+v = mul get a 0 get b 3
+v = add v mul get a 1 get b 2
+v = sub v mul get a 2 get b 1
+v = add v mul get a 3 get b 0
+put dst 3 v
+end
+
+fn hQConj q edit f32 4 to void
+put q 1 neg get q 1
+put q 2 neg get q 2
+put q 3 neg get q 3
+end
+
+fn hQNorm q edit f32 4 to void
+n2 = mul get q 0 get q 0
+n2 = add n2 mul get q 1 get q 1
+n2 = add n2 mul get q 2 get q 2
+n2 = add n2 mul get q 3 get q 3
+if le n2 0.0000000001f32
+put q 0 1.0f32
+put q 1 0.0f32
+put q 2 0.0f32
+put q 3 0.0f32
+ret
+end
+inv = f32 div 1.0f64 uSqrt64 f64 n2
+for c ulong 4
+put q c mul get q c inv
+end
+end
+
+fn loadLvl lvl ulong s ulong mu ulong dst edit f32 4 to void
+b = mul add mul s 4 mu 4
+if eq lvl 0
+put dst 0 get hL1 b
+put dst 1 get hL1 add b 1
+put dst 2 get hL1 add b 2
+put dst 3 get hL1 add b 3
+ret
+end
+if eq lvl 1
+put dst 0 get hL2 b
+put dst 1 get hL2 add b 1
+put dst 2 get hL2 add b 2
+put dst 3 get hL2 add b 3
+ret
+end
+if eq lvl 2
+put dst 0 get hL3 b
+put dst 1 get hL3 add b 1
+put dst 2 get hL3 add b 2
+put dst 3 get hL3 add b 3
+ret
+end
+lm = get dLinks 0
+bo = mul b 4
+put dst 0 bitcast f32 uint mapget lm bo 4
+put dst 1 bitcast f32 uint mapget lm add bo 4 4
+put dst 2 bitcast f32 uint mapget lm add bo 8 4
+put dst 3 bitcast f32 uint mapget lm add bo 12 4
+end
+
+fn storeLvl lvl ulong s ulong mu ulong src view f32 4 to void
+b = mul add mul s 4 mu 4
+if eq lvl 0
+put hL1 b get src 0
+put hL1 add b 1 get src 1
+put hL1 add b 2 get src 2
+put hL1 add b 3 get src 3
+ret
+end
+if eq lvl 1
+put hL2 b get src 0
+put hL2 add b 1 get src 1
+put hL2 add b 2 get src 2
+put hL2 add b 3 get src 3
+ret
+end
+put hL3 b get src 0
+put hL3 add b 1 get src 1
+put hL3 add b 2 get src 2
+put hL3 add b 3 get src 3
+end
+
+fn addBlockStaple x ulong mu ulong nu ulong isBack bool dst edit f32 4 to void
+lvl = get rgSrcLvl 0
+Lf = get rgLf 0
+a = new f32 4 0.0f32
+b = new f32 4 0.0f32
+p = new f32 4 0.0f32
+q = new f32 4 0.0f32
+x2m = stepCoord stepCoord x Lf mu 1 Lf mu 1
+if not isBack
+xn = stepCoord x Lf nu 1
+loadLvl lvl x nu a
+loadLvl lvl xn mu b
+hQMul a b p
+loadLvl lvl stepCoord xn Lf mu 1 mu a
+hQMul p a q
+loadLvl lvl x2m nu a
+hQConj a
+hQMul q a p
+else
+xm = stepCoord x Lf nu sub Lf 1
+loadLvl lvl xm nu a
+hQConj a
+loadLvl lvl xm mu b
+hQMul a b p
+loadLvl lvl stepCoord xm Lf mu 1 mu a
+hQMul p a q
+loadLvl lvl stepCoord x2m Lf nu sub Lf 1 nu a
+hQMul q a p
+end
+for c ulong 4
+put dst c add get dst c get p c
+end
+end
+
+fn coarseToFine X ulong Lf ulong to ulong
+Lc = div Lf 2
+c3 = rem X Lc
+t = div X Lc
+c2 = rem t Lc
+t = div t Lc
+c1 = rem t Lc
+c0 = div t Lc
+ret coordIdx mul c0 2 mul c1 2 mul c2 2 mul c3 2 Lf
+end
+
+fn blockLinkOne X ulong mu ulong to void
+srcLvl = get rgSrcLvl 0
+Lf = get rgLf 0
+x = coarseToFine X Lf
+u1 = new f32 4 0.0f32
+u2 = new f32 4 0.0f32
+w0 = new f32 4 0.0f32
+st = new f32 4 0.0f32
+loadLvl srcLvl x mu u1
+loadLvl srcLvl stepCoord x Lf mu 1 mu u2
+hQMul u1 u2 w0
+for nu ulong 4
+if ne nu mu
+addBlockStaple x mu nu false st
+addBlockStaple x mu nu true st
+end
+end
+wS = div 0.5f32 6.0f32
+for c ulong 4
+put w0 c add mul 0.5f32 get w0 c mul wS get st c
+end
+hQNorm w0
+storeLvl get rgDstLvl 0 X mu w0
+end
+
+fn blockBox srcLvl ulong dstLvl ulong Lf ulong cLo ulong cHi ulong to void
+put rgSrcLvl 0 srcLvl
+put rgDstLvl 0 dstLvl
+put rgLf 0 Lf
+Lc = div Lf 2
+Nc = mul mul Lc Lc mul Lc Lc
+for X ulong Nc bound 65536
+if isBox4 X Lc cLo cHi
+for mu ulong 4
+blockLinkOne X mu
+end
+end
+end
+end
+
+note =========================================================================
+note Exact S^3 Path Walker & 5-Operator Lie-Algebraic Schwinger-Dyson Accumulator
+note =========================================================================
+fn walkStart lvl ulong L ulong s ulong to void
+put walkLvl 0 lvl
+put walkL 0 L
+put walkCur 0 s
+put walkQ 0 1.0f32
+put walkQ 1 0.0f32
+put walkQ 2 0.0f32
+put walkQ 3 0.0f32
+end
+
+fn walkStep dir ulong isNeg ulong to void
+lvl = get walkLvl 0
+L = get walkL 0
+cur = get walkCur 0
+u = new f32 4 0.0f32
+curQ = new f32 4 0.0f32
+resQ = new f32 4 0.0f32
+for c ulong 4
+put curQ c get walkQ c
+end
+if eq isNeg 0
+loadLvl lvl cur dir u
+hQMul curQ u resQ
+put walkCur 0 stepCoord cur L dir 1
+else
+ncur = stepCoord cur L dir sub L 1
+loadLvl lvl ncur dir u
+hQConj u
+hQMul curQ u resQ
+put walkCur 0 ncur
+end
+for d ulong 4
+put walkQ d get resQ d
+end
+end
+
+fn recordFundLoop op ulong to void
+w0 = f64 get walkQ 0
+w1 = f64 get walkQ 1
+w2 = f64 get walkQ 2
+w3 = f64 get walkQ 3
+base = mul op 3
+put linkG base sub get linkG base w1
+put linkG add base 1 sub get linkG add base 1 w2
+put linkG add base 2 sub get linkG add base 2 w3
+put linkL op add get linkL op mul 3.0f64 w0
+end
+
+fn recordPlaqAndAdj to void
+w0 = f64 get walkQ 0
+w1 = f64 get walkQ 1
+w2 = f64 get walkQ 2
+w3 = f64 get walkQ 3
+note op 0 = fundamental 1x1 plaquette
+put linkG 0 sub get linkG 0 w1
+put linkG 1 sub get linkG 1 w2
+put linkG 2 sub get linkG 2 w3
+put linkL 0 add get linkL 0 mul 3.0f64 w0
+note op 1 = adjoint 1x1 plaquette (4 W0^2 - 1): L_a = -8 W0 W_a, -Delta = +8 (4 W0^2 - 1)
+c8 = mul 8.0f64 w0
+put linkG 3 sub get linkG 3 mul c8 w1
+put linkG 4 sub get linkG 4 mul c8 w2
+put linkG 5 sub get linkG 5 mul c8 w3
+chi1 = sub mul 4.0f64 mul w0 w0 1.0f64
+put linkL 1 add get linkL 1 mul 8.0f64 chi1
+end
+
+fn accumPlaneOps lvl ulong L ulong s ulong mu ulong nu ulong to void
+note 2 plaquettes (forward +nu, backward -nu) -> ops 0 & 1
+walkStart lvl L s
+walkStep mu 0
+walkStep nu 0
+walkStep mu 1
+walkStep nu 1
+recordPlaqAndAdj
+
+walkStart lvl L s
+walkStep mu 0
+walkStep nu 1
+walkStep mu 1
+walkStep nu 0
+recordPlaqAndAdj
+
+note 6 planar 1x2 rectangles touching link (s, mu) in plane (mu, nu) -> op 2
+note R1: +mu,+mu,+nu,-mu,-mu,-nu
+walkStart lvl L s
+walkStep mu 0
+walkStep mu 0
+walkStep nu 0
+walkStep mu 1
+walkStep mu 1
+walkStep nu 1
+recordFundLoop 2
+note R2: +mu,+nu,-mu,-mu,-nu,+mu
+walkStart lvl L s
+walkStep mu 0
+walkStep nu 0
+walkStep mu 1
+walkStep mu 1
+walkStep nu 1
+walkStep mu 0
+recordFundLoop 2
+note R3: +mu,+mu,-nu,-mu,-mu,+nu
+walkStart lvl L s
+walkStep mu 0
+walkStep mu 0
+walkStep nu 1
+walkStep mu 1
+walkStep mu 1
+walkStep nu 0
+recordFundLoop 2
+note R4: +mu,-nu,-mu,-mu,+nu,+mu
+walkStart lvl L s
+walkStep mu 0
+walkStep nu 1
+walkStep mu 1
+walkStep mu 1
+walkStep nu 0
+walkStep mu 0
+recordFundLoop 2
+note R5: +mu,+nu,+nu,-mu,-nu,-nu
+walkStart lvl L s
+walkStep mu 0
+walkStep nu 0
+walkStep nu 0
+walkStep mu 1
+walkStep nu 1
+walkStep nu 1
+recordFundLoop 2
+note R6: +mu,-nu,-nu,-mu,+nu,+nu
+walkStart lvl L s
+walkStep mu 0
+walkStep nu 1
+walkStep nu 1
+walkStep mu 1
+walkStep nu 0
+walkStep nu 0
+recordFundLoop 2
+
+note 4 planar 2x2 square loops touching link (s, mu) in plane (mu, nu) -> op 3
+note Q1: +mu,+mu,+nu,+nu,-mu,-mu,-nu,-nu
+walkStart lvl L s
+walkStep mu 0
+walkStep mu 0
+walkStep nu 0
+walkStep nu 0
+walkStep mu 1
+walkStep mu 1
+walkStep nu 1
+walkStep nu 1
+recordFundLoop 3
+note Q2: +mu,+nu,+nu,-mu,-mu,-nu,-nu,+mu
+walkStart lvl L s
+walkStep mu 0
+walkStep nu 0
+walkStep nu 0
+walkStep mu 1
+walkStep mu 1
+walkStep nu 1
+walkStep nu 1
+walkStep mu 0
+recordFundLoop 3
+note Q3: +mu,+mu,-nu,-nu,-mu,-mu,+nu,+nu
+walkStart lvl L s
+walkStep mu 0
+walkStep mu 0
+walkStep nu 1
+walkStep nu 1
+walkStep mu 1
+walkStep mu 1
+walkStep nu 0
+walkStep nu 0
+recordFundLoop 3
+note Q4: +mu,-nu,-nu,-mu,-mu,+nu,+nu,+mu
+walkStart lvl L s
+walkStep mu 0
+walkStep nu 1
+walkStep nu 1
+walkStep mu 1
+walkStep mu 1
+walkStep nu 0
+walkStep nu 0
+walkStep mu 0
+recordFundLoop 3
+end
+
+fn accumCrownPair lvl ulong L ulong s ulong mu ulong nu ulong rho ulong to void
+for sn ulong 2
+for sr ulong 2
+walkStart lvl L s
+walkStep mu 0
+walkStep nu sn
+walkStep rho sr
+walkStep mu 1
+walkStep nu sub 1 sn
+walkStep rho sub 1 sr
+recordFundLoop 4
+end
+end
+end
+
+fn accumSDMat kIdx ulong to void
+mBase = mul kIdx 25
+bBase = mul kIdx 5
+for r ulong 5
+bi = add bBase r
+put sdB bi add get sdB bi get linkL r
+gr = mul r 3
+for c ulong 5
+gc = mul c 3
+dot = mul get linkG gr get linkG gc
+dot = add dot mul get linkG add gr 1 get linkG add gc 1
+dot = add dot mul get linkG add gr 2 get linkG add gc 2
+mi = add mBase add mul r 5 c
+put sdM mi add get sdM mi dot
+end
+end
+put sdCnt kIdx add get sdCnt kIdx 1
+end
+
+fn accumSDLink lvl ulong L ulong s ulong mu ulong kIdx ulong to void
+for i ulong 15
+put linkG i 0.0f64
+end
+for j ulong 5
+put linkL j 0.0f64
+end
+for nu ulong 4
+if ne nu mu
+accumPlaneOps lvl L s mu nu
+for rho ulong 4
+if ne rho mu
+if ne rho nu
+accumCrownPair lvl L s mu nu rho
+end
+end
+end
+end
+end
+accumSDMat kIdx
+end
+
+fn sampleSDBox lvl ulong L ulong lo ulong kIdx ulong to void
+for c0 ulong 4
+for c1 ulong 4
+for c2 ulong 4
+for c3 ulong 4
+s = coordIdx add c0 lo add c1 lo add c2 lo add c3 lo L
+for mu ulong 4
+accumSDLink lvl L s mu kIdx
+end
+end
+end
+end
+end
+end
+
+note =========================================================================
+note 5x5 Partial-Pivoting Gaussian Elimination & Lean Multi-Loop Dobrushin Norm
+note =========================================================================
+fn solve5x5Load kIdx ulong to void
+mBase = mul kIdx 25
+bBase = mul kIdx 5
+for r ulong 5
+for c ulong 5
+put linA add mul r 6 c get sdM add mBase add mul r 5 c
+end
+put linA add mul r 6 5 get sdB add bBase r
+end
+end
+
+fn solve5x5Swap p ulong pivR ulong to void
+for c ulong 6
+i1 = add mul p 6 c
+i2 = add mul pivR 6 c
+tmp = get linA i1
+put linA i1 get linA i2
+put linA i2 tmp
+end
+end
+
+fn solve5x5ElimRow p ulong r3 ulong fac f64 to void
+for c3 ulong 6
+if ge c3 p
+idx3 = add mul r3 6 c3
+idxP = add mul p 6 c3
+nv = sub get linA idx3 mul fac get linA idxP
+put linA idx3 nv
+end
+end
+end
+
+fn solve5x5ElimStep p ulong to void
+pivR = p
+pivV = uAbs64 get linA add mul p 6 p
+for r2 ulong 5
+if gt r2 p
+av = uAbs64 get linA add mul r2 6 p
+if gt av pivV
+pivV = av
+pivR = r2
+end
+end
+end
+if ne pivR p
+solve5x5Swap p pivR
+end
+diag = get linA add mul p 6 p
+if le uAbs64 diag 0.000000000001f64
+ret
+end
+for r3 ulong 5
+if gt r3 p
+fac = div get linA add mul r3 6 p diag
+solve5x5ElimRow p r3 fac
+end
+end
+end
+
+fn solve5x5Back to void
+for step ulong 5
+r4 = sub 4 step
+rhs = get linA add mul r4 6 5
+for c4 ulong 5
+if gt c4 r4
+rhs = sub rhs mul get linA add mul r4 6 c4 get linX c4
+end
+end
+d4 = get linA add mul r4 6 r4
+if le uAbs64 d4 0.000000000001f64
+put linX r4 0.0f64
+else
+put linX r4 div rhs d4
+end
+end
+end
+
+fn solve5x5 kIdx ulong to void
+solve5x5Load kIdx
+for p ulong 5
+solve5x5ElimStep p
+end
+solve5x5Back
+end
+
+fn uTanh64 x f64 to f64
+if ge x 20.0f64
+ret 1.0f64
+end
+if le x neg 20.0f64
+ret neg 1.0f64
+end
+e2 = uExp64 mul 2.0f64 x
+ret div sub e2 1.0f64 add e2 1.0f64
+end
+
+fn printSDRow Lbase ulong beta f64 k ulong us ulong to void
+m00 = get sdM mul k 25
+b0 = get sdB mul k 5
+bSD1 = f64 0.0f64
+if gt m00 0.000000000001f64
+bSD1 = div b0 m00
+end
+solve5x5 k
+cF = get linX 0
+cA = get linX 1
+cR = get linX 2
+c22 = get linX 3
+cCr = get linX 4
+aML = mul 9.0f64 uAbs64 cF
+aML = add aML mul 18.0f64 uTanh64 mul 2.0f64 uAbs64 cA
+aML = add aML mul 45.0f64 uAbs64 cR
+aML = add aML mul 42.0f64 uAbs64 c22
+aML = add aML mul 60.0f64 uAbs64 cCr
+uPrintU Lbase
+uPrint tTab
+uPrintF64 beta
+uPrint tTab
+uPrintU k
+uPrint tTab
+uPrintF64 bSD1
+uPrint tTab
+uPrintF64 cF
+uPrint tTab
+uPrintF64 cA
+uPrint tTab
+uPrintF64 cR
+uPrint tTab
+uPrintF64 c22
+uPrint tTab
+uPrintF64 cCr
+uPrint tTab
+uPrintF64 aML
+uPrint tTab
+uPrintU us
+uPrint tNl
+end
+
+fn resetSD to void
+for i ulong 100
+put sdM i 0.0f64
+end
+for j ulong 20
+put sdB j 0.0f64
+end
+for k ulong 4
+put sdCnt k 0
+end
+end
+
+note Run 5-Operator Schwinger-Dyson RG Tomography on 16^4 -> 8^4 -> 4^4 (64 measurements)
+fn runSD16 beta f32 seed ulong to void
+t0 = monons
+N = ulong 65536
+if not seedGpuRngStream N seed
+exit 31
+end
+if not initLatticeStream 16 add seed 104729
+exit 32
+end
+for sw ulong 64
+if not gpuSweep N beta 3
+exit 33
+end
+end
+resetSD
+for m ulong 64
+if not gpuSweep N beta 2
+exit 34
+end
+if not gpuSweep N beta 2
+exit 35
+end
+downloadAllToL1 N
+sampleSDBox 0 16 6 0
+blockBox 0 1 16 0 8
+sampleSDBox 1 8 2 1
+blockBox 1 2 8 0 4
+sampleSDBox 2 4 0 2
+end
+us = div ulong sub monons t0 1000
+printSDRow 16 f64 beta 0 us
+printSDRow 16 f64 beta 1 us
+printSDRow 16 f64 beta 2 us
+end
+
+note Run Deep k=3 5-Operator Schwinger-Dyson RG on 32^4 (1,048,576 sites -> 16^4 -> 8^4 -> 4^4, 16 meas)
+fn runSD32 beta f32 seed ulong to void
+t0 = monons
+N = ulong 1048576
+if not seedGpuRngStream N seed
+exit 41
+end
+if not initLatticeStream 32 add seed 104729
+exit 42
+end
+for sw ulong 32
+if not gpuSweep N beta 3
+exit 43
+end
+end
+resetSD
+for m ulong 16
+if not gpuSweep N beta 2
+exit 44
+end
+if not gpuSweep N beta 2
+exit 45
+end
+sampleSDBox 3 32 14 0
+blockBox 3 0 32 0 16
+sampleSDBox 0 16 6 1
+blockBox 0 1 16 0 8
+sampleSDBox 1 8 2 2
+blockBox 1 2 8 0 4
+sampleSDBox 2 4 0 3
+end
+us = div ulong sub monons t0 1000
+printSDRow 32 f64 beta 0 us
+printSDRow 32 f64 beta 1 us
+printSDRow 32 f64 beta 2 us
+printSDRow 32 f64 beta 3 us
+end
+
+fn allocBuf bytes ulong cached bool to long
+m = nvalloc bytes cached
+if le m 0
+uPrint tC10Err
+uPrintU ulong get nvstage 0
+uPrint tNl
+exit 6
+end
+ret m
+end
+
+fn main to int
+uPrint tC10Hdr
+if not gbopen 1
+uPrint tC10Err
+uPrintU ulong get nvstage 0
+uPrint tNl
+ret 2
+end
+if not gbbopen
+ret 3
+end
+put uCodeMap 0 0
+uEmitAllKernels
+csize = mul div add get uCodePos 0 4095 4096 4096
+cm = nvalloc csize false
+if le cm 0
+ret 4
+end
+put uCodeMap 0 cm
+put uCodeFail 0 0
+uEmitAllKernels
+if ne get uCodeFail 0 0
+ret 5
+end
+
+put dLinks 0 allocBuf 67108864 true
+put dStaples 0 allocBuf 67108864 true
+put dFlags 0 allocBuf 16777216 true
+put dNbSite 0 allocBuf 33554432 true
+put dRng 0 allocBuf 4194304 true
+
+uPrint tC10H16
+uPrint tC10Cols
+if not buildNbTableStream 16
+rc = nvmclose
+ret 12
+end
+if not buildFlagsStream 16
+rc = nvmclose
+ret 13
+end
+runSD16 1.50f32 0xa1010001
+runSD16 2.00f32 0xa1020001
+runSD16 2.30f32 0xa1030001
+runSD16 2.50f32 0xa1040001
+runSD16 6.00f32 0xa1060001
+
+uPrint tC10H32
+uPrint tC10Cols
+if not buildNbTableStream 32
+rc = nvmclose
+ret 14
+end
+if not buildFlagsStream 32
+rc = nvmclose
+ret 15
+end
+runSD32 2.00f32 0xa3020001
+runSD32 2.30f32 0xa3030001
+
+uPrint tC10Done
+rc = nvmclose
+ret 0
+end
