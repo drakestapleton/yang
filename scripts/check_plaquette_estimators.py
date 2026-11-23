@@ -2,6 +2,7 @@
 """Paired outer-chain contrasts, disjoint-replica centering and periodic fits."""
 import argparse
 import gzip
+from itertools import combinations
 from pathlib import Path
 
 import numpy as np
@@ -40,6 +41,21 @@ def replicas(a,b):
         product = second if d==0 else sub*np.roll(sub,-d,axis=1)
         result[1].append(0.5*np.mean(product[selected]))
     return np.array(result)
+
+
+def all_replica_pairs(group, ids, extent):
+    """Average the independent-replica identity over every distinct chain pairing."""
+    pairs = np.array(list(combinations(ids, 2)))
+    values = np.array([replicas(group[a][1], group[b][1]) for a, b in pairs])
+    # These pairs reuse chains. Delete all contributions from one chain at once.
+    leave = np.array([values[(pairs != chain).all(axis=1)].mean(axis=0) for chain in ids])
+    series = values.mean(axis=0)
+    for method, y, deleted in (("ordinary", series[0], leave[:, 0]),
+                               ("two_level", series[1], leave[:, 1]),
+                               ("difference", series[0]-series[1], leave[:, 0]-leave[:, 1])):
+        errors = np.sqrt(np.diag(jack_cov(deleted)))
+        for lag, (value, error) in enumerate(zip(y, errors)):
+            print("all_pairs", extent, method, lag, f"{value:.9g}", f"{error:.9g}", sep="\t")
 
 
 def sign_check(deltas):
@@ -102,6 +118,8 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("files",nargs="+",type=Path)
     p.add_argument("--anchor",type=float,default=0.6)
+    p.add_argument("--all-replica-pairs", action="store_true",
+                   help="report the replica subtraction over all chain pairs with chain jackknife errors")
     args=p.parse_args()
     groups={}
     for path in sorted(args.files):
@@ -109,14 +127,20 @@ def main():
         g=groups.setdefault(T,{})
         if c in g: raise ValueError("duplicate chain")
         g[c]=means(obs),slice_data(path)
-    print("# sign_flip: T, strongest positive lag, absolute studentized difference, fixed-lag and max-lag probabilities")
-    print("# replica: T, method, d, replica estimate and SE, original minus replica and paired SE")
-    print("# replica_difference: T, d, replica ordinary minus two-level and paired SE")
-    print("# fit: T, method, inclusive start and stop, E and SE, correlated chi-square, degrees of freedom, change dropping earliest and paired SE")
+    if args.all_replica_pairs:
+        print("# all_pairs: T, method, lag, estimate, delete-one-chain SE")
+    else:
+        print("# sign_flip: T, strongest positive lag, absolute studentized difference, fixed-lag and max-lag probabilities")
+        print("# replica: T, method, d, replica estimate and SE, original minus replica and paired SE")
+        print("# replica_difference: T, d, replica ordinary minus two-level and paired SE")
+        print("# fit: T, method, inclusive start and stop, E and SE, correlated chi-square, degrees of freedom, change dropping earliest and paired SE")
     for T,g in sorted(groups.items()):
         ids=sorted(g)
         if not (ids==list(range(10,26)) or T==16 and ids==list(range(40,56))):
             raise ValueError("expected one full matched 16-chain cohort")
+        if args.all_replica_pairs:
+            all_replica_pairs(g, ids, T)
+            continue
         cols=np.array([g[c][0] for c in ids])
         count=len(ids)
         nlag=T//2+1

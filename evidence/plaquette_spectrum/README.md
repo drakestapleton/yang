@@ -42,6 +42,8 @@ Each production chain had 256 warmup sweeps, followed by 512 outer observations 
 
 For the finite time circle we use $E_{\rm eff}(d)=\operatorname{acosh}[(C(d-1)+C(d+1))/(2C(d))]$. At the midpoint reflection identifies its two neighbors. Errors there retain the shared fluctuation. An energy requires three resolved entries and a real transform in every jackknife deletion. The decision on adjacent energies uses the paired uncertainty in their difference. The tolerance of 0.20 is in inverse lattice steps.
 
+An additional check averages the half-difference formula over all 120 unordered pairs of distinct chains per extent. Deleting a chain removes all 15 pairs containing it and keeps the whole lag vector together. At $T=16,d=7$ the original ordinary-minus-two-level difference becomes $(-1.167\pm0.582)\times10^{-6}$, compared with $(-1.156\pm1.164)\times10^{-6}$ for the eight disjoint pairs. The all-pairs estimate also equals the mean of the across-chain sample covariance at each matched outer observation and pair of time slices. [All-pairs estimates and errors](all-replica-pairs.tsv)
+
 ## Reproduction
 
 Run the first three commands on Spark from a clean Yang checkout. The build verifies the pinned seed compiler, exercises both periodic geometries and compiles the legacy heatbath caller. The run command takes an exclusive FIFO ticket, emits the raw slices to a new file and releases the window. Change the extent and chain ID to reproduce another manifest entry. Chain seeds come from the extent and ID. Even IDs start cold.
@@ -53,6 +55,7 @@ sh scripts/run_plaquette_spectrum.sh check-conditional
 python3 scripts/test_plaquette_spectrum.py
 python3 scripts/analyze_plaquette_spectrum.py --production evidence/plaquette_spectrum/raw/*.gz
 uv run --no-project --with numpy==2.5.5 --with scipy==1.18.1 python scripts/check_plaquette_estimators.py evidence/plaquette_spectrum/raw/*.gz
+uv run --no-project --with numpy==2.5.5 --with scipy==1.18.1 python scripts/check_plaquette_estimators.py --all-replica-pairs evidence/plaquette_spectrum/raw/*.gz
 uv run --no-project --with matplotlib==3.11.2 python scripts/plot_plaquette_checks.py evidence/plaquette_spectrum
 ```
 
