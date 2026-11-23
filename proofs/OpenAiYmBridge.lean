@@ -222,16 +222,15 @@ theorem vacuum_diagonal_energyGapStrip {H : HilbertSpace} {Labels : FieldLabels}
 #print axioms vacuum_diagonal_eq_dirac
 #print axioms vacuum_diagonal_energyGapStrip
 
-/-- Every sub-strip `0 < p₀ ≤ Δ - ε` (`0 < ε < Δ`) has zero `diagonal ψ` measure
-whenever `ψ` satisfies `StateLaplaceDecay theory Δ ψ`. -/
-lemma diagonal_subStrip_eq_zero {H : HilbertSpace} {Labels : FieldLabels}
-    (theory : WightmanTheory H Labels) (hW0 : theory.W0)
-    {Δ ε : ℝ} (hε : 0 < ε) {ψ : H.carrier}
-    (hDec : StateLaplaceDecay theory Δ ψ) :
-    theory.energyMomentum.diagonal ψ (energySubStrip Δ ε) = 0 := by
+/-- Positivity of the diagonal spectral measure bounds the mass in a low-energy
+strip using a single Euclidean time. -/
+theorem diagonal_subStrip_le_laplace {H : HilbertSpace} {Labels : FieldLabels}
+    (theory : WightmanTheory H Labels) (hW0 : theory.W0) (ψ : H.carrier)
+    (Δ ε t : ℝ) (ht : 0 ≤ t) :
+    (theory.energyMomentum.diagonal ψ).real (energySubStrip Δ ε) ≤
+      Real.exp ((Δ-ε)*t) * ∫ p, Real.exp (-t * YangMills.time p) ∂(theory.energyMomentum.diagonal ψ) := by
   set μ := theory.energyMomentum.diagonal ψ
   haveI : IsFiniteMeasure μ := theory.energyMomentum.finite ψ
-  obtain ⟨C, hC0, hBound⟩ := hDec
   have hSubMeas : MeasurableSet (energySubStrip Δ ε) := measurableSet_energySubStrip Δ ε
   have hComplZero : μ YangMills.forwardConeᶜ = 0 :=
     diagonal_forwardCone_compl_eq_zero theory hW0 ψ
@@ -239,91 +238,109 @@ lemma diagonal_subStrip_eq_zero {H : HilbertSpace} {Labels : FieldLabels}
     have hAeMem : ∀ᵐ p ∂μ, p ∈ YangMills.forwardCone := by
       rwa [ae_iff]
     exact hAeMem.mono fun p hp => time_nonneg_of_mem_forwardCone hp
-  have hRealLe : ∀ t : ℝ, 0 ≤ t → μ.real (energySubStrip Δ ε) ≤ C * Real.exp (-ε * t) := by
-    intro t ht
-    have hInt : Integrable (fun p => Real.exp (-t * YangMills.time p)) μ := by
-      refine Integrable.mono' (integrable_const (1 : ℝ)) ?_ ?_
-      · exact (Real.continuous_exp.comp (continuous_const.mul continuous_time)).aestronglyMeasurable
-      · refine hAeNonneg.mono fun p hp => ?_
-        rw [Real.norm_of_nonneg (Real.exp_pos _).le]
-        exact Real.exp_le_one_iff.mpr (by nlinarith)
-    have hSetLe :
-        Real.exp (-t * (Δ - ε)) * μ.real (energySubStrip Δ ε) ≤
-        ∫ p in energySubStrip Δ ε, Real.exp (-t * YangMills.time p) ∂μ := by
-      have hConst :
-          ∫ _ in energySubStrip Δ ε, Real.exp (-t * (Δ - ε)) ∂μ =
-            μ.real (energySubStrip Δ ε) * Real.exp (-t * (Δ - ε)) := by
-        rw [setIntegral_const, smul_eq_mul]
-      rw [mul_comm, ← hConst]
-      refine setIntegral_mono_on (integrableOn_const (hs := measure_ne_top _ _))
-        hInt.integrableOn hSubMeas ?_
-      intro p hp
-      exact Real.exp_le_exp.mpr (by nlinarith [hp.2])
-    have hMono :
-        ∫ p in energySubStrip Δ ε, Real.exp (-t * YangMills.time p) ∂μ ≤
-        ∫ p, Real.exp (-t * YangMills.time p) ∂μ :=
-      setIntegral_le_integral hInt (ae_of_all μ fun p => (Real.exp_pos _).le)
-    have hChain :
-        Real.exp (-t * (Δ - ε)) * μ.real (energySubStrip Δ ε) ≤ C * Real.exp (-Δ * t) :=
-      le_trans (le_trans hSetLe hMono) (hBound t ht)
-    have hExpPos : 0 < Real.exp (t * (Δ - ε)) := Real.exp_pos _
-    have hMul := mul_le_mul_of_nonneg_left hChain hExpPos.le
-    have hLhs :
-        Real.exp (t * (Δ - ε)) * (Real.exp (-t * (Δ - ε)) * μ.real (energySubStrip Δ ε)) =
-          μ.real (energySubStrip Δ ε) := by
-      rw [← mul_assoc, ← Real.exp_add]
-      have hz : t * (Δ - ε) + -t * (Δ - ε) = 0 := by ring
-      rw [hz, Real.exp_zero, one_mul]
-    have hRhs :
-        Real.exp (t * (Δ - ε)) * (C * Real.exp (-Δ * t)) = C * Real.exp (-ε * t) := by
-      calc
-        Real.exp (t * (Δ - ε)) * (C * Real.exp (-Δ * t))
-            = C * (Real.exp (t * (Δ - ε)) * Real.exp (-Δ * t)) := by ring
-        _ = C * Real.exp (t * (Δ - ε) + -Δ * t) := by rw [← Real.exp_add]
-        _ = C * Real.exp (-ε * t) := by congr 2; ring
-    linarith
-  have hRealZero : μ.real (energySubStrip Δ ε) = 0 := by
-    apply le_antisymm _ measureReal_nonneg
-    have hTend : Tendsto (fun t : ℝ => C * Real.exp (-ε * t)) atTop (𝓝 (C * 0)) := by
-      refine tendsto_const_nhds.mul ?_
-      have hNeg : Tendsto (fun t : ℝ => -ε * t) atTop atBot :=
-        Tendsto.const_mul_atTop_of_neg (by linarith) tendsto_id
-      exact Real.tendsto_exp_atBot.comp hNeg
-    rw [mul_zero] at hTend
-    exact ge_of_tendsto hTend (eventually_atTop.mpr ⟨0, hRealLe⟩)
-  have hfin : μ (energySubStrip Δ ε) ≠ ⊤ := measure_ne_top _ _
-  rw [Measure.real, ENNReal.toReal_eq_zero_iff] at hRealZero
-  exact hRealZero.resolve_right hfin
+  have hInt : Integrable (fun p => Real.exp (-t * YangMills.time p)) μ := by
+    refine Integrable.mono' (integrable_const (1 : ℝ)) ?_ ?_
+    · exact (Real.continuous_exp.comp (continuous_const.mul continuous_time)).aestronglyMeasurable
+    · refine hAeNonneg.mono fun p hp => ?_
+      rw [Real.norm_of_nonneg (Real.exp_pos _).le]
+      exact Real.exp_le_one_iff.mpr (by nlinarith)
+  have hSetLe :
+      Real.exp (-t * (Δ - ε)) * μ.real (energySubStrip Δ ε) ≤
+      ∫ p in energySubStrip Δ ε, Real.exp (-t * YangMills.time p) ∂μ := by
+    have hConst :
+        ∫ _ in energySubStrip Δ ε, Real.exp (-t * (Δ - ε)) ∂μ =
+          μ.real (energySubStrip Δ ε) * Real.exp (-t * (Δ - ε)) := by
+      rw [setIntegral_const, smul_eq_mul]
+    rw [mul_comm, ← hConst]
+    refine setIntegral_mono_on (integrableOn_const (hs := measure_ne_top _ _))
+      hInt.integrableOn hSubMeas ?_
+    intro p hp
+    exact Real.exp_le_exp.mpr (by nlinarith [hp.2])
+  have hMono :
+      ∫ p in energySubStrip Δ ε, Real.exp (-t * YangMills.time p) ∂μ ≤
+      ∫ p, Real.exp (-t * YangMills.time p) ∂μ :=
+    setIntegral_le_integral hInt (ae_of_all μ fun p => (Real.exp_pos _).le)
+  have he := mul_le_mul_of_nonneg_left (hSetLe.trans hMono) (Real.exp_pos ((Δ-ε)*t)).le
+  rwa [← mul_assoc, ← Real.exp_add, show (Δ-ε)*t + -t*(Δ-ε) = 0 by ring,
+    Real.exp_zero, one_mul] at he
 
-/-- **Theorem 2 (Continuous-Measure Exponential Decay ⇒ Strip Nullity):**
-If `ψ` obeys `StateLaplaceDecay theory Δ ψ` with `Δ > 0`, then
-`theory.energyMomentum.diagonal ψ (energyGapStrip Δ) = 0`. -/
+private theorem energyGapStrip_eq_iUnion {Δ : ℝ} (hΔ : 0 < Δ) :
+    energyGapStrip Δ = ⋃ n : ℕ, energySubStrip Δ (Δ / ((n : ℝ) + 2)) := by
+  ext p
+  simp only [energyGapStrip, energySubStrip, Set.mem_setOf_eq, Set.mem_iUnion]
+  constructor
+  · rintro ⟨h0, hlt⟩
+    obtain ⟨n, hn⟩ := exists_nat_gt (Δ / (Δ - YangMills.time p))
+    refine ⟨n, h0, ?_⟩
+    have hpos : 0 < Δ - YangMills.time p := sub_pos.mpr hlt
+    have hn2 : (0 : ℝ) < (n : ℝ) + 2 := by positivity
+    have hdiv : Δ / ((n : ℝ) + 2) < Δ - YangMills.time p := by
+      rw [div_lt_iff₀ hn2]
+      have h1 : Δ < (n : ℝ) * (Δ - YangMills.time p) := (div_lt_iff₀ hpos).mp hn
+      nlinarith
+    linarith
+  · rintro ⟨n, h0, hle⟩
+    have hpos : 0 < Δ / ((n : ℝ) + 2) := by positivity
+    exact ⟨h0, by linarith⟩
+
+/-- Exponential upper bounds are sufficient along any sequence of times going
+to infinity. The prefactor and the time sequence may depend on the vector. -/
+theorem sparse_decay_kills_energy_strip {H : HilbertSpace} {Labels : FieldLabels}
+    (theory : WightmanTheory H Labels) (hW0 : theory.W0) (ψ : H.carrier)
+    {Δ C : ℝ} (hΔ : 0 < Δ) (t : ℕ → ℝ) (ht : Tendsto t atTop atTop)
+    (hbound : ∀ᶠ j in atTop, (∫ p, Real.exp (-t j * YangMills.time p) ∂(theory.energyMomentum.diagonal ψ))
+      ≤ C * Real.exp (-Δ*t j)) :
+    theory.energyMomentum.diagonal ψ (energyGapStrip Δ) = 0 := by
+  rw [energyGapStrip_eq_iUnion hΔ]
+  apply measure_iUnion_null
+  intro n
+  let ε := Δ/((n:ℝ)+2)
+  have hε : 0 < ε := by dsimp [ε]; positivity
+  let μ := theory.energyMomentum.diagonal ψ
+  have vanish : Tendsto (fun j => C * Real.exp (-ε*t j)) atTop (𝓝 (C*0)) :=
+    tendsto_const_nhds.mul (Real.tendsto_exp_atBot.comp (ht.const_mul_atTop_of_neg (neg_neg_of_pos hε)))
+  rw [mul_zero] at vanish
+  have hz : μ.real (energySubStrip Δ ε) = 0 := by
+    apply le_antisymm _ measureReal_nonneg
+    apply ge_of_tendsto vanish
+    filter_upwards [ht.eventually_ge_atTop 0, hbound] with j hj hb
+    apply (diagonal_subStrip_le_laplace theory hW0 ψ Δ ε (t j) hj).trans
+    calc _ ≤ Real.exp ((Δ-ε)*t j) * (C * Real.exp (-Δ*t j)) :=
+           mul_le_mul_of_nonneg_left hb (Real.exp_pos _).le
+         _ = C * Real.exp (-ε*t j) := by
+           rw [mul_left_comm, ← Real.exp_add]; congr 2; ring
+  haveI : IsFiniteMeasure μ := theory.energyMomentum.finite ψ
+  rw [Measure.real, ENNReal.toReal_eq_zero_iff] at hz
+  exact hz.resolve_right (measure_ne_top _ _)
+
+/-- Every closed sub-strip below the decay rate has zero diagonal measure. -/
+lemma diagonal_subStrip_eq_zero {H : HilbertSpace} {Labels : FieldLabels}
+    (theory : WightmanTheory H Labels) (hW0 : theory.W0)
+    {Δ ε : ℝ} (hε : 0 < ε) {ψ : H.carrier}
+    (hDec : StateLaplaceDecay theory Δ ψ) :
+    theory.energyMomentum.diagonal ψ (energySubStrip Δ ε) = 0 := by
+  by_cases hΔ : 0 < Δ
+  · obtain ⟨C,_,hb⟩ := hDec
+    have hz := sparse_decay_kills_energy_strip theory hW0 ψ hΔ (fun j => (j:ℝ))
+      tendsto_natCast_atTop_atTop (.of_forall fun j => hb _ (Nat.cast_nonneg j))
+    have hsub : energySubStrip Δ ε ⊆ energyGapStrip Δ :=
+      fun _ hp => ⟨hp.1,lt_of_le_of_lt hp.2 (sub_lt_self Δ hε)⟩
+    exact measure_mono_null hsub hz
+  · have hempty : energySubStrip Δ ε = ∅ := by
+      apply Set.eq_empty_iff_forall_notMem.mpr
+      rintro p ⟨hp,hp'⟩
+      linarith
+    rw [hempty, measure_empty]
+
+/-- Exponential decay of a state's Laplace transform excludes the open energy strip. -/
 theorem exponential_decay_kills_energy_strip_measure {H : HilbertSpace} {Labels : FieldLabels}
     (theory : WightmanTheory H Labels) (hW0 : theory.W0)
     {Δ : ℝ} (hΔ : 0 < Δ) {ψ : H.carrier}
     (hDec : StateLaplaceDecay theory Δ ψ) :
     theory.energyMomentum.diagonal ψ (energyGapStrip Δ) = 0 := by
-  have hUnion :
-      energyGapStrip Δ = ⋃ n : ℕ, energySubStrip Δ (Δ / ((n : ℝ) + 2)) := by
-    ext p
-    simp only [energyGapStrip, energySubStrip, Set.mem_setOf_eq, Set.mem_iUnion]
-    constructor
-    · rintro ⟨h0, hlt⟩
-      obtain ⟨n, hn⟩ := exists_nat_gt (Δ / (Δ - YangMills.time p))
-      refine ⟨n, h0, ?_⟩
-      have hpos : 0 < Δ - YangMills.time p := sub_pos.mpr hlt
-      have hn2 : (0 : ℝ) < (n : ℝ) + 2 := by positivity
-      have hdiv : Δ / ((n : ℝ) + 2) < Δ - YangMills.time p := by
-        rw [div_lt_iff₀ hn2]
-        have h1 : Δ < (n : ℝ) * (Δ - YangMills.time p) := (div_lt_iff₀ hpos).mp hn
-        nlinarith
-      linarith
-    · rintro ⟨n, h0, hle⟩
-      have hpos : 0 < Δ / ((n : ℝ) + 2) := by positivity
-      exact ⟨h0, by linarith⟩
-  rw [hUnion]
-  refine measure_iUnion_null fun n => ?_
-  exact diagonal_subStrip_eq_zero theory hW0 (by positivity) hDec
+  obtain ⟨C,_,hb⟩ := hDec
+  exact sparse_decay_kills_energy_strip theory hW0 ψ hΔ (fun j => (j:ℝ))
+    tendsto_natCast_atTop_atTop (.of_forall fun j => hb _ (Nat.cast_nonneg j))
 
 /-- Helper: an orthogonal projection `P` with `inner ℂ ψ (P ψ) = 0` kills `ψ`. -/
 private lemma projection_apply_eq_zero_of_diagonal_zero
@@ -1068,6 +1085,55 @@ theorem state_decay_of_shell_bounds {H : HilbertSpace} {Labels : FieldLabels}
   apply mul_le_mul_of_nonneg_left _ hC
   apply Real.exp_le_exp.mpr
   nlinarith [mul_nonneg hΔ (sub_nonneg.mpr hright.le)]
+
+/-- Subtract the vacuum component of an ordered word of smeared fields. -/
+def centeredFieldWord {H : HilbertSpace} {Labels : FieldLabels}
+    (T : WightmanTheory H Labels) (w : List (Labels.carrier × TestFunction)) : H.carrier :=
+  let v := (T.fields.vector w).1
+  v - inner ℂ T.fields.vacuum.1 v • T.fields.vacuum.1
+
+theorem centeredFieldWord_orthogonal {H : HilbertSpace} {Labels : FieldLabels}
+    (T : WightmanTheory H Labels) (hW1 : T.W1) (w : List (Labels.carrier × TestFunction)) :
+    inner ℂ T.fields.vacuum.1 (centeredFieldWord T w) = 0 := by
+  simp [centeredFieldWord, inner_self_eq_norm_sq_to_K,
+    hW1.domain.normalizedVacuum]
+
+/-- W1 supplies the dense word span. Linearity and continuity extend annihilation
+from each centered word and the vacuum to the entire Hilbert space. -/
+theorem operator_zero_of_centered_words {H : HilbertSpace} {Labels : FieldLabels}
+    (T : WightmanTheory H Labels) (hW1 : T.W1) (P : H.Operator)
+    (hv : P T.fields.vacuum.1 = 0) (hw : ∀ w, P (centeredFieldWord T w) = 0) : P = 0 := by
+  have hdom : T.fields.domain ≤ P.ker := by
+    rw [hW1.domain.cyclicVacuum, Submodule.span_le]
+    rintro _ ⟨w,rfl⟩
+    simpa [centeredFieldWord, map_sub, map_smul, hv] using hw w
+  have hall := T.fields.domain.topologicalClosure_minimal hdom P.isClosed_ker
+  rw [Submodule.dense_iff_topologicalClosure_eq_top.mp hW1.domain.denseDomain] at hall
+  ext v
+  exact hall (Submodule.mem_top : v ∈ (⊤ : Submodule ℂ H.carrier))
+
+/-- A common rate on centered field words gives a relativistic gap. Every word
+may use its own prefactor and its own unbounded sequence of physical times. -/
+theorem cyclic_word_decay_implies_relativistic_mass_gap {H : HilbertSpace} {Labels : FieldLabels}
+    (T : WightmanTheory H Labels) (hW0 : T.W0) (hW1 : T.W1) (hW2 : T.W2)
+    {Δ : ℝ} (hΔ : 0 < Δ)
+    (hwords : ∀ w, ∃ (C : ℝ) (t : ℕ → ℝ), Tendsto t atTop atTop ∧
+      ∀ᶠ j in atTop, (∫ p, Real.exp (-t j * YangMills.time p) ∂(T.energyMomentum.diagonal (centeredFieldWord T w)))
+        ≤ C * Real.exp (-Δ*t j)) : HasRelativisticMassGap T Δ := by
+  apply energy_gap_implies_relativistic_mass_gap T hW0
+  refine ⟨hΔ,operator_zero_of_centered_words T hW1 _ ?_ ?_⟩
+  · exact projection_apply_eq_zero_of_diagonal_zero _ (measurableSet_energyGapStrip _) _
+      (vacuum_diagonal_energyGapStrip T hW0 hW1 hW2 Δ)
+  · intro w
+    obtain ⟨C,t,ht,hb⟩ := hwords w
+    exact projection_apply_eq_zero_of_diagonal_zero _ (measurableSet_energyGapStrip _) _
+      (sparse_decay_kills_energy_strip T hW0 _ hΔ t ht hb)
+
+#print axioms diagonal_subStrip_le_laplace
+#print axioms sparse_decay_kills_energy_strip
+#print axioms centeredFieldWord_orthogonal
+#print axioms operator_zero_of_centered_words
+#print axioms cyclic_word_decay_implies_relativistic_mass_gap
 
 /-- **Theorem 5 (Uniform Exponential Decay ⇒ Exact Relativistic Mass-Hyperboloid Gap):**
 Combines `uniform_decay_implies_energy_gap` and `energy_gap_implies_relativistic_mass_gap`. -/

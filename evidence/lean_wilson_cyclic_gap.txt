@@ -1,0 +1,173 @@
+From blocked Wilson products to the cyclic Wightman Hilbert space
+2026-11-22 | Spark AArch64 | sh scripts/build_and_run_spark.sh openai_bridge
+Lean 4.32.0 | 8c9756b28d64dab099da31a4c09229a9e6a2ef35
+Mathlib 81a5d257c8e410db227a6665ed08f64fea08e997
+
+Source SHA-256
+a3b1768f81f45f326d2342bdddcf3735665319e0aad7c06c8728002af342da1e  proofs/OpenAiYmBridge.lean
+efc7d2c62ad350762bbfc3a0e9ce4abb236eeb13520ecb0e3e9c939e46eb020f  proofs/WilsonBlocking.lean
+1bd9d06ac9b1c0c7f18f54258362fb9cabfa506fcb17fb002c5ed5fa470cd49f  proofs/WilsonWordClustering.lean
+5d5055c26d013f1340daddb091097c7094239f1e3fc3e08fce86b22efc8e4f8c  proofs/WilsonCyclicGap.lean
+c902ac0c6f4b661ff5bee188ce1bbe89ccdd1b46782ac43fc8c68134cc78ad6c  proofs/WilsonWordSpectrum.lean
+
+The Hilbert-space step
+For every finite word w of smeared fields, let v = w Omega and let
+v0 = v - <Omega,v> Omega. A common positive decay exponent Delta for the
+diagonal spectral Laplace transforms of v0 suffices. Each word may use its
+own finite prefactor and its own sequence of times tending to infinity.
+Positivity bounds the mass at 0 < energy <= Delta - epsilon by the Laplace
+transform times exp((Delta - epsilon)t). The limit kills each closed
+sub-strip and then the entire open strip. The vacuum has zero strip mass.
+W1 identifies the dense domain with the complex linear span of word
+vectors. The kernel of the bounded strip projection is closed, so that
+projection vanishes on the full Hilbert space. The existing Lorentz boost
+theorem then excludes sub-gap invariant masses, including massless nonzero
+momenta. This proof uses W0/W1/W2 of the specified theory.
+
+Finite-volume input
+The observables are products of normalized traces of actual spatial
+plaquettes under the pushforward of a periodic SU(2) Wilson measure.
+For words of lengths m and n whose every cross pair is separated by at
+least k coarse time steps on the torus, the absolute connected correlation
+is bounded by mn * 4b pi^2 alpha^(bk)/(1-alpha). Repeated plaquettes and
+multi-slice insertions are allowed. Here b is the straight-link block
+factor, alpha = 18 beta/sqrt(3), and 0 <= beta < sqrt(3)/18.
+Signed sums are bounded using sum_i |c_i| m_i n_i.
+
+Continuum matching
+The reconstruction's covers and represents fields provide actual Wilson
+tokens for every continuum field label. The conjugated tests and reversed
+adjoint product give the diagonal characteristic function as
+    <Omega, w^* translated(w) Omega> - |<Omega,w Omega>|^2.
+Each expectation has the public reconstruction's smeared boundary-value
+formula. For a sequence of finite positive momentum measures, matching
+characteristic functions at every real translation implies weak convergence
+to the word's diagonal measure. The zero translation recovers the mass,
+including zero-norm words. At nonnegative energy, the Euclidean kernel
+agrees with the bounded continuous function exp(-t max(0,energy)).
+Consequently every fixed nonnegative-time Laplace moment converges.
+
+reconstructed_gap_of_translation_match additionally requires that those
+finite measures' Laplace moments on the selected sparse shells are bounded
+by actual signed Wilson product expansions with statewise bounded weights.
+It outputs log(1/alpha_max)/R for fixed fine physical spacing R. Building
+the finite measures with these properties, identifying their real-time
+limits with the reconstructed field words, and establishing the continuum
+theory are outstanding physical inputs.
+
+Weak-coupling test
+The public running assumption has a positive logarithmic slope uniformly
+in the box index. Since the strictly increasing mesh denominators diverge,
+beta tends to infinity even along changing boxes. For every sequence of
+positive block factors and physical spacings the inferred bare-row rate
+-log(alpha^b)/(b R) is eventually nonpositive. This constrains the
+estimate and leaves the actual weak-coupling spectrum open.
+
+Axiom audit
+YangMills.UfbiBridge.diagonal_subStrip_le_laplace [propext, Classical.choice, Quot.sound]
+YangMills.UfbiBridge.sparse_decay_kills_energy_strip [propext, Classical.choice, Quot.sound]
+YangMills.UfbiBridge.centeredFieldWord_orthogonal [propext, Classical.choice, Quot.sound]
+YangMills.UfbiBridge.operator_zero_of_centered_words [propext, Classical.choice, Quot.sound]
+YangMills.UfbiBridge.cyclic_word_decay_implies_relativistic_mass_gap [propext, Classical.choice, Quot.sound]
+YangMills.UfbiBridge.word_inner_eq_expectation [propext, Classical.choice, Quot.sound]
+YangMills.UfbiBridge.translatedFieldWord_vector [propext, Classical.choice, Quot.sound]
+YangMills.UfbiBridge.centered_word_charFun [propext, Classical.choice, Quot.sound]
+YangMills.UfbiBridge.wordExpectation_boundary [propext, Classical.choice, Quot.sound]
+YangMills.UfbiBridge.finiteMeasure_tendsto_of_charFun [propext, Classical.choice, Quot.sound]
+YangMills.UfbiBridge.word_laplace_limit_of_translation_match [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.plaquetteProduct_gauge [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockedProduct_clustering [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.productExpansion_bound [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.insertionWord_surjective [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.reconstructed_gap_of_token_limits [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.regular_bare_beta_tendsto [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.regular_bare_block_rate_eventually_nonpos [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockedWilson_gap_of_word_comparison [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockedWilson_gap_of_word_limits [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.bare_block_rate_eventually_nonpos [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.reconstructed_gap_of_translation_match [propext, Classical.choice, Quot.sound]
+
+Concrete Lean applications
+import WilsonWordSpectrum
+open YangMills YangMills.UfbiBridge YangMills.PeriodicWilson YangMills.FundamentalSU2
+open MeasureTheory Filter Real Set
+open scoped Topology
+
+-- A proper test subspace can miss an entire projected component.
+example : (LinearMap.snd ℂ ℂ ℂ) (1,0) = 0 ∧ (LinearMap.snd ℂ ℂ ℂ) (0,1) ≠ 0 := by
+  change (0:ℂ)=0 ∧ (1:ℂ) ≠ 0
+  norm_num
+
+-- A mass at energy 1/4 passes the time-zero test for rate one and fails at every positive time.
+example : exp (-((1:ℝ)/4)*0) = exp (-1*0) ∧
+    ∀ t : ℝ, 0 < t → exp (-1*t) < exp (-((1:ℝ)/4)*t) := by
+  constructor
+  · norm_num
+  · intro t ht; apply exp_lt_exp.mpr; linarith
+
+example {H : HilbertSpace} {L : FieldLabels} (T : WightmanTheory H L) (hW1 : T.W1) :
+    centeredFieldWord T [] = 0 := by
+  change T.fields.vacuum.1 - inner ℂ T.fields.vacuum.1 T.fields.vacuum.1 • T.fields.vacuum.1 = 0
+  simp [inner_self_eq_norm_sq_to_K,hW1.domain.normalizedVacuum]
+
+-- Test the complex adjoints and their order, independently of the spectral estimate.
+example {H : HilbertSpace} {L : FieldLabels} (T : WightmanTheory H L) (u v : L.carrier × TestFunction) :
+    adjointFieldWord T [u,v] = [(T.adjointLabel v.1,conjugateTest v.2),(T.adjointLabel u.1,conjugateTest u.2)] := rfl
+
+private def face (s : ZMod 4) : Face 4 := (fun t => if t=3 then s else 0, ⟨(0,1),by decide⟩)
+private def term : WilsonProductTerm 4 := ⟨-2,[face 0,face 0],[face 3,face 3,face 3]⟩
+example : productExpansionWeight [term] = 12 := by norm_num [term,productExpansionWeight]
+private theorem sep : separatedPlaquetteProducts 3 1 term.left term.right := by
+  intro p hp q hq
+  simp [term] at hp hq
+  subst p; subst q; decide
+example :
+    |productExpansion 2 (12/125) [term]| ≤
+      12*((4*(2:ℝ)*π^2/(1-straightRow (12/125)))*(straightRow (12/125)^2)^1) := by
+  have h := productExpansion_bound (2:ℕ+) (l := 4) (by decide) (β := 12/125) (by norm_num)
+    (straightRow_subunit.1 straightRow_at_0096) 3 1 [term] (by
+      intro a ha _
+      simpa only [List.mem_singleton.mp ha] using sep)
+  simpa only [show (2:ℕ+).val = 2 by rfl, Nat.cast_ofNat, show productExpansionWeight [term] = 12 by norm_num [term,productExpansionWeight]] using h
+
+-- The finite-measure convergence theorem admits null vectors and changing masses.
+example {ν : ℕ → FiniteMeasure Spacetime}
+    (h : ∀ x, Tendsto (fun n => charFun (ν n : Measure Spacetime) x) atTop (𝓝 0)) :
+    Tendsto ν atTop (𝓝 0) := by
+  apply finiteMeasure_tendsto_of_charFun
+  intro x
+  change Tendsto _ _ (𝓝 (charFun (0 : Measure Spacetime) x))
+  simpa only [charFun_zero_measure] using h x
+
+example {g : GaugeGroup} {C : WilsonFamily g} (hC : WilsonRegularity C) :
+    Tendsto (fun n => C.beta n (2*n+1)) atTop atTop := regular_bare_beta_tendsto hC _
+End of Lean applications
+
+Rejected mutations
+SparseClock rejected exit=1
+MutantSparseClock.lean:301:57: error: Application type mismatch: The argument
+Center rejected exit=1
+MutantCenter.lean:1097:61: error: unsolved goals
+AdjointOrder rejected exit=1
+MutantAdjointOrder.lean:25:114: error: Type mismatch
+Disconnected rejected exit=1
+MutantDisconnected.lean:71:2: error: 'change' tactic failed, pattern
+RepeatedFaces rejected exit=1
+MutantRepeatedFaces.lean:29:47: error: unsolved goals
+Torus rejected exit=1
+MutantTorus.lean:33:20: error: Tactic `decide` proved that the proposition
+Running rejected exit=1
+MutantRunning.lean:135:2: error: Type mismatch
+
+The mutations allow times converging to zero, add the vacuum component in
+the centered vector, exchange two adjoints, use the wrong sign for the
+disconnected correlation, remove repeated-face weights, ignore torus
+wraparound, and reverse the running-coupling rate inequality.
+
+Independent noncommuting matrix check
+For vacuum e1, word AB with the matrices below, and translation
+diag(1, exp(ix)), the centered autocorrelation is 9 exp(ix).
+Putting the adjoints in the unreversed order gives 3 exp(ix) - 4.
+WolframLanguageEvaluator
+With[{v={{1,2},{0,3}}.{{0,1},{1,0}}.{1,0},u=DiagonalMatrix[{1,Exp[I x]}]},Simplify[{Conjugate[v].u.v-Abs[v[[1]]]^2,Conjugate[{{0,1},{1,0}}.{{1,2},{0,3}}.{1,0}].u.v-Abs[v[[1]]]^2}]]
+Out[1]= {9*E^(I*x), -4 + 3*E^(I*x)}

@@ -449,7 +449,7 @@ elif [ "$MODE" = "proofs" ]; then
   "
 elif [ "$MODE" = "openai_bridge" ]; then
   echo "=== Checking the Mathlib bridges and periodic SU(2) Wilson specialization on Spark ==="
-  scp "$ROOT/proofs/OpenAiYmBridge.lean" "$ROOT/proofs/DobrushinShlosman.lean" "$ROOT/proofs/WilsonPolymerBridge.lean" "$ROOT/proofs/PhaseFourBridge.lean" "$ROOT/proofs/OneLinkTransport.lean" "$ROOT/proofs/FundamentalSU2.lean" "$ROOT/proofs/PeriodicWilson.lean" "$ROOT/proofs/WilsonConditional.lean" "$ROOT/proofs/WilsonAngle.lean" "$ROOT/proofs/WilsonRadialTransport.lean" "$ROOT/proofs/WilsonLinkTransport.lean" "$ROOT/proofs/WilsonPoleTransport.lean" "$ROOT/proofs/WilsonFieldResponse.lean" "$ROOT/proofs/WilsonCouplingTriangle.lean" "$ROOT/proofs/WilsonCartesianTransport.lean" "$ROOT/proofs/PeriodicWilsonDS.lean" "$ROOT/proofs/WilsonHeatBathDynamics.lean" "$ROOT/proofs/WilsonSpatialClustering.lean" "$ROOT/proofs/WilsonPlaquetteClustering.lean" "$ROOT/proofs/WilsonWinding.lean" "$ROOT/proofs/WilsonBlocking.lean" "$ROOT/proofs/WilsonBlockedShells.lean" spark:~/workspace/yang-lean-bridge/
+  scp "$ROOT/proofs/OpenAiYmBridge.lean" "$ROOT/proofs/DobrushinShlosman.lean" "$ROOT/proofs/WilsonPolymerBridge.lean" "$ROOT/proofs/PhaseFourBridge.lean" "$ROOT/proofs/OneLinkTransport.lean" "$ROOT/proofs/FundamentalSU2.lean" "$ROOT/proofs/PeriodicWilson.lean" "$ROOT/proofs/WilsonConditional.lean" "$ROOT/proofs/WilsonAngle.lean" "$ROOT/proofs/WilsonRadialTransport.lean" "$ROOT/proofs/WilsonLinkTransport.lean" "$ROOT/proofs/WilsonPoleTransport.lean" "$ROOT/proofs/WilsonFieldResponse.lean" "$ROOT/proofs/WilsonCouplingTriangle.lean" "$ROOT/proofs/WilsonCartesianTransport.lean" "$ROOT/proofs/PeriodicWilsonDS.lean" "$ROOT/proofs/WilsonHeatBathDynamics.lean" "$ROOT/proofs/WilsonSpatialClustering.lean" "$ROOT/proofs/WilsonPlaquetteClustering.lean" "$ROOT/proofs/WilsonWinding.lean" "$ROOT/proofs/WilsonBlocking.lean" "$ROOT/proofs/WilsonBlockedShells.lean" "$ROOT/proofs/WilsonWordClustering.lean" "$ROOT/proofs/WilsonCyclicGap.lean" "$ROOT/proofs/WilsonWordSpectrum.lean" spark:~/workspace/yang-lean-bridge/
   ssh spark "set -eu
     export PATH=\"\$HOME/.elan/bin:\$PATH\"
     cd ~/workspace/yang-lean-bridge
@@ -477,6 +477,9 @@ elif [ "$MODE" = "openai_bridge" ]; then
       lean WilsonWinding.lean
       lean -o \"\$1/WilsonBlocking.olean\" WilsonBlocking.lean
       lean WilsonBlockedShells.lean
+      lean -o \"\$1/WilsonWordClustering.olean\" WilsonWordClustering.lean
+      lean -o \"\$1/WilsonCyclicGap.olean\" WilsonCyclicGap.lean
+      lean WilsonWordSpectrum.lean
     ' sh \"\$bridge_out\"
     echo 'LEAN_PHASE4_BRIDGES status=PASS'
   "

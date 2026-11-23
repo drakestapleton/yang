@@ -201,7 +201,7 @@ private theorem plaquetteWeight_direction {l : ℕ+} (p : Face l) (e : Edge l)
     hcorner (.inl rfl : (corners p).2.2.1.2 = _ ∨ _),
     hcorner (.inr rfl : _ ∨ (corners p).2.2.2.2 = _)])
 
-private theorem blockedPlaquette_slice (b : ℕ+) {l : ℕ+} (t : Axis) (p : Face l)
+theorem blockedPlaquette_slice (b : ℕ+) {l : ℕ+} (t : Axis) (p : Face l)
     (hi : t ≠ p.2.val.1) (hj : t ≠ p.2.val.2) (j : Edge (b*l))
     (h : blockProfile b (plaquetteWeight p) j ≠ 0) : j.1 t = blockCoordinate b l (p.1 t) := by
   by_cases hmem : ∃ a : Edge l × Fin b.val, blockEdge b a.1 a.2 = j
@@ -225,6 +225,20 @@ theorem blockedCovariance_eq (b : ℕ+) {l : ℕ+} (β : ℝ) {F G : Config l �
   rw [blockedWilsonLaw_integral b l β (F := fun V => F V * G V) (hF.mul hG), blockedWilsonLaw_integral b l β hF,
     blockedWilsonLaw_integral b l β hG]
 
+theorem blockedPlaquetteProfile_bounds (b : ℕ+) {l : ℕ+} (hl : 1 < l.val) (f : Face l) (j : Edge (b*l)) :
+    0 ≤ blockProfile b (plaquetteWeight f) j ∧ blockProfile b (plaquetteWeight f) j ≤ 1 := by
+  by_cases H : ∃ a : Edge l × Fin b.val, blockEdge b a.1 a.2 = j
+  · obtain ⟨a,rfl⟩ := H
+    rw [blockProfile_on]
+    exact plaquetteWeight_bounds hl f a.1
+  · rw [blockProfile_off b _ _ H]
+    norm_num
+
+theorem blockedPlaquetteProfile_sum (b : ℕ+) {l : ℕ+} (p : Face l) :
+    ∑ e, blockProfile b (plaquetteWeight p) e = b.val * 4 := by
+  have hsum : ∑ e, plaquetteWeight p e = 4 := by simp [plaquetteWeight, Finset.sum_add_distrib]; norm_num
+  rw [blockProfile_sum, hsum]
+
 /-- Spatial traces of b-by-b Wilson loops under exact blocking. The cyclic
 time separation in the fine field is b times the coarse separation, and the
 perimeter profile sums to 4b with no fine link counted twice. -/
@@ -234,14 +248,6 @@ theorem blockedWilson_plaquette_clustering (b : ℕ+) {l : ℕ+} (hl : 1 < l.val
     |blockedCovariance b β (wilsonPlaquetteTrace p) (wilsonPlaquetteTrace q)| ≤
       (4*b.val*π^2/(1-straightRow β))*(straightRow β ^ b.val)^((q.1 t-p.1 t).valMinAbs.natAbs) := by
   have hfine : 1 < (b*l).val := hl.trans_le (Nat.le_mul_of_pos_left _ b.prop)
-  have bounds (f : Face l) (j : Edge (b*l)) :
-      0 ≤ blockProfile b (plaquetteWeight f) j ∧ blockProfile b (plaquetteWeight f) j ≤ 1 := by
-    by_cases H : ∃ a : Edge l × Fin b.val, blockEdge b a.1 a.2 = j
-    · obtain ⟨a,rfl⟩ := H
-      rw [blockProfile_on]
-      exact plaquetteWeight_bounds hl f a.1
-    · rw [blockProfile_off b _ _ H]
-      norm_num
   let k := (q.1 t-p.1 t).valMinAbs.natAbs
   have sep : SupportsSeparated (blockProfile b (plaquetteWeight p)) (blockProfile b (plaquetteWeight q)) (b.val*k) := by
     apply supportsSeparated_of_axis hfine t
@@ -251,13 +257,12 @@ theorem blockedWilson_plaquette_clustering (b : ℕ+) {l : ℕ+} (hl : 1 < l.val
     exact (blockCoordinate_distance b l (p.1 t) (q.1 t)).ge
   have variation (f : Face l) := (wilsonPlaquetteTrace_variation f).blockLinks b
     (fun e => (plaquetteWeight_bounds hl f e).1)
-  have hsum : ∑ e, plaquetteWeight p e = 4 := by simp [plaquetteWeight, Finset.sum_add_distrib]; norm_num
   have H := wilson_spatial_clustering hfine hβ hwindow (B := 1) (by norm_num)
-    (fun j => (bounds p j).1) (fun j => (bounds q j).1) (fun j => (bounds q j).2)
+    (fun j => (blockedPlaquetteProfile_bounds b hl p j).1) (fun j => (blockedPlaquetteProfile_bounds b hl q j).1) (fun j => (blockedPlaquetteProfile_bounds b hl q j).2)
     (variation p) (variation q) _ sep
   rw [blockedCovariance_eq b β (wilsonPlaquetteTrace_variation p).continuous
     (wilsonPlaquetteTrace_variation q).continuous]
-  rw [blockProfile_sum, hsum, pow_mul] at H
+  rw [blockedPlaquetteProfile_sum, pow_mul] at H
   convert H using 1
   dsimp [k]
   ring
