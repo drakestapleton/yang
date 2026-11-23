@@ -15,26 +15,26 @@ theorem wilsonPlaquetteTrace_gauge_invariant {l : ℕ+} (p : Face l) (Ω : Site 
     wilsonPlaquetteTrace p (gaugeAct Ω U) = wilsonPlaquetteTrace p U := by
   simp only [wilsonPlaquetteTrace,plaquette_gauge_covariant,scalar_trace,scalar_conjugate]
 
-private def weight {l : ℕ+} (p : Face l) (e : Edge l) : ℝ :=
+def plaquetteWeight {l : ℕ+} (p : Face l) (e : Edge l) : ℝ :=
   (if e = (corners p).1 then 1 else 0) + (if e = (corners p).2.1 then 1 else 0) +
   (if e = (corners p).2.2.1 then 1 else 0) + (if e = (corners p).2.2.2 then 1 else 0)
 
-private theorem edge_weights {l : ℕ+} (hl : 1 < l.val) (p : Face l) (e : Edge l) :
-    0 ≤ weight p e ∧ weight p e ≤ 1 := by
+theorem plaquetteWeight_bounds {l : ℕ+} (hl : 1 < l.val) (p : Face l) (e : Edge l) :
+    0 ≤ plaquetteWeight p e ∧ plaquetteWeight p e ≤ 1 := by
   have h := corners_distinct hl p
-  unfold weight
+  unfold plaquetteWeight
   generalize corners p = Q at *
   obtain ⟨a,b,c,d⟩ := Q
   dsimp only at *
   obtain ⟨ab,ac,ad,bc,bd,cd⟩ := h
   by_cases ha : e=a <;> by_cases hb : e=b <;> by_cases hc : e=c <;> by_cases hd : e=d <;> simp_all
 
-private theorem product_distance (u v w z : G) :
+theorem linkGeodesic_product_le (u v w z : G) :
     linkGeodesic (u*w) (v*z) ≤ linkGeodesic u v + linkGeodesic w z := by
   simpa only [linkGeodesic_mul_right,linkGeodesic_mul_left] using geo_triangle (u*w) (v*w) (v*z)
 
-private theorem trace_variation {l : ℕ+} (p : Face l) :
-    LinkVariation (weight p) (wilsonPlaquetteTrace p) := by
+theorem wilsonPlaquetteTrace_variation {l : ℕ+} (p : Face l) :
+    LinkVariation (plaquetteWeight p) (wilsonPlaquetteTrace p) := by
   intro U V
   let hol := fun W : Config l => plaquette W p.1 p.2.val.1 p.2.val.2
   have htrace (W : Config l) : wilsonPlaquetteTrace p W = cos (polarAngle (hol W)) := by
@@ -56,16 +56,16 @@ private theorem trace_variation {l : ℕ+} (p : Face l) :
   let d := (corners p).2.2.2
   have hh : linkGeodesic (hol U) (hol V) ≤ linkGeodesic (U a) (V a) +
       (linkGeodesic (U b) (V b) + (linkGeodesic (U c) (V c) + linkGeodesic (U d) (V d))) := by
-    apply (product_distance (U a) (V a) _ _).trans (add_le_add_right ?_ _)
-    apply (product_distance (U b) (V b) _ _).trans (add_le_add_right ?_ _)
+    apply (linkGeodesic_product_le (U a) (V a) _ _).trans (add_le_add_right ?_ _)
+    apply (linkGeodesic_product_le (U b) (V b) _ _).trans (add_le_add_right ?_ _)
     change linkGeodesic ((U c)⁻¹*(U d)⁻¹) ((V c)⁻¹*(V d)⁻¹) ≤ _
-    simpa only [pole_inverse_distance] using product_distance (U c)⁻¹ (V c)⁻¹ (U d)⁻¹ (V d)⁻¹
+    simpa only [pole_inverse_distance] using linkGeodesic_product_le (U c)⁻¹ (V c)⁻¹ (U d)⁻¹ (V d)⁻¹
   apply hh.trans_eq
-  simp only [weight,add_mul,ite_mul,one_mul,zero_mul,Finset.sum_add_distrib,Finset.sum_ite_eq',Finset.mem_univ,if_true,
+  simp only [plaquetteWeight,add_mul,ite_mul,one_mul,zero_mul,Finset.sum_add_distrib,Finset.sum_ite_eq',Finset.mem_univ,if_true,
     a,b,c,d,add_assoc]
 
-private theorem slice_support {l : ℕ+} (t : Axis) {p : Face l} (hi : t ≠ p.2.val.1) (hj : t ≠ p.2.val.2)
-    {e : Edge l} (he : weight p e ≠ 0) : e.1 t = p.1 t := by
+theorem plaquetteWeight_slice {l : ℕ+} (t : Axis) {p : Face l} (hi : t ≠ p.2.val.1) (hj : t ≠ p.2.val.2)
+    {e : Edge l} (he : plaquetteWeight p e ≠ 0) : e.1 t = p.1 t := by
   by_cases h1 : e = (corners p).1
   · rw [h1]; rfl
   by_cases h2 : e = (corners p).2.1
@@ -76,7 +76,7 @@ private theorem slice_support {l : ℕ+} (t : Axis) {p : Face l} (hi : t ≠ p.2
     simp [hj]
   by_cases h4 : e = (corners p).2.2.2
   · rw [h4]; rfl
-  simp [weight,h1,h2,h3,h4] at he
+  simp [plaquetteWeight,h1,h2,h3,h4] at he
 
 /-- Gauge-invariant spatial Wilson plaquette traces in two time slices
 have exponentially decaying connected correlation, uniformly in lattice side.
@@ -87,14 +87,14 @@ theorem wilson_plaquette_slice_clustering {l : ℕ+} (hl : 1 < l.val) {β : ℝ}
     |wilsonCovariance β (wilsonPlaquetteTrace p) (wilsonPlaquetteTrace q)| ≤
       (4*π^2/(1-straightRow β))*(straightRow β)^((q.1 t-p.1 t).valMinAbs.natAbs) := by
   let k := (q.1 t-p.1 t).valMinAbs.natAbs
-  have sep : SupportsSeparated (weight p) (weight q) k := by
+  have sep : SupportsSeparated (plaquetteWeight p) (plaquetteWeight q) k := by
     apply supportsSeparated_of_axis hl t
     intro e a he ha
-    simp [periodicAxisDistance,k,slice_support t hpi hpj he,slice_support t hqi hqj ha]
-  have hsum : ∑ e, weight p e = 4 := by simp [weight,Finset.sum_add_distrib]; norm_num
+    simp [periodicAxisDistance,k,plaquetteWeight_slice t hpi hpj he,plaquetteWeight_slice t hqi hqj ha]
+  have hsum : ∑ e, plaquetteWeight p e = 4 := by simp [plaquetteWeight,Finset.sum_add_distrib]; norm_num
   have hb := wilson_spatial_clustering hl hβ hwindow (B := 1) (by norm_num)
-    (fun e => (edge_weights hl p e).1) (fun e => (edge_weights hl q e).1) (fun e => (edge_weights hl q e).2)
-    (trace_variation p) (trace_variation q) k sep
+    (fun e => (plaquetteWeight_bounds hl p e).1) (fun e => (plaquetteWeight_bounds hl q e).1) (fun e => (plaquetteWeight_bounds hl q e).2)
+    (wilsonPlaquetteTrace_variation p) (wilsonPlaquetteTrace_variation q) k sep
   simpa only [hsum,mul_one,mul_comm (π^2) 4] using hb
 
 #print axioms wilsonPlaquetteTrace_gauge_invariant

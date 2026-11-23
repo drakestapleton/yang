@@ -1,0 +1,138 @@
+Exact blocking of periodic SU(2) Wilson loops and their physical shell bounds
+2026-11-22 | Spark AArch64 | sh scripts/build_and_run_spark.sh openai_bridge
+Lean 4.32.0 | 8c9756b28d64dab099da31a4c09229a9e6a2ef35
+Mathlib 81a5d257c8e410db227a6665ed08f64fea08e997
+
+Source SHA-256
+68648ccc174988092c9ab5f7794223dd917263fc5372b85918f2d48ad5f2ffb3  proofs/DobrushinShlosman.lean
+f0adfd91860b21bfa5895db664bfbc5621f6fa68290d784d33b8f56df013405c  proofs/WilsonPlaquetteClustering.lean
+5ca0cff24b88f540f414388165835121ce87f474c77f183816e7544a78b007e1  proofs/WilsonBlocking.lean
+6a0743b3ea9d7449af0fd59229d4725bf73e0a2d1125c271ac6c6885e5613d18  proofs/WilsonBlockedShells.lean
+
+Both lattices are periodic. For coarse side l >= 2 and integer b >= 1
+the site map is x -> b*x on the fine lattice of side b*l. Each retained
+oriented edge is the forward product of b fine links. Every interior
+gauge transformation cancels, including along paths ending across a seam.
+A coarse spatial plaquette is a b-by-b fine loop. The four paths contain
+4b distinct fine links and stay in the same fine time slice. The blocked
+law is the pushforward of the normalized fine Wilson law. Pullback
+preserves expectations and covariances of continuous functions.
+
+For 0 <= beta < sqrt(3)/18 and alpha = 18 beta/sqrt(3), the connected
+correlation of two blocked spatial plaquette traces on slices separated
+by cyclic distance k is bounded in absolute value by
+    (4 b pi^2 / (1 - alpha)) (alpha^b)^k.
+A time translate by k gives that bound whenever 2k <= l. At beta = 12/125
+and b = 2, alpha^b is exactly 15552/15625. Lean checks the rational identity.
+WolframAlpha independently returned the same fraction.
+
+With beta <= beta_max < sqrt(3)/18 and beta_max > 0, a signed sum of
+spatial loop-pair covariances inherits the envelope multiplied by the
+sum of the absolute values of its coefficients. The conditional spectral
+corollary assumes a W0/W1/W2 theory. For each vacuum-orthogonal state the
+signed sums must converge at all times k b R to its diagonal spectral
+Laplace transform. For each fixed k, its separation and statewise uniform
+coefficient bound need only hold for sufficiently large tori. The
+resulting gap is log(1/alpha_max)/R, with R the fixed fine physical
+spacing. Existence of such a spectral realization and control of a
+weak-to-strong coupling flow remain open. The pushforward need not be
+identified with a single-coupling coarse Wilson action for this result.
+
+Lean kernel axiom audit
+YangMills.PhaseTwo.eventual_shell_envelopes_imply_relativistic_mass_gap [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockCoordinate_distance [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockEdge_injective [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockedPlaquette_gauge [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockedWilsonLaw_integral [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.LinkVariation.blockLinks [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockedCovariance_eq [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockedWilson_plaquette_clustering [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.block_physical_rate [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.translatedPlaquette_clustering [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockedLoopSum_bound [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockedWilson_gap_of_loop_limits [propext, Classical.choice, Quot.sound]
+
+Concrete Lean applications
+import WilsonBlockedShells
+open YangMills YangMills.PeriodicWilson YangMills.FundamentalSU2 MeasureTheory Real
+
+private def face (s : ZMod 4) : Face 4 := (fun t => if t=3 then s else 0, ⟨(0,1),by decide⟩)
+-- Coarse slices 0 and 3 on side four are one step apart across the seam.
+example : ((blockCoordinate 2 4 3 - blockCoordinate 2 4 0).valMinAbs).natAbs = 2 := by
+  rw [blockCoordinate_distance]; decide
+example : ((blockCoordinate 3 4 2 - blockCoordinate 3 4 0).valMinAbs).natAbs = 6 := by
+  rw [blockCoordinate_distance]; decide
+
+-- A fine site gauge transformation at an interior point cancels from the loop.
+example (Ω : Site (2*4) → gaugeGroup.image) (U : Configuration gaugeGroup (2*4)) :
+    wilsonPlaquetteTrace (face 0) (blockLinks 2 (WilsonPolymer.gaugeAct Ω U)) =
+    wilsonPlaquetteTrace (face 0) (blockLinks 2 U) := blockedPlaquette_gauge 2 (by decide) Ω _ U
+
+-- The exact blocked decay base at beta 0.096.
+private theorem row_sq : straightRow (12/125)^2 = (15552/15625:ℝ) := by
+  unfold straightRow
+  rw [div_pow, Real.sq_sqrt (by norm_num : (0:ℝ) ≤ 3)]
+  norm_num
+
+example :
+    |blockedCovariance 2 (12/125) (wilsonPlaquetteTrace (face 0)) (wilsonPlaquetteTrace (face 3))| ≤
+      (8*π^2/(1-straightRow (12/125)))*(15552/15625) := by
+  have h := blockedWilson_plaquette_clustering (2:ℕ+) (l := 4) (by decide) (β := 12/125) (by norm_num)
+    (straightRow_subunit.1 straightRow_at_0096) 3 (face 0) (face 3)
+    (by decide) (by decide) (by decide) (by decide)
+  have sep : (((face 3).1 3 - (face 0).1 3).valMinAbs).natAbs = 1 := by decide
+  rw [sep, pow_one] at h
+  change _ ≤ (4*(2:ℝ)*π^2/_)*(straightRow (12/125)^2) at h
+  rw [row_sq] at h
+  convert h using 1
+  ring
+
+example (R : ℝ) (hR : 0 < R) : -log ((15552/15625:ℝ))/(2*R) = -log (straightRow (12/125))/R := by
+  rw [← row_sq]
+  exact block_physical_rate 2 _ _ hR
+
+-- The final coarse link takes the two fine links based at slices 6 and 7, in order.
+private def x : Site 4 := fun t => if t=3 then 3 else 0
+example (U : Configuration gaugeGroup (2*4)) :
+    blockLinks 2 U (x,3) = U (blockSite 2 x,3) * U (blockSite 2 x + Pi.single 3 1,3) := by
+  change straightPath U (blockSite 2 x) 3 (2:ℕ) = _
+  simp only [straightPath, zero_nsmul, one_nsmul, add_zero, one_mul]
+
+private def paired (a : Face 4 × Face 4) : ℝ := if a=(face 0,face 3) then -2 else 0
+example : spatialLoopShell 3 1 paired := by
+  intro p q h
+  by_cases H : (p,q)=(face 0,face 3)
+  · obtain ⟨rfl,rfl⟩ := Prod.mk.inj H
+    decide
+  · simp [paired,H] at h
+example : ∑ a, |paired a| = 2 := by
+  simp only [paired, apply_ite abs, abs_neg, abs_zero]
+  simp
+
+-- Every fixed k fits on all sufficiently large members of a growing family.
+private def side (n : ℕ) : ℕ+ := ⟨2*(n+1),by omega⟩
+example (k : ℕ) : ∀ᶠ n in Filter.atTop, ∀ p : Face (side n),
+    (((translateFace 3 k p).1 3-p.1 3).valMinAbs).natAbs = k := by
+  filter_upwards [Filter.eventually_ge_atTop k] with n hn
+  intro p
+  exact translateFace_distance 3 k p (by change 2*k ≤ 2*(n+1); omega)
+End of Lean applications
+
+Compiler rejections from isolated copies
+Order rejected exit=1
+MutantOrder.lean:63:14: error: unsolved goals
+Seam rejected exit=1
+MutantSeam.lean:7:33: error: Tactic `decide` proved that the proposition
+Clock rejected exit=1
+MutantClock.lean:37:2: error: Type mismatch
+Ceiling rejected exit=1
+MutantCeiling.lean:17:71: error: unsolved goals
+Diameter rejected exit=1
+MutantDiameter.lean:25:29: error: omega could not prove the goal:
+Transverse rejected exit=1
+MutantTransverse.lean:51:4: error: Tactic `decide` proved that the proposition
+
+The mutations reverse the path order, use the unwrapped time distance,
+drop the factor of two in the physical clock, substitute beta = 0.193
+in the squared-row identity, weaken the torus diameter requirement, and
+use a plaquette direction as the separation axis.

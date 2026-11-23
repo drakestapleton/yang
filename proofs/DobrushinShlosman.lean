@@ -743,6 +743,26 @@ theorem influenceIterate_le {ι : Type*} [Fintype ι] {A : ι → ι → ℝ} {�
          _ ≤ α * (B*α^k) := mul_le_mul_of_nonneg_right (hrow e) (mul_nonneg hB (pow_nonneg hα _))
          _ = B*α^(k+1) := by ring
 
+/-- For each shell, the geometric envelope need only hold once the periodic
+volume is large enough to contain that separation. -/
+theorem eventual_shell_envelopes_imply_relativistic_mass_gap {H : HilbertSpace} {Labels : FieldLabels}
+    (T : WightmanTheory H Labels) (hW0 : T.W0) (hW1 : T.W1) (hW2 : T.W2)
+    {R α : ℝ} (hR : 0 < R) (hα : 0 < α) (hα1 : α < 1)
+    (hShell : ∀ ψ : H.carrier, inner ℂ T.fields.vacuum.1 ψ = 0 →
+      ∃ (C : ℝ) (f : ℕ → ℕ → ℝ), 0 ≤ C ∧
+        (∀ k : ℕ, Tendsto (fun n => f n k) atTop
+          (𝓝 (∫ p, Real.exp (-((k : ℝ)*R)*YangMills.time p) ∂(T.energyMomentum.diagonal ψ)))) ∧
+        ∀ k, ∀ᶠ n in atTop, f n k ≤ C*α^k) :
+    HasRelativisticMassGap T ((1/R)*Real.log (1/α)) := by
+  have hΔ := (dobrushin_shlosman_exponential_decay (C := 1) hR hα hα1 0).2
+  apply uniform_decay_implies_relativistic_mass_gap T hW0 hW1
+  refine ⟨hΔ,vacuum_diagonal_energyGapStrip T hW0 hW1 hW2 _,fun ψ hψ => ?_⟩
+  obtain ⟨C,f,hC,hlim,hbound⟩ := hShell ψ hψ
+  apply state_decay_of_shell_bounds T hW0 ψ hR hΔ.le hC
+  intro k
+  exact (le_of_tendsto (hlim k) (hbound k)).trans_eq
+    (dobrushin_shlosman_exponential_decay (C := C) hR hα hα1 k).1
+
 /-- A geometric upper envelope at fixed physical shell spacing survives a
 finite-volume limit. Approximants need not obey a ratio bound between shells. -/
 theorem shell_envelopes_imply_relativistic_mass_gap {H : HilbertSpace} {Labels : FieldLabels}
@@ -754,15 +774,12 @@ theorem shell_envelopes_imply_relativistic_mass_gap {H : HilbertSpace} {Labels :
           (𝓝 (∫ p, Real.exp (-((k : ℝ)*R)*YangMills.time p) ∂(T.energyMomentum.diagonal ψ)))) ∧
         ∀ n k, f n k ≤ C*α^k) :
     HasRelativisticMassGap T ((1/R)*Real.log (1/α)) := by
-  have hΔ := (dobrushin_shlosman_exponential_decay (C := 1) hR hα hα1 0).2
-  apply uniform_decay_implies_relativistic_mass_gap T hW0 hW1
-  refine ⟨hΔ,vacuum_diagonal_energyGapStrip T hW0 hW1 hW2 _,fun ψ hψ => ?_⟩
+  apply eventual_shell_envelopes_imply_relativistic_mass_gap T hW0 hW1 hW2 hR hα hα1
+  intro ψ hψ
   obtain ⟨C,f,hC,hlim,hbound⟩ := hShell ψ hψ
-  apply state_decay_of_shell_bounds T hW0 ψ hR hΔ.le hC
-  intro k
-  exact (le_of_tendsto (hlim k) (.of_forall fun n => hbound n k)).trans_eq
-    (dobrushin_shlosman_exponential_decay (C := C) hR hα hα1 k).1
+  exact ⟨C,f,hC,hlim,fun k => .of_forall fun n => hbound n k⟩
 
+#print axioms eventual_shell_envelopes_imply_relativistic_mass_gap
 #print axioms influenceIterate_le
 #print axioms shell_envelopes_imply_relativistic_mass_gap
 
