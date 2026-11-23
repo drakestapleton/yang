@@ -3,7 +3,7 @@ import WilsonPlaquetteHilbert
 
 /-! Construct the normalized Wilson transfer spectrum directly on spatial Haar L². -/
 namespace YangMills.PlaquetteTransfer
-open Filter MeasureTheory Matrix
+open Filter MeasureTheory
 open scoped Topology InnerProductSpace RealInnerProductSpace ENNReal
 noncomputable section
 variable {L : ℕ+}
@@ -485,6 +485,7 @@ theorem vacuum_one_loop_ratio (ν : Measure ℝ) [IsFiniteMeasure ν] {g : ℝ}
   rw [show -((↑(d+1):ℝ))*E = -E + -(d:ℝ)*E by push_cast; ring, Real.exp_add]
   exact mul_le_mul_of_nonneg_right (Real.exp_le_exp.mpr (neg_le_neg he)) (Real.exp_pos _).le
 
+open Matrix in
 /-- If 0 < r < q < 1 the state at -log q is lighter; this loop has zero
 overlap with it and its vacuum correlation at separation three is r³. -/
 theorem invisible_lighter_state (q r : ℝ) :
