@@ -6,7 +6,7 @@ import Mathlib.MeasureTheory.Constructions.UnitInterval
 
 namespace YangMills.PeriodicWilson
 open MeasureTheory Set Real Filter OneLinkTransport FundamentalSU2
-open scoped Topology unitInterval ENNReal
+open scoped Topology unitInterval ENNReal Matrix.Norms.Frobenius
 noncomputable section
 
 /-- Normalized cumulative integral, used as the angular CDF on [0,π]. -/
@@ -371,14 +371,60 @@ theorem radial_wasserstein_sq_le {r s : ℝ} (hr : 0 ≤ r) (hs : 0 ≤ s) :
 theorem heatBath_radial_wasserstein {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ : 0 ≤ β)
     (U V : Configuration gaugeGroup l) (e : Edge l) :
     ∃ k j : gaugeGroup.image,
+    heatBath β U e = su2Haar.tilted (fun u => fieldStrength β U e * (suMat (u*k) 0 0).re) ∧
+    heatBath β V e = su2Haar.tilted (fun v => fieldStrength β V e * (suMat (v*j) 0 0).re) ∧
     angleWassersteinSq ((heatBath β U e).map fun u => polarAngle (u*k))
       ((heatBath β V e).map fun v => polarAngle (v*j)) ≤
         ENNReal.ofReal ((fieldStrength β V e - fieldStrength β U e)^2/12) := by
-  obtain ⟨k,hk⟩ := heatBath_polarAngle hl β U e
-  obtain ⟨j,hj⟩ := heatBath_polarAngle hl β V e
-  refine ⟨k,j,?_⟩
-  rw [hk,hj]
+  obtain ⟨k,hk⟩ := heatBath_eq_tilt hl β U e
+  obtain ⟨j,hj⟩ := heatBath_eq_tilt hl β V e
+  refine ⟨k,j,hk,hj,?_⟩
+  rw [hk,hj,tilted_polarAngle,tilted_polarAngle]
   exact radial_wasserstein_sq_le (fieldStrength_mem hβ U e).1 (fieldStrength_mem hβ V e).1
+
+/-- Degree-18 response of the heat-bath polar angle when all incident normalized
+SU(2) chords are at most δ. Incidences retain their periodic multiplicities. -/
+theorem heatBath_radial_degree18 {l : ℕ+} (hl : 1 < l.val) {β δ : ℝ}
+    (hβ : 0 ≤ β) (U V : Configuration gaugeGroup l) (e : Edge l)
+    (hneighbors : ∀ i ∈ incidences e,
+      linkChord (U (neighbor e i.1 i.2).1) (V (neighbor e i.1 i.2).1) / sqrt 2 ≤ δ) :
+    angleWassersteinSq (angleLaw (fieldStrength β U e)) (angleLaw (fieldStrength β V e)) ≤
+      ENNReal.ofReal (27 * β^2 * δ^2) := by
+  have hcost := radial_wasserstein_sq_le (fieldStrength_mem hβ U e).1 (fieldStrength_mem hβ V e).1
+  apply hcost.trans (ENNReal.ofReal_le_ofReal ?_)
+  have hroot : 0 < sqrt 2 := by positivity
+  have hnorm : |‖stapleMatrix V e‖ - ‖stapleMatrix U e‖| ≤ 18 * (δ * sqrt 2) := calc
+    _ ≤ ‖stapleMatrix U e - stapleMatrix V e‖ := by
+      rw [abs_sub_comm]; exact abs_norm_sub_norm_le _ _
+    _ ≤ _ := staple_perturbation hl U V e
+    _ ≤ ∑ _i ∈ incidences e, δ * sqrt 2 := Finset.sum_le_sum fun i hi =>
+      (div_le_iff₀ hroot).mp (hneighbors i hi)
+    _ = _ := by simp [incidence_count hl]
+  let d := fieldStrength β V e - fieldStrength β U e
+  have hd : |d| ≤ 18 * β * δ := calc
+    |d| = β * (|‖stapleMatrix V e‖ - ‖stapleMatrix U e‖| / sqrt 2) := by
+      change |β * (‖stapleMatrix V e‖ / sqrt 2) - β * (‖stapleMatrix U e‖ / sqrt 2)| = _
+      rw [← mul_sub, ← sub_div, abs_mul, abs_of_nonneg hβ, abs_div, abs_of_pos hroot]
+    _ ≤ β * (18*δ) := mul_le_mul_of_nonneg_left ((div_le_iff₀ hroot).2 (by linarith only [hnorm])) hβ
+    _ = _ := by ring
+  have hs := sq_le_sq' (neg_le_of_abs_le hd) (le_of_abs_le hd)
+  change d^2 / 12 ≤ 27 * β^2 * δ^2
+  nlinarith only [hs]
+
+/-- Strict response relative to a positive input chord bound throughout the
+degree-18 window. Both output observables are measured about their staple poles. -/
+theorem heatBath_radial_subunit {l : ℕ+} (hl : 1 < l.val) {β δ : ℝ}
+    (hβ : 0 ≤ β) (hwindow : β < sqrt 3 / 9) (hδ : 0 < δ)
+    (U V : Configuration gaugeGroup l) (e : Edge l)
+    (hneighbors : ∀ i ∈ incidences e,
+      linkChord (U (neighbor e i.1 i.2).1) (V (neighbor e i.1 i.2).1) / sqrt 2 ≤ δ) :
+    angleWassersteinSq (angleLaw (fieldStrength β U e)) (angleLaw (fieldStrength β V e)) <
+      ENNReal.ofReal (δ^2) := by
+  apply (heatBath_radial_degree18 hl hβ U V e hneighbors).trans_lt
+  apply (ENNReal.ofReal_lt_ofReal_iff (sq_pos_of_pos hδ)).2
+  have hs := sq_lt_sq' (by linarith [sqrt_pos.mpr (show (0:ℝ)<3 by norm_num)] : -(sqrt 3/9)<β) hwindow
+  have hcoeff : 27*β^2 < 1 := by nlinarith only [hs, sq_sqrt (show (0:ℝ) ≤ 3 by norm_num)]
+  simpa using mul_lt_mul_of_pos_right hcoeff (sq_pos_of_pos hδ)
 
 #print axioms quantile_field_deriv
 #print axioms quantile_pushforward
@@ -387,6 +433,8 @@ theorem heatBath_radial_wasserstein {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ 
 #print axioms radialCoupling_cost
 #print axioms radial_wasserstein_sq_le
 #print axioms heatBath_radial_wasserstein
+#print axioms heatBath_radial_degree18
+#print axioms heatBath_radial_subunit
 
 end
 end YangMills.PeriodicWilson
