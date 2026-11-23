@@ -1086,10 +1086,9 @@ theorem su2_4d_w2_dobrushin_window {β : ℝ} (hβ : β < Real.sqrt 3 / 9) :
     field_simp [hs3_pos.ne']
   linarith
 
-/-- **Theorem 12D (Temporal-Gauge 14-Neighbor 4D SU(2) Geodesic W₂ Dobrushin Basin: `β < √3 / 7 ≈ 0.24744`):**
-Combining temporal gauge (`14` dynamical neighbors per spatial link) with `s3_w2_orthogonality_bound`
-(`L_{W₂} ≤ 1 / (2 √3)`) unconditionally widens the 4D SU(2) Dobrushin uniqueness + exponential
-mass-gap basin to **`β < √3 / 7 ≈ 0.24744`** (`4.45×` wider than `1/18`, `2.23×` wider than `1/9`)! -/
+/-- **Theorem 12D (Temporal-gauge W₂ coefficient inequality).**
+With the proposed one-link constant, the 14-neighbor coefficient is below one in this window.
+Applying this to the Wilson law requires the parallel and transverse speed bounds. -/
 theorem temporal_gauge_su2_4d_w2_dobrushin_window {β : ℝ} (hβ : β < Real.sqrt 3 / 7) :
     (2 * 1 + 4 * 3 : ℝ) * (1 / (2 * Real.sqrt 3)) * β < 1 := by
   have hs3_pos : 0 < Real.sqrt 3 := Real.sqrt_pos.mpr (by norm_num)

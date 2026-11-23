@@ -24,7 +24,7 @@
 --      confirm them. The W₂ windows are therefore CONDITIONAL. Nothing here formalizes that a
 --      W₁/W₂ Dobrushin contraction implies uniqueness or decay for `wilsonLaw`, and the
 --      height-increment identity 14B is stated on `ℤ⁴`, not on the periodic torus `Site l`.
---   2. Theorem 15 (Zero-Loophole Global Quaternion Landau-Gauge 4D Star-Cell Theory `K_{2,2,2,2}`):
+--   2. Theorem 15 (Quaternion Landau-Gauge 4D Star-Cell Theory `K_{2,2,2,2}`):
 --      - `quaternion_chordal_exact_splitting`: Positive strictly-damping quartic `Δ_quat ≥ 0` (ZERO `e^{+y}`!).
 --      - `quaternion_landau_faddeev_popov_exact`: Exact all-orders Faddeev-Popov identity on `∑ q_a = 0`.
 --      - `bernoulli_finset_prod_one_sub`: `1 - ∑ s_a ≤ ∏ (1 - s_a)` for `s_a ∈ [0, 1]`.
@@ -203,8 +203,8 @@ def dynLinkDegP2 (x : Fin 2 × Fin 2 × Fin 2 × Fin 2) (μ : Fin 4) : ℕ :=
 
 /-- **Theorem 14B (Strict Acyclicity on ALL of `ℤ⁴`):**
 Every fixed directed step `x ↦ x + Pi.single d 1` (for ANY `d : Fin 4`) strictly increases the
-coordinate sum `∑ i : Fin 4, x i` by `+1`. Hence our period-2 balanced forest (and any positive
-out-degree-1 forest) has ZERO cycles on every finite box `Λ_L ⊂ ℤ⁴`! -/
+coordinate sum `∑ i : Fin 4, x i` by `+1`. This identity rules out a directed cycle on the
+infinite lattice. A finite periodic assignment with one successor per site has a directed cycle. -/
 theorem balanced_tree_p2_strictly_acyclic (x : Fin 4 → ℤ) (d : Fin 4) :
     (∑ i : Fin 4, (x + (Pi.single d (1 : ℤ) : Fin 4 → ℤ)) i) = (∑ i : Fin 4, x i) + 1 := by
   simp [Pi.add_apply, Finset.sum_add_distrib]
@@ -303,7 +303,7 @@ theorem balanced_tree_multiloop_w2_open_ball
   have h1 := balanced_tree_su2_4d_w2_dobrushin_window hβ
   exact ⟨by linarith, by linarith⟩
 
-/-! ## Theorem 15: Zero-Loophole Global Quaternion Landau-Gauge 4D Star-Cell Theory (`K_{2,2,2,2}` & `K_{1,2,2,2}`) -/
+/-! ## Theorem 15: Quaternion Landau-Gauge 4D Star-Cell Theory (`K_{2,2,2,2}` & `K_{1,2,2,2}`) -/
 
 /-- **Theorem 15A (Exact Quaternion Chordal Splitting — Strictly Positive Damping `Δ_quat ≥ 0`, ZERO `e^{+y}`):**
 For ANY two unit quaternions `q_a = (w_a, x_a, y_a, z_a)`, `q_b = (w_b, x_b, y_b, z_b) ∈ S³ ⊂ ℝ⁴`,

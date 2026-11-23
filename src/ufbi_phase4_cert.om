@@ -2,23 +2,11 @@ note SPDX-License-Identifier: Apache-2.0
 note src/ufbi_phase4_cert.om: Pure Seeded-OM-2 Zero-Monte-Carlo Phase IV Dual-Cliff Verifier
 note
 note Zero randomness, zero Monte Carlo, zero C/Python/Rust/libcuda:
-note   PART A (Right Cliff — Period-2 Balanced Acyclic Spanning-Tree Gauge deg=12 + S^3 W_2 Enclosure):
-note     Uses outward-rounded interval arithmetic (rel=1e-12, abs=1e-13, 2048 theta-boxes x 128 r-boxes
-note     covering ALL staple fields r in [0, 6*beta]) to enclose exact Benamou-Brenier W2_par and
-note     closed-form transverse W2_perp, certifying:
-note       - Unfixed 18-neighbor W2 Dobrushin (18 * L_W2 * beta < 1) up to beta = 0.180
-note       - Temporal-Gauge 14-neighbor W2 Dobrushin (14 * L_W2 * beta < 1) up to beta = 0.240
-note       - Period-2 Balanced Acyclic Tree 12-neighbor W2 Dobrushin (12 * L_W2 * beta < 1) up to beta = 0.280!
-note
-note   PART B (Left Cliff — 4-Region Shifted Quaternion Landau-Gauge Star Cell K_{2,2,2,2}):
-note     Covers 100% of the compact manifold (S^3)^7 via Lean-verified Theorems 15A-15F:
-note       - Exact strictly-damping quaternion quartic Delta_quat >= 0 (ZERO e^{+y_max} blowup!)
-note       - Shifted 21D Gaussian spectrum {6*beta - 5/8, 8*beta - 5/8} absorbing O(1/beta) Jacobian+FP
-note       - Outward-rounded 1D chi_21^2 unimodal box integration (peak t=19.0, 200 core boxes, 400 tail boxes
-note         + analytic Chernoff tail on [240, inf) < 1e-35 -> ZERO quadrature gap!)
-note       - Exact 1-bad-link K_{1,2,2,2} (spectrum {5,5,5,7,7,7}) + exact S^3 Haar cap measure
-note       - Exact 2-bad-link global quaternion action floor s2(R2_eff)*beta
-note       - Exact sharp normalized TV bound d_TV <= max(A_+, A_- / (1 - A_-)) & full L^1 = A_+ + A_-!
+note Part A scans 2048 angle boxes and 128 staple-field boxes for each sampled beta.
+note It reports coefficients for 18, 14 and 12 neighbor incidences.
+note Part B integrates core and tail terms for a single quaternion star cell at eight couplings.
+note The binary64 endpoint padding and all row classifications are tested numerically.
+note A rigorous end-to-end floating-point enclosure remains open.
 note
 note Composed after: src/ufbi_math.om and src/ufbi_ivmath.om
 
@@ -313,7 +301,7 @@ printPartACert u18 tg14 bt12 expected
 end
 
 note =========================================================================
-note PART B: Zero-Loophole 4-Region Shifted Quaternion Landau Gauge (K_{2,2,2,2} + K_{1,2,2,2})
+note PART B: 4-Region Shifted Quaternion Landau Gauge (K_{2,2,2,2} + K_{1,2,2,2})
 note   qPrm: 0=beta, 1=lam1, 2=lam2, 3=v, 4=c, 5=logZshiftLo, 6=ratioUpHi, 7=qCoeffHi,
 note         8=eSumS2Hi, 9=logNormChi21Lo, 10=R1, 11=S1Hi, 12=u2Lo, 13=alphaMidHi, 14=s1FloorLo
 note   qFar: 0=bestSum, 1=R7, 2=rMin, 3=tail1bHi, 4=tail2bHi
