@@ -1,0 +1,8 @@
+timestamp=2026-11-23T13:20:22Z
+command=python3 scripts/face_min_cut.py
+exhaustive: admissible=16 min_mixed_faces=3 certified_flow=3
+pin labels: all endpoint labelings leave middle and cost unchanged
+infeasible: admissible=0 rejected=intersecting forced source and target regions
+tiny families: feasible=594 infeasible=378 all agree with enumeration
+certificate rejection: unit capacity, integrality, conservation, primal equality
+exit_status=0

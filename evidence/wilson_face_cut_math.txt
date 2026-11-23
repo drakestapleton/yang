@@ -1,0 +1,15 @@
+math-check
+UTC 2026-11-23T13:19:43Z
+command=mcp__wolfram_wolframlanguageevaluator (queries below)
+transport_exit_status=0
+raw_log=/tmp/yang-mask.R58ROy/face-cut-math.log
+raw_log_sha256=d06afdfa8ce9957b38d251d7a1c88e6209330f5cd7fc244182ccdce68c48075a
+
+Query: {Integrate[x^2,{x,0,1}], WolframAlpha["sqrt(27)/2","Result"]}
+Out[1]= {1/3, (3*Sqrt[3])/2}
+
+Query: Table[{bits,Min[Flatten[Table[a (1-b)+2 Total[bits (1-a)+b (1-bits)],{a,0,1},{b,0,1}]]],Boole[Min[bits]<Max[bits]]},{bits,Tuples[{0,1},4]}]
+Out[1]= {{{0, 0, 0, 0}, 0, 0}, {{0, 0, 0, 1}, 1, 1}, {{0, 0, 1, 0}, 1, 1}, {{0, 0, 1, 1}, 1, 1}, {{0, 1, 0, 0}, 1, 1}, {{0, 1, 0, 1}, 1, 1}, {{0, 1, 1, 0}, 1, 1}, {{0, 1, 1, 1}, 1, 1}, {{1, 0, 0, 0}, 1, 1}, {{1, 0, 0, 1}, 1, 1}, {{1, 0, 1, 0}, 1, 1}, {{1, 0, 1, 1}, 1, 1}, {{1, 1, 0, 0}, 1, 1}, {{1, 1, 0, 1}, 1, 1}, {{1, 1, 1, 0}, 1, 1}, {{1, 1, 1, 1}, 0, 0}}
+
+Interpretation: each triple is {four link labels, minimum gadget cut, mixed-face indicator}.
+The finite truth table checks the local four-link gadget, not a proof of arbitrary network flow correctness.

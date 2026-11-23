@@ -1,0 +1,138 @@
+Contract row 1: PROVED for the pinned finite-volume SU(2) Wilson model.
+Base: f10fd3c407abd56760a4d3970beb00f86d179f5b
+Contract: /tmp/yang-mask.R58ROy/contract.txt
+Contract SHA256: 90c6af671d9b50961d1b338ef9244141bfc3e3010158b4138a2614fa9ff2354f
+Publication: not performed by this worker.
+
+Sources checked:
+608b8af3fc0b24afdbe71f5856579743eaae5540d2c91c4e289674ec58ca16ab  proofs/WilsonReplicaFreeShell.lean
+8bc77a620dae226b0ae807353260d2763eb599d3dbf20b2cdd538b99d32c100e  scripts/build_and_run_spark.sh
+
+Statement and model-to-system link:
+IsPinned requires both replica values to be identity on P.edges. freeFace is
+faceEdges minus P.edges. freeUniform tests constant mask labels on those free
+links, including the empty-support case. freeBoundary consists exactly of faces
+that fail freeUniform. freeBoundary_disjoint identifies disjoint effective
+boundaries with the pointwise disjunction required by the shell theorem.
+exchange_eq_on_free proves labels on pins have no effect on an actual exchange.
+
+free_field_stable proves exchange-field stability on pinned pairs whenever no
+face is split by both masks on its free links. It uses the existing exact
+exchangeField_eq_sum and trace_agrees, not an independent surrogate energy.
+free_exchange extends a continuous integrand by erasing pinned coordinates on
+arbitrary inputs. This erasure is continuous, commutes with exchange, always
+lands on pinned pairs, and fixes pinned pairs. Thus oddness only on pinned pairs
+suffices for the existing framed_exchange; pullback along P.pair removes the
+extension in both integrals. No claim of full-space oddness of the original
+integrand is used.
+
+free_shell_identity proves the signed finite product under P.framedLaw beta,
+with oddness only on pinned pairs and pairwise disjoint effective boundaries.
+The masks are fixed functions of links, with no measured-field input.
+free_plaquette_covariance takes arbitrary plaquettes p,q and any finite mask
+family. Each mask must exchange every free link of exactly one endpoint and
+leave the other's free links unchanged. It proves twice the ORIGINAL Wilson
+covariance equals the expectation of the original replicaDifference times the
+signed product of exchange fields evaluated on P.pair z. Gauge invariance of
+the existing wilsonPlaquetteTrace supplies the projection bridge. No singleton
+free-link assumption, spatial orientation, or stronger full-support separation
+is imposed. free_anchor_labels supplies opposite endpoint labels from disjoint
+free supports using the mask decide(e in freeFace p); reverse p,q for the other
+endpoint. A candidate middle containing all free p links and excluding all free
+q links meets the same endpoint condition. Free-boundary disjointness remains
+an explicit, independently checkable geometry hypothesis.
+
+Model matches existing PinnedFrame, exchangeLinks, exchangeField, framedLaw,
+replicaLaw, wilsonPlaquetteTrace, and replicaDifference definitions by import.
+The added openai_bridge steps copy the source and compile it immediately after
+WilsonReplicaFrame, its only direct import. No numerical implementation or
+existing theorem was changed. Consistency check found both integration sites;
+bash -n passed. This is a new-module bridge check, NOT a full legacy rebuild.
+It does not certify a sampled chain, stationarity or error bars; a solver's
+optimality; a choice of optimal gauge tree; an ensemble decay rate; a continuum
+limit; compact U(1); or a mass gap.
+
+Pins observed on Spark:
+Lean (version 4.32.0, aarch64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)
+Mathlib HEAD: 81a5d257c8e410db227a6665ed08f64fea08e997
+2773c517aa90b66ea8a2c52bddddf84393157797f8341be0df45294fff7fd32e  lean-toolchain
+2f7b545f9aba8348d4be4c18b78da47d7fe7d80fbca737ce3d32415f31f9149e  lakefile.toml
+48a4e2bcfad97fa154139282a40a2c43ac80cd736520e6b9c2acb98c4d60a7bc  lake-manifest.json
+
+Reused dependency source/olean SHA256:
+d8c4be226a6df7211289c507154578177c232d84ba728303098842cfbc51549f  WilsonReplicaFrame.lean
+8182391573527293a311985f5f6a5a3549fae40e0b1a092e9c08ab332ea1cfe9  WilsonReplicaFrame.olean
+61780cb05bfc47757f60c472cea01f4bc5ddc78d51d3697ef49047d41820f87f  WilsonReplicaShells.lean
+c8775ebec8dd963a0058e674f1fdf14764b00c3e7507151f3982a633447a387c  WilsonReplicaShells.olean
+267a68c43a8eacf57deb182f7be55b53bc8730108ac7239773cc6650c874601a  WilsonReplicaExchange.lean
+dabf149932ebe4db0fe4b8cfd1a72d0f4ed4864f21dd60307baf202e5cc08d09  WilsonReplicaExchange.olean
+
+Positive command actually run:
+  bash /tmp/yang-mask.R58ROy/free-shell-check.sh
+This runner executed bash -n scripts/build_and_run_spark.sh, source hashes,
+scp proofs/WilsonReplicaFreeShell.lean spark:/tmp/yang-free-shell.3OPWVv/,
+and the following compilation, after printing the pins above:
+  ssh spark 'export PATH=$HOME/.elan/bin:$PATH;
+    cd /home/drakestapleton/workspace/yang-lean-bridge;
+    lake env sh -ec '\''
+      export LEAN_PATH=/tmp/yang-free-shell.3OPWVv:/home/drakestapleton/workspace/yang-lean-bridge/replica.Co3b44:$LEAN_PATH
+      cd /tmp/yang-free-shell.3OPWVv
+      taskset -c 0,1 nice -n 10 lean -o WilsonReplicaFreeShell.olean WilsonReplicaFreeShell.lean
+    '\'''
+Fresh scratch was allocated by ssh spark 'mktemp -d /tmp/yang-free-shell.XXXXXX'.
+Timestamp: 2026-11-23T13:21:33Z to 2026-11-23T13:21:41Z.
+LEAN_EXIT=0. Entire new module checked, no warnings or errors.
+Log: /tmp/yang-mask.R58ROy/lean-free-shell-final.log
+Log SHA256: af1462717dffb6bd30ecd737fa91efbdd4583f5b8029297f84a97edb0c7f06ec
+Runner SHA256: a1fe5b09c908da8a76988790e46b83c63fad32eef5a3eb4a6563303e693c8e1a
+Output olean SHA256: 16311e52504cf4ba73166b5b002cc4f2e71727ac5193efc5742b67d8726fa209
+
+Axiom audit: every printed declaration depends only on
+[propext, Classical.choice, Quot.sound]:
+  YangMills.PeriodicWilson.PinnedFrame.free_field_stable
+  YangMills.PeriodicWilson.PinnedFrame.freeBoundary_disjoint
+  YangMills.PeriodicWilson.PinnedFrame.free_anchor_labels
+  YangMills.PeriodicWilson.PinnedFrame.exchange_eq_on_free
+  YangMills.PeriodicWilson.PinnedFrame.free_exchange
+  YangMills.PeriodicWilson.PinnedFrame.free_shell_identity
+  YangMills.PeriodicWilson.PinnedFrame.free_plaquette_covariance
+  YangMills.PeriodicWilson.PinnedFrame.no_exchange_without_odd
+A forbidden-source scan found no sorry, admit, axiom declaration, unsafe,
+native_decide, implemented_by, or extern. Timestamp 2026-11-23T13:21:56Z to
+2026-11-23T13:21:57Z; scan command exit 0, SOURCE_SCAN=PASS.
+Log: /tmp/yang-mask.R58ROy/lean-free-shell-source-scan.log
+Log SHA256: ace840a05a2d89d3acb63154158b25793f6089088cf7b914fe43d8eac64c271b
+
+Genuine failing control, dropping necessary oddness:
+no_exchange_without_odd proves the following equality is FALSE, at zero
+coupling and with the constant observable one. The projected law remains a
+probability, so the left integral is one; the exchange field and right integral
+are zero. The test imports the successful module, so it exercises its actual
+law and field rather than a dummy proposition or missing import.
+
+Control source (recreate as FreeShellMissingOdd.lean outside the proof tree):
+  import WilsonReplicaFreeShell
+  open MeasureTheory Real
+  open YangMills.PeriodicWilson
+  noncomputable section
+  theorem missing_oddness {l : ℕ+} (P : PinnedFrame l) (m : Edge l → Bool) :
+      (∫ _ : WilsonReplicas l, (1 : ℝ) ∂P.framedLaw 0) =
+        ∫ z, 1 * tanh (exchangeField 0 m z) ∂P.framedLaw 0 := by
+    simp [exchangeField, logWeight]
+
+Actually run:
+  bash /tmp/yang-mask.R58ROy/free-shell-check.sh /tmp/yang-mask.R58ROy/FreeShellMissingOdd.lean
+Timestamp: 2026-11-23T13:22:04Z to 2026-11-23T13:22:09Z.
+LEAN_EXIT=1, expected; error: unsolved goals, with final goal False.
+The acceptance wrapper required status 1, 'unsolved goals', and 'False'; exit 0,
+NEGATIVE_CONTROL=PASS. No import, parser, or unknown-name error occurred.
+Control source SHA256: e5c9aa175fb0202145b7c080791284bfd783108372d490217d960e52636ad8aa
+Log: /tmp/yang-mask.R58ROy/lean-free-shell-missing-odd.log
+Log SHA256: efd3d0c40cf1c4b8590367857f0a6e40283f1e5a6d67649d9cd7cc9f7765bad4
+
+Replay: allocate a fresh remote scratch, copy the successful source and the
+control source above, and use that scratch as the first LEAN_PATH entry in the
+positive compilation command. Require positive exit 0, the printed standard
+axiom lists, then the control's exit 1 with mathematical goal False. The full
+copy/compile integration remains available as scripts/build_and_run_spark.sh
+openai_bridge, but was not run as a legacy rebuild in this row.
