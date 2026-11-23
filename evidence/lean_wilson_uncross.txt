@@ -1,0 +1,179 @@
+Contract row 2: PROVED abstract geometric uncrossing on actual Wilson freeBoundary.
+Contract base: 0cc5f925842f9b0a639bea4f7a5ca771f9a0ea71
+Contract SHA256: 091b3430014619b53d55c8d2389cc6a86004b8b76838e9f9792c1ad4de1a26f2
+No commits, publication, signing, keys, GPU work or dependency-source changes by this worker.
+
+MODEL / SYSTEM LINK AND CLAIM BOUNDARY
+--------------------------------------
+proofs/WilsonReplicaUncross.lean directly imports the existing WilsonReplicaFreeShell.
+The masks have type Edge l -> Bool and P is an arbitrary compatible PinnedFrame l.
+The boundary in every public geometric theorem is the existing P.freeBoundary:
+Finset.univ filtered by failure of P.freeUniform on faceEdges p minus P.edges.
+There is no substituted graph boundary or separately assumed split-face set.
+The matching dependency source and compiled olean hashes were observed below.
+
+freeBoundary_complement: globally complementing a mask preserves its actual free
+boundary. Either endpoint orientation may therefore be aligned independently
+before applying the remaining statements. Protected-link labels must be checked
+on the resulting aligned inputs; arbitrary unaligned anchor labels are not an
+assumption of the uncrossing theorem.
+
+sorted_uniformity: if one input is uniform on the free links of a face, pointwise
+Boolean meet and join equal a fixed permutation of the two original inputs on
+that face. The permutation may differ by face. This includes empty free faces:
+no free-link witness or nonemptiness hypothesis is used.
+
+freeBoundary_uncross: disjoint input free boundaries imply disjoint output free
+boundaries and exact equality of their unions. Input alignment is not required
+for this geometric statement. A split may move from one mask to the other.
+freeBoundary_uncross_card: using both disjointness statements and union equality,
+the sum of the two actual freeBoundary cardinalities is exactly preserved.
+
+uncross_nested_labels: the meet's true-link set is contained in the join's, and
+both outputs preserve any prescribed label shared by the inputs on any finite
+protected-link set. The prescribed label may vary with the link, so the set can
+contain both source and target neighborhoods with opposite labels. It need not
+be a whole slice or a face, and labels outside the set are unconstrained.
+
+exists_nested_aligned_pair combines these properties: every aligned admissible
+pair has a nested, aligned, boundary-disjoint representative of equal total
+geometric cost. Thus restricting optimization of this cost and these protected
+labels to nested pairs loses no candidate cost. A nested pair is itself an
+aligned pair. This is an abstract implication, not a Lean construction or
+numerical optimum certificate for the concrete side-eight pinned geometry.
+The concrete optimizer's feasibility, capacities, exact minimum, masks and
+measurements are separate evidence. No heap, action, exchange-field or measured
+loss equivalence, continuum, equilibrium, attenuation or mass-gap claim is made.
+
+NEGATIVE CONTROL
+----------------
+identical_split_counterexample is a checked theorem, not a failed proof attempt.
+It uses Edge 2, P = empty 2 and the identical mask m(e) = decide(e.2 = 0) twice.
+The actual (0,1) Wilson plaquette at site zero has two free corners with opposite
+labels, so it is in P.freeBoundary m. Both meet and join reduce to that same m;
+their output boundaries are NOT disjoint. This concretely refutes dropping the
+input-disjointness premise for output disjointness, even with aligned inputs.
+The witness is constructed from actual corners and freeFace membership.
+
+A separate expected-failure compiler control asks for the false positive
+Disjoint statement on exactly this witness and supplies the checked negative
+theorem. Lean rejects it with a type mismatch (negative versus positive claim).
+This rejection is supplementary; the successful counterexample theorem above
+is the mathematical negative control.
+Control source, copied to the same fresh scratch:
+  import WilsonReplicaUncross
+  namespace YangMills.PeriodicWilson.PinnedFrame
+  open WilsonPolymer
+  example : Disjoint
+      ((empty 2).freeBoundary (fun e : Edge 2 => decide (e.2 = 0) && decide (e.2 = 0)))
+      ((empty 2).freeBoundary (fun e : Edge 2 => decide (e.2 = 0) || decide (e.2 = 0))) := by
+    exact identical_split_counterexample
+  end YangMills.PeriodicWilson.PinnedFrame
+
+SOURCE / INTEGRATION SHA256
+--------------------------
+23da925af43504dd6b1506b3d344d94b6eb01a4625b81cc5a454c4e5834e186c  proofs/WilsonReplicaUncross.lean
+e66fea9576773dff39b3da251ba83c3a4511a46730d8bbd4c5bfaea287f3c5dc  scripts/build_and_run_spark.sh
+The only recipe edits add the new source to the existing FreeShell/PathPacking
+copy command and compile it immediately after FreeShell, emitting an olean.
+Consistency grep found the copy at line 453 and compile at line 488, after
+FreeShell at line 487. No prior dependency or control was edited. Both matching
+integration sites changed; every preexisting compile command remains unchanged.
+bash -n scripts/build_and_run_spark.sh: exit 0 in both recorded invocations.
+Full legacy bridge build not run: focused complete new module compiled instead.
+
+OBSERVED PINNED SPARK ENVIRONMENT
+--------------------------------
+Lean 4.32.0, aarch64-unknown-linux-gnu, Release,
+commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35.
+Mathlib HEAD: 81a5d257c8e410db227a6665ed08f64fea08e997
+2773c517aa90b66ea8a2c52bddddf84393157797f8341be0df45294fff7fd32e  lean-toolchain
+2f7b545f9aba8348d4be4c18b78da47d7fe7d80fbca737ce3d32415f31f9149e  lakefile.toml
+48a4e2bcfad97fa154139282a40a2c43ac80cd736520e6b9c2acb98c4d60a7bc  lake-manifest.json
+Reused immutable dependencies (source and olean):
+d8c4be226a6df7211289c507154578177c232d84ba728303098842cfbc51549f  WilsonReplicaFrame.lean
+8182391573527293a311985f5f6a5a3549fae40e0b1a092e9c08ab332ea1cfe9  WilsonReplicaFrame.olean
+61780cb05bfc47757f60c472cea01f4bc5ddc78d51d3697ef49047d41820f87f  WilsonReplicaShells.lean
+c8775ebec8dd963a0058e674f1fdf14764b00c3e7507151f3982a633447a387c  WilsonReplicaShells.olean
+267a68c43a8eacf57deb182f7be55b53bc8730108ac7239773cc6650c874601a  WilsonReplicaExchange.lean
+dabf149932ebe4db0fe4b8cfd1a72d0f4ed4864f21dd60307baf202e5cc08d09  WilsonReplicaExchange.olean
+608b8af3fc0b24afdbe71f5856579743eaae5540d2c91c4e289674ec58ca16ab  WilsonReplicaFreeShell.lean
+16311e52504cf4ba73166b5b002cc4f2e71727ac5193efc5742b67d8726fa209  WilsonReplicaFreeShell.olean
+
+COMMANDS / REPLAY
+-----------------
+Fresh scratch creation (exit 0):
+  ssh spark 'mktemp -d /tmp/yang-uncross.XXXXXX'
+Observed path: /tmp/yang-uncross.bTC72H
+Prior pin/locations source: /tmp/yang-collar.mLCOQp/packing-check.sh
+Local runner: /tmp/yang-local.5bzC63/uncross-check.sh
+Runner SHA256: a6244acb03583ffe05dd7c72a8b764e0120f677f1231c4d296c40295a8955569
+Only the new module and supplementary control were copied into the fresh scratch.
+BRIDGE=/home/drakestapleton/workspace/yang-lean-bridge
+REPLICA=$BRIDGE/replica.Co3b44
+FREE=/tmp/yang-free-shell.3OPWVv
+SCRATCH=/tmp/yang-uncross.bTC72H
+For a fresh installation set these role variables to copies with matching hashes.
+
+Executed runner command (full module, not a selected theorem):
+  bash /tmp/yang-local.5bzC63/uncross-check.sh > /tmp/yang-local.5bzC63/uncross-final.log 2>&1
+Runner's compile operation, with role variables as above:
+  scp proofs/WilsonReplicaUncross.lean spark:"$SCRATCH/"
+  ssh spark "set -eu; export PATH=\$HOME/.elan/bin:\$PATH; cd $BRIDGE;
+    lean --version; sha256sum lean-toolchain lakefile.toml lake-manifest.json;
+    git -C .lake/packages/mathlib rev-parse HEAD;
+    sha256sum $REPLICA/WilsonReplica{Frame,Shells,Exchange}.{lean,olean};
+    sha256sum $FREE/WilsonReplicaFreeShell.{lean,olean};
+    lake env sh -ec 'export LEAN_PATH=$SCRATCH:$FREE:$REPLICA:\$LEAN_PATH;
+      cd $SCRATCH; sha256sum WilsonReplicaUncross.lean;
+      taskset -c 0,1 nice -n 10 lean -o WilsonReplicaUncross.olean WilsonReplicaUncross.lean;
+      sha256sum WilsonReplicaUncross.olean'"
+No dependency is rebuilt. The existing pinned Lake project supplies its olean
+closure; the scratch, FreeShell and replica directories extend LEAN_PATH.
+
+FULL-MODULE RESULT / AXIOM AUDIT
+-------------------------------
+Start 2026-11-23T14:31:50Z; end 2026-11-23T14:32:05Z; LEAN_EXIT=0.
+No warnings or errors in this final complete-module compile.
+Output olean SHA256:
+c9c4ce9a8f7a3d5da6c40a364e08749c84d251ea6b0386238a133bdf5a772a96
+Raw log: /tmp/yang-local.5bzC63/uncross-final.log
+Raw log SHA256: 4d02fac2de093410ffd6a387f00b2c9ce755881aefcbadadf55f1dfc7d84ab84
+#print axioms emitted for EVERY new theorem, including private proof helpers:
+  freeBoundary_complement: [propext, Classical.choice, Quot.sound]
+  freeUniform_congr_on (private): [propext, Classical.choice, Quot.sound]
+  sorted_uniformity (private): [propext, Classical.choice, Quot.sound]
+  freeBoundary_uncross: [propext, Classical.choice, Quot.sound]
+  freeBoundary_uncross_card: [propext, Classical.choice, Quot.sound]
+  uncross_nested_labels: [propext, Quot.sound]
+  exists_nested_aligned_pair: [propext, Classical.choice, Quot.sound]
+  identical_split_counterexample: [propext, Classical.choice, Quot.sound]
+No sorryAx, native-decide axiom or extra axiom. A forbidden-token scan of the
+whole new source found none of sorry, axiom, native_decide, unsafe,
+implemented_by, extern (scan gate exit 0). #print axioms is not an axiom declaration.
+
+SUPPLEMENTARY EXPECTED-FAILURE OUTPUT
+-------------------------------------
+Command:
+  bash /tmp/yang-local.5bzC63/uncross-check.sh /tmp/yang-local.5bzC63/UncrossUnconditionalControl.lean > /tmp/yang-local.5bzC63/uncross-negative.log 2>&1
+Start 2026-11-23T14:32:16Z; end 2026-11-23T14:32:23Z; LEAN_EXIT=1 (expected).
+Source SHA256: c3fd6152740921f90b34658b6c388e32d79cfbd992fa2af2021554e4a7b4b831
+Raw log SHA256: c8915912fbc28e13fb9a29a5c489148d162049d63f7a4c5c1506b2cfce5ea074
+Output (after the same environment and dependency hashes):
+  UncrossUnconditionalControl.lean:7:2: error: Type mismatch
+    identical_split_counterexample
+  has type
+    have m := fun e => decide (e.2 = 0);
+    ¬Disjoint ((empty 2).freeBoundary fun e => m e && m e)
+      ((empty 2).freeBoundary fun e => m e || m e)
+  but is expected to have type
+    Disjoint ((empty 2).freeBoundary fun e => decide (e.2 = 0) && decide (e.2 = 0))
+      ((empty 2).freeBoundary fun e => decide (e.2 = 0) || decide (e.2 = 0))
+  LEAN_EXIT=1
+Gate test "$rc" -ne 0 exited 0.
+
+An initial full compile before the final source failed in the concrete witness
+because classical decidability was not enabled there; this was corrected with
+local classical, without changing the theorem statement. The final full-module
+result above supersedes it. Initial log retained privately as uncross-compile1.log.
+No existing theorem, dependency, assertion or control was weakened.

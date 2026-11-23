@@ -9,11 +9,13 @@ COLUMNS = ('source_faces', 'cut_faces', 'slab_faces', 'target_faces',
            'source_j', 'cut_j', 'slab_j', 'target_j')
 INTERIOR_COLUMNS = ('source_faces', 'radius1_faces', 'radius2_faces', 'target_faces',
                     'source_j', 'radius1_j', 'radius2_j', 'target_j')
+LOCAL_COLUMNS = tuple(name+suffix for suffix in ('_faces', '_j') for name in
+                      ('source', 'narrow1', 'narrow2', 'wide1', 'wide2', 'target'))
 
 
 class MiddleCut:
-    def __init__(self, lat, *, interior=False):
-        side = 8 if interior else 6
+    def __init__(self, lat, *, geometry='cut'):
+        side = 6 if geometry == 'cut' else 8
         shape = (side,) * 4
         coords = np.array(np.unravel_index(lat.sites, shape))
         depth = coords.sum(axis=0)
@@ -31,13 +33,19 @@ class MiddleCut:
         pins = self.pinned.ravel()
         self.target_site = np.ravel_multi_index((0, 0, 0, side//2), shape)
         faces = lat.faces.reshape(-1, 4)
-        if interior:
+        if geometry == 'local':
+            from local_neighborhood import neighborhood_masks
+            self.masks = neighborhood_masks(lat, self.pinned)
+            self.families = ((0, 1, 2, 5), (0, 3, 4, 5))
+        elif geometry == 'interior':
             from interior_geometry import interior_geometry
             self.masks = interior_geometry(lat, self.pinned)
             self.families = ((0, 1, 2, 3),)
-        else:
+        elif geometry == 'cut':
             self.masks, minimum = self._side_six_masks(lat, pins, coords, faces)
             self.families = ((0, 1, 3), (0, 2, 3))
+        else:
+            raise ValueError(f'unknown exchange geometry: {geometry}')
         active = ~pins[faces]
         self.boundaries = []
         for mask in self.masks:
@@ -47,7 +55,7 @@ class MiddleCut:
         self.split = [faces[b] for b in self.boundaries]
         for family in self.families:
             assert np.max(np.sum([self.boundaries[j] for j in family], axis=0)) <= 1
-        if not interior:
+        if geometry == 'cut':
             self._check_side_six(lat, pins, faces, minimum)
 
     def _side_six_masks(self, lat, pins, coords, faces):

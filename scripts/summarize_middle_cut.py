@@ -14,25 +14,32 @@ def summarize(rows):
             raise ValueError('incomplete or reordered sample series')
         def col(name):
             return np.array([float(r[name]) for r in group])
-        w = np.abs(np.tanh(col('source_j')))
-        successive = 'radius1_j' in group[0]
-        for name in (('radius1', 'radius2') if successive else ('cut', 'slab')):
-            counts = col(name+'_faces')
-            if not np.all(counts == counts[0]):
-                raise ValueError('geometry changed in chain')
-            j = col(name+'_j')
-            live = w > 0
-            if live.any():
-                lognum = np.log(w[live])+np.log(2.)-np.logaddexp(0., 2*np.abs(j[live]))
-                logsum = np.logaddexp.reduce(lognum)
-                loss = (logsum-np.log(w.sum()))/np.log(10.)
-                largest_share = np.exp(lognum.max()-logsum)
-            else:
-                loss = largest_share = float('nan')  # No surviving preceding weight.
-            print(key[0], key[5], key[6], len(j), name, int(counts[0]), f'{j.min():.8g}',
-                  f'{j.max():.8g}', f'{loss:.8g}', f'{largest_share:.8g}')
-            if successive:
-                w *= np.abs(np.tanh(j))
+        source = np.abs(np.tanh(col('source_j')))
+        if 'narrow1_j' in group[0]:
+            families = (('narrow1', 'narrow2'), ('wide1', 'wide2'))
+        elif 'radius1_j' in group[0]:
+            families = (('radius1', 'radius2'),)
+        else:
+            families = (('cut',), ('slab',))
+        for family in families:
+            w = source
+            for name in family:
+                counts = col(name+'_faces')
+                if not np.all(counts == counts[0]):
+                    raise ValueError('geometry changed in chain')
+                j = col(name+'_j')
+                live = w > 0
+                if live.any():
+                    lognum = np.log(w[live])+np.log(2.)-np.logaddexp(0., 2*np.abs(j[live]))
+                    logsum = np.logaddexp.reduce(lognum)
+                    loss = (logsum-np.log(w.sum()))/np.log(10.)
+                    largest_share = np.exp(lognum.max()-logsum)
+                else:
+                    loss = largest_share = float('nan')  # No surviving preceding weight.
+                print(key[0], key[5], key[6], len(j), name, int(counts[0]), f'{j.min():.8g}',
+                      f'{j.max():.8g}', f'{loss:.8g}', f'{largest_share:.8g}')
+                if name != family[-1]:
+                    w = w * np.abs(np.tanh(j))
 
 
 if __name__ == '__main__':
