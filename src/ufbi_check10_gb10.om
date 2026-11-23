@@ -58,6 +58,11 @@ note 5x5 linear solver scratch: aug 5x6 = 30 f64, sol 5 f64
 global linA f64 30
 global linX f64 5
 
+global kernelWeight f32 1
+global kernelTrial ulong 1
+global kernelFallback ulong 1
+global kernelMinNorm f32 1
+text tKernelStats "projection_min_sq_and_fallbacks\t"
 global rgSrcLvl ulong 1
 global rgDstLvl ulong 1
 global rgLf ulong 1
@@ -497,16 +502,19 @@ put q 2 neg get q 2
 put q 3 neg get q 3
 end
 
-fn hQNorm q edit f32 4 to void
+fn hQNorm q edit f32 4 fallback view f32 4 to void
 n2 = mul get q 0 get q 0
 n2 = add n2 mul get q 1 get q 1
 n2 = add n2 mul get q 2 get q 2
 n2 = add n2 mul get q 3 get q 3
+if lt n2 get kernelMinNorm 0
+put kernelMinNorm 0 n2
+end
 if le n2 0.0000000001f32
-put q 0 1.0f32
-put q 1 0.0f32
-put q 2 0.0f32
-put q 3 0.0f32
+put kernelFallback 0 add get kernelFallback 0 1
+for c ulong 4
+put q c get fallback c
+end
 ret
 end
 inv = f32 div 1.0f64 uSqrt64 f64 n2
@@ -613,6 +621,18 @@ c0 = div t Lc
 ret coordIdx mul c0 2 mul c1 2 mul c2 2 mul c3 2 Lf
 end
 
+fn projectPaths w0 view f32 4 st view f32 4 mixed edit f32 4 to void
+weight = get kernelWeight 0
+wS = div weight 6.0f32
+w0factor = sub 1.0f32 weight
+for c ulong 4
+straightTerm = mul w0factor get w0 c
+stapleTerm = mul wS get st c
+put mixed c add straightTerm stapleTerm
+end
+hQNorm mixed w0
+end
+
 fn blockLinkOne X ulong mu ulong to void
 srcLvl = get rgSrcLvl 0
 Lf = get rgLf 0
@@ -630,12 +650,8 @@ addBlockStaple x mu nu false st
 addBlockStaple x mu nu true st
 end
 end
-wS = div 0.5f32 6.0f32
-for c ulong 4
-put w0 c add mul 0.5f32 get w0 c mul wS get st c
-end
-hQNorm w0
-storeLvl get rgDstLvl 0 X mu w0
+projectPaths w0 st u1
+storeLvl get rgDstLvl 0 X mu u1
 end
 
 fn blockBox srcLvl ulong dstLvl ulong Lf ulong cLo ulong cHi ulong to void
@@ -965,6 +981,9 @@ solve5x5Swap p pivR
 end
 diag = get linA add mul p 6 p
 if le uAbs64 diag 0.000000000001f64
+if ne get kernelTrial 0 0
+exit 67
+end
 ret
 end
 for r3 ulong 5
@@ -986,6 +1005,9 @@ end
 end
 d4 = get linA add mul r4 6 r4
 if le uAbs64 d4 0.000000000001f64
+if ne get kernelTrial 0 0
+exit 67
+end
 put linX r4 0.0f64
 else
 put linX r4 div rhs d4
@@ -1151,7 +1173,40 @@ end
 ret m
 end
 
+fn kernelArg idx ulong to ulong
+b = new uchar 9 0
+n = argread idx b 0 9
+if le n 0
+exit 64
+end
+r = ulong 0
+for i ulong ulong n bound 9
+c = get b i
+if or lt c 48 gt c 57
+exit 64
+end
+r = add mul r 10 ulong sub c 48
+end
+ret r
+end
+
 fn main to int
+put kernelWeight 0 0.5f32
+put kernelMinNorm 0 2.0f32
+seed = ulong 0
+if ne argcnt 1
+if ne argcnt 3
+ret 64
+end
+quarter = kernelArg 1
+seed = kernelArg 2
+if gt quarter 4
+ret 64
+end
+put kernelTrial 0 1
+put kernelWeight 0 div f32 quarter 4.0f32
+put uStrictRejection 0 1
+end
 uPrint tC10Hdr
 if not gbopen 1
 uPrint tC10Err
@@ -1182,6 +1237,24 @@ put dFlags 0 allocBuf 16777216 true
 put dNbSite 0 allocBuf 33554432 true
 put dRng 0 allocBuf 4194304 true
 
+if ne get kernelTrial 0 0
+if not buildNbTableStream 32
+ret 14
+end
+if not buildFlagsStream 32
+ret 15
+end
+uPrint tC10Cols
+runSD32 2.30f32 add seed 0xac310000
+uPrint tKernelStats
+uPrintF64 f64 get kernelMinNorm 0
+uPrint tTab
+uPrintU get kernelFallback 0
+uPrint tNl
+uPrint tC10Done
+rc = nvmclose
+ret 0
+end
 uPrint tC10H16
 uPrint tC10Cols
 if not buildNbTableStream 16

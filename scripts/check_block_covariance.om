@@ -1,0 +1,116 @@
+note Directly exercise the production blocking routine on noncommuting periodic links.
+global fixtureLinks f32 4096
+global fixtureFrames f32 1024
+global fixtureCoarse f32 256
+text tBlockCov "blocked-link covariance and zero-projection fallback PASS\n"
+
+fn rngUnit u edit f32 4 to void
+n2 = f64 0.0f64
+for c ulong 4
+z = uRngNorm64
+put u c f32 z
+n2 = add n2 mul z z
+end
+for c ulong 4
+put u c f32 div f64 get u c uSqrt64 n2
+end
+end
+
+fn frame s ulong u edit f32 4 to void
+for c ulong 4
+put u c get fixtureFrames add mul s 4 c
+end
+end
+
+fn transformFixtureLink s ulong mu ulong to void
+g = new f32 4 0.0f32
+h = new f32 4 0.0f32
+u = new f32 4 0.0f32
+p = new f32 4 0.0f32
+v = new f32 4 0.0f32
+frame s g
+frame stepCoord s 4 mu 1 h
+hQConj h
+loadLvl 0 s mu u
+hQMul g u p
+hQMul p h v
+storeLvl 0 s mu v
+end
+
+fn compareHostLink v view f32 4 base ulong to void
+for c ulong 4
+if gt uAbs64 f64 sub get v c get hL2 add base c 0.00002f64
+exit 68
+end
+end
+end
+
+fn compareFixtureLink X ulong mu ulong to void
+x = coarseToFine X 4
+g = new f32 4 0.0f32
+h = new f32 4 0.0f32
+u = new f32 4 0.0f32
+p = new f32 4 0.0f32
+v = new f32 4 0.0f32
+frame x g
+frame stepCoord x 4 mu 2 h
+hQConj h
+base = mul add mul X 4 mu 4
+for c ulong 4
+put u c get fixtureCoarse add base c
+end
+hQMul g u p
+hQMul p h v
+compareHostLink v base
+end
+
+fn checkBlocked clos ulong to void
+put kernelWeight 0 div f32 clos 4.0f32
+for i ulong 4096
+put hL1 i get fixtureLinks i
+end
+blockBox 0 1 4 0 2
+for i ulong 256
+put fixtureCoarse i get hL2 i
+end
+for s ulong 256
+for mu ulong 4
+transformFixtureLink s mu
+end
+end
+blockBox 0 1 4 0 2
+for X ulong 16
+for mu ulong 4
+compareFixtureLink X mu
+end
+end
+end
+
+fn main to int
+uRngSeed 78321
+v = new f32 4 0.0f32
+for s ulong 256
+rngUnit v
+for c ulong 4
+put fixtureFrames add mul s 4 c get v c
+end
+for mu ulong 4
+rngUnit v
+for c ulong 4
+put fixtureLinks add mul add mul s 4 mu 4 c get v c
+end
+end
+end
+for clos ulong 5
+checkBlocked clos
+end
+zero = new f32 4 0.0f32
+hQNorm zero v
+for c ulong 4
+if ne get zero c get v c
+ret 69
+end
+end
+uPrint tBlockCov
+ret 0
+end

@@ -2,6 +2,8 @@
 
 Lean proves both normalized trial energies are at most $1/12$ throughout $0\le r\le6\beta$ for $\beta\le7/25$. At $r=0$ both equal $1/12$. The following argument covers zero and positive fields together. [Lean proof](../proofs/OneLinkTransport.lean)
 
+The analytic endpoint theorem now also covers β = 0.288, with a squared degree-12 trial coefficient of at most 0.995328. A second proof checks both continuous energies against the executable integer entries on the full angular and field grid. [Field-box enclosure](../proofs/DyadicEnergyReplay.lean) · [Numerical comparison and scope](finite_probe_results.md)
+
 ## Analytic bound
 
 Write $p=\sin^2\theta\,e^{r\cos\theta}$, $Z=\int p$, $m=\int p\cos\theta/Z$ and $F(t)=\int_0^t p(\cos\theta-m)$. For the polar energy put $K=F/\sin^2\theta$. L’Hôpital’s rule gives $K=0$ by continuous extension at both poles. Differentiate

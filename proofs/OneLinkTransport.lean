@@ -112,15 +112,14 @@ theorem sin_moment_cap {r : ℝ} (hr : 0 ≤ r) :
     intervalIntegral.integral_const_mul] at hh
   linarith
 
-/-- Integrated transverse field cost on S³ over every staple field used at β ≤ 0.280.
+/-- Integrated transverse field cost on S³ for every field up to 7/4.
 The positive normalization is common to both sides. -/
-theorem transverse_integral_cap {β r : ℝ} (hβ : β ≤ 7/25)
-    (hr : r ∈ Set.Icc 0 (6*β)) :
+theorem transverse_field_cap {r : ℝ} (hr : r ∈ Set.Icc 0 (7/4)) :
     (∫ t in 0..π, weight r t * transverseCost r (cos t)) ≤
       (∫ t in 0..π, weight r t) / 12 := by
   have hc : Continuous (excess r) := by unfold excess weight transverseCost; fun_prop
   have hd : Continuous (slope r) := by unfold slope; fun_prop
-  have hpair := fold_cap hc hd (fun t ht => paired_excess hr.1 (by linarith [hr.2]) ht)
+  have hpair := fold_cap hc hd (fun t ht => paired_excess hr.1 hr.2 ht)
   rw [slope_integral_zero] at hpair
   have he : excess r = fun t => weight r t * transverseCost r (cos t) - weight r t * (1/12) := by
     funext t; unfold excess; ring
@@ -130,6 +129,12 @@ theorem transverse_integral_cap {β r : ℝ} (hβ : β ≤ 7/25)
   rw [he, intervalIntegral.integral_sub (hwc.intervalIntegrable _ _)
     (hw12.intervalIntegrable _ _), intervalIntegral.integral_mul_const] at hpair
   linarith
+
+theorem transverse_integral_cap {β r : ℝ} (hβ : β ≤ 7/25)
+    (hr : r ∈ Set.Icc 0 (6*β)) :
+    (∫ t in 0..π, weight r t * transverseCost r (cos t)) ≤
+      (∫ t in 0..π, weight r t) / 12 :=
+  transverse_field_cap ⟨hr.1, by linarith [hr.2]⟩
 
 private def reduced (F : ℝ → ℝ) (t : ℝ) := F t / sin t^2
 
@@ -341,6 +346,22 @@ theorem s3_w2_orthogonality_bound {β r c s : ℝ} (hβ : β ≤ 7/25) (hr : r �
   refine ⟨by positivity, ?_⟩
   rw [div_pow, mul_pow, Real.sq_sqrt (by norm_num : (0:ℝ) ≤ 3)]
   linarith
+
+/-- The analytic estimate also covers every field of the last replay row, β = 0.288.
+The degree counts in this trial do not identify a periodic Wilson coupling. -/
+theorem replay_endpoint_288 {r c s : ℝ} (hr : r ∈ Icc 0 (6*(36/125:ℝ)))
+    (hcs : c^2+s^2=1) :
+    (12*(36/125:ℝ))^2 * (c^2*parallelEnergy r + s^2*transverseEnergy r) ≤
+      15552/15625 ∧ (15552:ℝ)/15625 < 1 := by
+  have cap := transverse_field_cap (r := r) ⟨hr.1, by linarith [hr.2]⟩
+  have ht : transverseEnergy r ≤ 1/12 := by
+    apply (div_le_iff₀ (normalizer_pos hr.1)).2
+    linarith
+  have h1 := mul_le_mul_of_nonneg_left (parallel_energy_cap hr.1) (sq_nonneg c)
+  have h2 := mul_le_mul_of_nonneg_left ht (sq_nonneg s)
+  constructor <;> nlinarith
+
+#print axioms replay_endpoint_288
 
 /-- At the Phase IV endpoint the square of the proposed degree-12 coefficient is
 940800 / 1000000. This expression has no quadrature inputs. -/

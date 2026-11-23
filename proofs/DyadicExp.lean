@@ -66,11 +66,14 @@ private theorem squareDown_mono {v w : ℤ} (hv : 0 ≤ v) (hvw : v ≤ w) (n : 
     exact ⟨Int.ediv_nonneg (mul_nonneg ih.1 ih.1) (by decide),
       Int.ediv_le_ediv (by decide) (mul_le_mul ih.2 ih.2 ih.1 hw)⟩
 
-theorem expLo_pos {x : ℤ} (hx : -(2*q) ≤ x) : 0 < expLo x := by
+theorem expLo_floor {x : ℤ} (hx : -(2*q) ≤ x) : q / 8 ≤ expLo x := by
   have hv : 0 ≤ q + (-(2*q))/4096 := by decide
   have hh : q + (-(2*q))/4096 ≤ q + x/4096 :=
     add_le_add_right (Int.ediv_le_ediv (by decide) hx) q
-  exact (show 0 < expLo (-(2*q)) by decide).trans_le (squareDown_mono hv hh 12).2
+  exact (show q / 8 ≤ expLo (-(2*q)) by decide).trans (squareDown_mono hv hh 12).2
+
+theorem expLo_pos {x : ℤ} (hx : -(2*q) ≤ x) : 0 < expLo x :=
+  (show 0 < q / 8 by decide).trans_le (expLo_floor hx)
 
 theorem expHi_sound {x : ℤ} (hx : x ≤ 2*q) :
     Real.exp ((x:ℝ)/q) ≤ (expHi x : ℝ)/q := by

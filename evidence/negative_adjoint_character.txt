@@ -1,0 +1,4 @@
+beta_F 23/10 beta_A -19/500 order 110
+first negative SU(2) character coefficient after removing exp(beta_A/3)
+n 19 spin 19/2 lower -2.12790262597e-19 upper -2.12790262597e-19
+rigorous arithmetic: upper < 0; all preceding lower bounds > 0

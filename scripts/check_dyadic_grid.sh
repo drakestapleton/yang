@@ -15,13 +15,14 @@ chmod +x "$build/dump"
 "$omc" < "$build/w2.om" > "$build/w2"
 chmod +x "$build/w2"
 "$build/w2" > "$build/w2-omega.tsv"
-cd "$HOME/workspace/yang-lean-bridge"
+cd "${YANG_LEAN_BRIDGE:-$HOME/workspace/yang-lean-bridge}"
 export PATH="$HOME/.elan/bin:$PATH"
 lake env sh -ec '
   export LEAN_PATH="$1:$LEAN_PATH"
   cd "$2"
-  lean -o "$1/DyadicTrig.olean" proofs/DyadicTrig.lean
-  lean -o "$1/DyadicExp.olean" proofs/DyadicExp.lean
+  for m in OpenAiYmBridge DobrushinShlosman WilsonPolymerBridge PhaseFourBridge OneLinkTransport DyadicTrig DyadicExp DyadicPartition DyadicPolarFlux DyadicEnergyReplay; do
+    lean -DmaxHeartbeats=450000 -R proofs -o "$1/$m.olean" "proofs/$m.lean"
+  done
   lean --run scripts/ReplayDyadicTrig.lean > "$1/lean.tsv"
   lean --run scripts/ReplayDyadicW2.lean > "$1/w2-lean.tsv"
 ' sh "$build" "$root"
