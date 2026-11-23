@@ -70,38 +70,15 @@ ret ivHi max2 max2 p1 p2 max2 p3 p4
 end
 
 note Box estimate of sin(t) on [t0, t1] subset [0, pi]
-fn sinBoxLo t0 f64 t1 f64 to f64
-ret max2 0.0f64 ivLo min2 ivSin64 t0 ivSin64 t1
-end
-
-fn sinBoxHi t0 f64 t1 f64 to f64
-hp = uHalfPi
-if and le t0 hp ge t1 hp
-ret 1.0f64
-end
-ret ivHi min2 1.0f64 max2 ivSin64 t0 ivSin64 t1
-end
-
-note Box estimate of cos(t) on [t0, t1] subset [0, pi] (strictly decreasing!)
-fn cosBoxLo t0 f64 t1 f64 to f64
-ret ivLo ivCos64 t1
-end
-
-fn cosBoxHi t0 f64 t1 f64 to f64
-ret ivHi ivCos64 t0
-end
-
 fn encloseS3Trig i ulong dt f64 to void
 t0 = mul f64 i dt
 t1 = mul f64 add i 1 dt
 put ivStep 0 t0
 put ivStep 1 t1
-put ivStep 2 cosBoxLo t0 t1
-put ivStep 3 cosBoxHi t0 t1
-sLo = sinBoxLo t0 t1
-sHi = sinBoxHi t0 t1
-put ivStep 6 ivLo mul sLo sLo
-put ivStep 7 ivHi mul sHi sHi
+put ivStep 2 gridCosLo i
+put ivStep 3 gridCosHi i
+put ivStep 6 gridSinSqLo i
+put ivStep 7 gridSinSqHi i
 end
 
 fn encloseS3Weight dt f64 rLo f64 rHi f64 to void
@@ -305,7 +282,8 @@ end
 text tTrigFail "TRIG_ENDPOINT status=FAIL\n"
 
 fn main to int
-if or lt cosBoxHi 0.0f64 0.0f64 1.0f64 gt cosBoxLo uPi uPi neg 1.0f64
+initTrigGrid
+if eq trigGridOK 0
 uPrint tTrigFail
 ret 1
 end

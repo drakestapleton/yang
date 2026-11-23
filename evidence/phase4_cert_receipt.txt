@@ -1,28 +1,40 @@
-Phase IV numerical verifier review, 2026-11-22, Spark CPU
-Compiler: ~/canon/omega-mv/seed/out/omc, SHA-256 matches PIN.
-Build and run: sh scripts/build_and_run_spark.sh phase4_cert
-omc_exit=0 run_exit=0 final_line="PHASE4_CERT_DONE status=PASS"
-Static AArch64 ELF: 57616 bytes
-binary_sha256=489bf785bc7a632312d1a25398b7cd9f067a6422424ff5fd208cf68612067d88
+Phase IV verifier, Spark CPU, 2026-11-22
+Pinned native OM-2 compiler SHA-256: 708fdc0f81866594ed6df2f492b7a8a6bc7456f2d733a838b7f840549ebba6c3
+Commands: sh scripts/build_and_run_spark.sh {interval_cert,phase3b_cert,phase4_cert,dyadic_grid}
+All three verifier binaries returned 0. Static AArch64 ELF sizes and SHA-256:
+ 23852 ufbi_interval_rg_cert
+ 25776 ufbi_phase3b_cert
+ 55868 ufbi_phase4_cert
+105496 total
+d613b41bf370d5c51aa3cd7fbb2a661dcacdaa09bd4d54acaae31f882cf4a024  ufbi_interval_rg_cert
+31b62667cc5f404f07a906eb1b90fc12d6306165d6002aeccb8397144373082f  ufbi_phase3b_cert
+b86e30c0716ec207eaead4d6468a4aacb63948748312203ff49504fb985149d7  ufbi_phase4_cert
 
-Failure controls (each mutation applied separately to a temporary source):
-1. Make ivCos64 call the original uSin64. Compile exit 0; run exit 1, TRIG_ENDPOINT status=FAIL.
-2. Change the expected 0.283 row from OPEN (0) to BT12 (12). Compile exit 0; run exit 1, PHASE4_CERT_DONE status=FAIL.
+Part A uses integer cosine half-angles, squared sine bounds, two-sided bounds for
+exp from 4096 downward-rounded binomial steps (12 squarings), dyadic moment and
+flux sums, outward energy quotients, and integer threshold comparisons. Decimal
+speeds and coefficients are rounded for display. The analytic Lean energy bounds
+hold directly for continuum integrals. The quadrature implementation is additionally
+compared with an arbitrary-precision integer evaluation of the same 2048 field boxes.
+Replay SHA-256:
+fc05b2aafa87df12c0a4af7f263210e2fa63380295bc2ea55dba82a33d8b81be  2048 angle-cell rows
+773512459dbfae4b89d6d7e464d570e7fa8aa105e4ab89f415ea9f0a013cf038  2048 field-box energy pairs
+Phase III-A uses dyadic angle cells and padded binary64 moment arithmetic. Phase IV
+star-cell trig bounds use first-quadrant dyadic indices. The star-cell exponential,
+logarithm, square root and quadrature paths still use padded binary64.
 
-Sibling modes interval_cert and phase3b_cert compiled and ran with exit 0.
-Their ELF SHA-256 values are 6bf191925b059bf6007edde7a7d803e893d027dd3f1db898df98b6deb77d482b
-and 66900f52f279989d2312aa3aa30a69e3db66af4f34ce71955b1b32323c024796.
-
-math-check: FullSimplify[(1-s/2-Sqrt[1-s])/s^2==1/(2(1+Sqrt[1-s])^2),0<s<1] -> True.
-The FP core evaluates this rational form to avoid subtracting nearly equal quantities.
-For the sampled trig/exp/log errors run: uv run --with mpmath python scripts/ivmath_crosscheck.py
-Output: evidence/phase4_ivmath_crosscheck.txt. For the transverse field see phase4_w2_hypothesis_numeric.md.
-The row checks exercise the numerical classifications. The enclosure of every composed
-operation and the implication from a one-link coefficient to lattice decay remain open.
-The star-cell rows concern individual sampled couplings for one cell.
+Temporary mutation controls:
+- Set the upper integer cosine at zero to 2^30-1. Compile 0, run 1, TRIG_ENDPOINT status=FAIL.
+- Change the expected degree-12 classification at beta=0.283 to OPEN. Compile 0, run 1,
+  PHASE4_CERT_DONE status=FAIL. The 0.283 coefficient from this quadrature is 0.996962.
 
 Source and output SHA-256:
+a6fcb89a18c45c113a27f266f0249af9cd0672bbbfddd2aec597c85c4a29e2ca  src/ufbi_interval_rg_cert.om
+9cedee6a6d17675061cceceff38ef35214b1444ee8be926643edc8d6b7453fe2  src/ufbi_phase3b_cert.om
+e6a0b49400da98f3a95977dca617b7c6bf9f352846207d6278e624d8acd1f912  src/ufbi_phase4_cert.om
+fdccfe215aba4a349d30d2574c7842a7b905f64bb70c4be760b94bf4242621c6  src/ufbi_ivmath.om
+ca074e080dd54df851e27e3ef0593d948c19d493417b7be8629c57a47211a498  src/ufbi_w2_dyadic.om
 ef1373564afe5e549fbf8dbb9cc0fea91b329e343b7727a07edee5f5fcb2f45a  src/ufbi_math.om
-7c090ed78e43968bc3793c3dcccc3c1a80dd3dd725e954d4cf76cc361a18649b  src/ufbi_ivmath.om
-ea2c7bd2487900f9bfe210490ed7ed46709567897dc9563c47e9d1804e59062f  src/ufbi_phase4_cert.om
-48b9750e7ec312f65651cf26658fbc584dad4935725154766d38adcc0afd3fc2  evidence/phase4_dual_cliff_cert.tsv
+7b233f2a67e32086342925c19741412f6adacf111bd260ce35b4578a0e14beef  evidence/phase3a_interval_rg_cert.tsv
+884ef7a816b4939efe3462bafbb6c2f506f86f307ed4ca5c8bf2c55bc1ee084c  evidence/phase3b_dual_cliff_cert.tsv
+b82d4b472637f73ed6e3fb9cb6f1a76b2ddcd8e4914322218c229de4bf522cb3  evidence/phase4_dual_cliff_cert.tsv

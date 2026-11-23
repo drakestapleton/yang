@@ -1,0 +1,240 @@
+note SPDX-License-Identifier: Apache-2.0
+note W2 quadrature for 0 <= beta <= 0.288. Values in this file are signed integer
+note multiples of 2^-28 unless explicitly named as totals, counts or basis points.
+note Each input field box uses rational beta and exact integer angle-cell indices.
+note No f64 operations enter a bound or a subunit decision.
+
+fn wScale to long
+ret long 268435456
+end
+
+fn floorRatio n long d long to long
+if lt n 0
+ret neg div add neg n sub d 1 d
+end
+ret div n d
+end
+
+fn ceilRatio n long d long to long
+ret neg floorRatio neg n d
+end
+
+fn lowerProduct x long y long to long
+ret floorRatio mul x y wScale
+end
+
+fn upperProduct x long y long to long
+ret ceilRatio mul x y wScale
+end
+
+fn smaller x long y long to long
+if lt x y
+ret x
+end
+ret y
+end
+
+fn larger x long y long to long
+if gt x y
+ret x
+end
+ret y
+end
+
+note exp(x) >= (1 + x/4096)^4096. Floor at each positive squaring.
+note For |x| <= 1.75 the largest exact squaring product is < 6 * 2^56.
+fn expLower x long to long
+v = add wScale floorRatio x 4096
+for k ulong 12
+v = lowerProduct v v
+end
+ret v
+end
+
+fn expUpper x long to long
+ret ceilRatio mul wScale wScale expLower neg x
+end
+
+global wCosLo long 2048
+global wCosHi long 2048
+global wSinLo long 2048
+global wSinHi long 2048
+global wDensityLo long 2048
+global wDensityHi long 2048
+note moments: sum density lower/upper, sum cosine moment lower/upper, sum transverse cost upper.
+global wMoments long 5
+global wMean long 2
+global wFlux long 2
+global wBoxEnergy long 2
+global wMaxEnergy long 2
+global wFailed long 1
+
+fn initW2Angles to void
+for i ulong 2048
+put wCosLo i floorRatio get gridLo add i 1 4
+put wCosHi i ceilRatio get gridHi i 4
+put wSinLo i long shr gridSinSqLoUnits i 22
+put wSinHi i long shr add gridSinSqHiUnits i 4194303 22
+end
+end
+
+note Multiply a signed interval by a nonnegative interval.
+fn weightedLo x long lo long hi long to long
+if lt x 0
+ret lowerProduct x hi
+end
+ret lowerProduct x lo
+end
+
+fn weightedHi x long lo long hi long to long
+if lt x 0
+ret upperProduct x lo
+end
+ret upperProduct x hi
+end
+
+fn setDensity i ulong rLo long rHi long to void
+xLo = weightedLo get wCosLo i rLo rHi
+xHi = weightedHi get wCosHi i rLo rHi
+wLo = lowerProduct get wSinLo i expLower xLo
+wHi = upperProduct get wSinHi i expUpper xHi
+put wDensityLo i wLo
+put wDensityHi i wHi
+put wMoments 0 add get wMoments 0 wLo
+put wMoments 1 add get wMoments 1 wHi
+put wMoments 2 add get wMoments 2 weightedLo get wCosLo i wLo wHi
+put wMoments 3 add get wMoments 3 weightedHi get wCosHi i wLo wHi
+end
+
+fn transverseDrift i ulong rLo long rHi long to long
+sLo = get wSinLo i
+sHi = get wSinHi i
+rxLo = weightedLo get wCosLo i rLo rHi
+rxHi = weightedHi get wCosHi i rLo rHi
+dLo = floorRatio sub mul 2 wScale weightedHi rxHi sLo sHi 6
+dHi = ceilRatio sub mul 2 wScale weightedLo rxLo sLo sHi 6
+ret larger neg dLo dHi
+end
+
+fn setTransverse i ulong rLo long rHi long to void
+d = transverseDrift i rLo rHi
+c = larger neg get wCosLo i get wCosHi i
+cost = add ceilRatio upperProduct c c 27 ceilRatio mul 2 upperProduct d d 3
+put wMoments 4 add get wMoments 4 upperProduct cost get wDensityHi i
+end
+
+fn meanLo num long zLo long zHi long to long
+if lt num 0
+ret floorRatio mul num wScale zLo
+end
+ret floorRatio mul num wScale zHi
+end
+
+fn meanHi num long zLo long zHi long to long
+if lt num 0
+ret ceilRatio mul num wScale zHi
+end
+ret ceilRatio mul num wScale zLo
+end
+
+note A partial-bin integral is between min(0,incrementLo) and max(0,incrementHi).
+note Both flux sweeps start at a pole where the centered integral vanishes.
+fn fluxCell i ulong backward long to long
+cLo = sub get wCosLo i get wMean 1
+cHi = sub get wCosHi i get wMean 0
+if ne backward 0
+tmp = neg cLo
+cLo = neg cHi
+cHi = tmp
+end
+incLo = weightedLo cLo get wDensityLo i get wDensityHi i
+incHi = weightedHi cHi get wDensityLo i get wDensityHi i
+lo = add get wFlux 0 smaller 0 incLo
+hi = add get wFlux 1 larger 0 incHi
+put wFlux 0 add get wFlux 0 incLo
+put wFlux 1 add get wFlux 1 incHi
+if or eq i 0 eq i 2047
+note |cos-mean| <= 2. Moving inward from a pole, sin^2 increases and
+note the exp factor varies by at most exp(1.75*pi/2048) < 2.
+note Thus |flux|/density <= 4*pi/2048 throughout either end cell.
+ret ceilRatio mul 16 get wDensityHi i 4194304
+end
+den = get wDensityLo i
+if le den 0
+put wFailed 0 1
+ret 0
+end
+a = ceilRatio larger neg lo hi 2048
+ret ceilRatio mul a a den
+end
+
+fn fluxEnergy zLo long to long
+total = long 0
+for side ulong 2
+put wFlux 0 0
+put wFlux 1 0
+for i ulong 1024
+j = i
+if eq side 1
+j = sub 2047 i
+end
+total = add total fluxCell j long side
+end
+end
+avg = ceilRatio total 2048
+ratio = ceilRatio mul avg wScale zLo
+note pi < 3.141593, hence pi^2 < 986961/100000.
+ret ceilRatio mul ratio 986961 100000
+end
+
+fn w2FieldBox rLo long rHi long to void
+for j ulong 5
+put wMoments j 0
+end
+for i ulong 2048
+setDensity i rLo rHi
+setTransverse i rLo rHi
+end
+zLo = floorRatio get wMoments 0 2048
+zHi = ceilRatio get wMoments 1 2048
+if le zLo 0
+put wFailed 0 1
+ret
+end
+put wMean 0 meanLo floorRatio get wMoments 2 2048 zLo zHi
+put wMean 1 meanHi ceilRatio get wMoments 3 2048 zLo zHi
+par = fluxEnergy zLo
+perp = ceilRatio mul ceilRatio get wMoments 4 2048 wScale zLo
+put wBoxEnergy 0 par
+put wBoxEnergy 1 perp
+put wMaxEnergy 0 larger par get wMaxEnergy 0
+put wMaxEnergy 1 larger perp get wMaxEnergy 1
+end
+
+fn scanDyadicW2 betaBps long to void
+put wMaxEnergy 0 0
+put wMaxEnergy 1 0
+if or lt betaBps 0 gt betaBps 2880
+put wFailed 0 1
+ret
+end
+inc = mul mul 6 betaBps wScale
+for k ulong 128
+lo = floorRatio mul long k inc 1280000
+hi = ceilRatio mul long add k 1 inc 1280000
+w2FieldBox lo hi
+end
+end
+
+note energy * (degree * betaBps)^2 < 2^28 * 10000^2; all products fit int64.
+fn dyadicSubunit energy long degree long betaBps long to long
+if or lt energy 0 gt energy wScale
+put wFailed 0 1
+ret 0
+end
+v = mul degree betaBps
+if lt mul mul v v energy mul wScale 100000000
+ret 1
+end
+ret 0
+end

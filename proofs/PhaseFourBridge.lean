@@ -5,7 +5,7 @@
 -- `DobrushinShlosman.lean`, and `WilsonPolymerBridge.lean`.
 --
 -- Section 14 proves gauge invariance of the Wilson law, finite incidence counts, and
--- coefficient inequalities. The one-link W₂ speed bounds and their lattice application are open.
+-- coefficient inequalities. OneLinkTransport bounds the two trial energies and proves a conditional shell transfer.
 -- Section 15 proves star-cell algebraic identities and density-ratio estimates.
 -- Section 16 transfers an assumed uniform moment bound through WilsonFamily.Converges.
 
@@ -150,6 +150,20 @@ def stepP2 (x : Fin 2 × Fin 2 × Fin 2 × Fin 2) (μ : Fin 4) : Fin 2 × Fin 2 
   | 1 => (x.1, x.2.1 + 1, x.2.2.1, x.2.2.2)
   | 2 => (x.1, x.2.1, x.2.2.1 + 1, x.2.2.2)
   | 3 => (x.1, x.2.1, x.2.2.1, x.2.2.2 + 1)
+
+/-- The periodic link assignment contains a directed two-edge loop. -/
+theorem periodic_fixed_two_cycle :
+    let a := ((0,0,0,0) : Fin 2 × Fin 2 × Fin 2 × Fin 2)
+    let b := ((0,0,0,1) : Fin 2 × Fin 2 × Fin 2 × Fin 2)
+    a ≠ b ∧ stepP2 a (balancedTreeDir a) = b ∧ stepP2 b (balancedTreeDir b) = a := by
+  decide
+
+/-- Both links on this loop can be fixed to the identity only for trivial holonomy. -/
+theorem fixed_two_cycle_requires_trivial_holonomy {G : Type*} [Group G]
+    (a b u v : G) (hu : a*u*b⁻¹ = 1) (hv : b*v*a⁻¹ = 1) : u*v = 1 := by
+  calc
+    u*v = a⁻¹ * ((a*u*b⁻¹) * (b*v*a⁻¹)) * a := by group
+    _ = 1 := by rw [hu, hv]; group
 
 /-- Whether link `(x, μ)` in the period-2 unit cell is gauge-fixed (`= 1`). -/
 def isFixedP2 (x : Fin 2 × Fin 2 × Fin 2 × Fin 2) (μ : Fin 4) : Bool :=
@@ -709,6 +723,8 @@ theorem wilson_converges_preserves_uniform_bound
   exact le_of_tendsto hVolNorm (hSuit.mono fun k hk => hRowBound (volumeOrder k) hk)
 
 #print axioms wilsonLaw_map_gaugeAct
+#print axioms periodic_fixed_two_cycle
+#print axioms fixed_two_cycle_requires_trivial_holonomy
 #print axioms lattice_forward_step_height
 #print axioms balanced_tree_p2_all_plaquettes_one_fixed
 #print axioms balanced_tree_p2_all_dyn_deg_twelve

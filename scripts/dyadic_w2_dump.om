@@ -1,0 +1,42 @@
+note Replay both per-box energy bounds at every field box used by III-B and IV.
+text space " "
+text newline "\n"
+
+fn dumpBeta bps long to void
+inc = mul mul 6 bps wScale
+for k ulong 128
+lo = floorRatio mul long k inc 1280000
+hi = ceilRatio mul long add k 1 inc 1280000
+w2FieldBox lo hi
+uPrintI bps
+uPrint space
+uPrintU k
+uPrint space
+uPrintI get wBoxEnergy 0
+uPrint space
+uPrintI get wBoxEnergy 1
+uPrint newline
+end
+end
+
+fn main to int
+initTrigGrid
+initW2Angles
+dumpBeta 1000
+dumpBeta 1272
+dumpBeta 1500
+dumpBeta 1800
+dumpBeta 1900
+dumpBeta 1950
+dumpBeta 2000
+dumpBeta 2200
+dumpBeta 2400
+dumpBeta 2450
+dumpBeta 2500
+dumpBeta 2600
+dumpBeta 2750
+dumpBeta 2800
+dumpBeta 2830
+dumpBeta 2880
+ret int get wFailed 0
+end

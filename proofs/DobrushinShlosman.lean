@@ -723,6 +723,41 @@ theorem dobrushin_shlosman_exponential_decay
     field_simp [hR.ne']
   rw [hExpArg, mul_comm, Real.exp_mul, Real.exp_log hα0, Real.rpow_natCast]
 
+/-- Transfer finite-volume shell recurrence to the continuum on each vacuum-orthogonal
+state. The shell spacing is physical and independent of the volume index. -/
+theorem shell_limits_imply_relativistic_mass_gap {H : HilbertSpace} {Labels : FieldLabels}
+    (T : WightmanTheory H Labels) (hW0 : T.W0) (hW1 : T.W1)
+    {R α : ℝ} (hR : 0 < R) (hα : 0 < α) (hα1 : α < 1)
+    (hVac : T.energyMomentum.diagonal T.fields.vacuum.1
+      (energyGapStrip ((1/R)*Real.log (1/α))) = 0)
+    (hShell : ∀ ψ : H.carrier, inner ℂ T.fields.vacuum.1 ψ = 0 →
+      ∃ f : ℕ → ℕ → ℝ,
+        (∀ k : ℕ, Tendsto (fun n => f n k) atTop
+          (𝓝 (∫ p, Real.exp (-((k : ℝ)*R)*YangMills.time p) ∂(T.energyMomentum.diagonal ψ)))) ∧
+        ∀ n k, f n (k+1) ≤ α * f n k) :
+    HasRelativisticMassGap T ((1/R)*Real.log (1/α)) := by
+  let Δ := (1/R)*Real.log (1/α)
+  have hΔ : 0 < Δ := (dobrushin_shlosman_exponential_decay (C := 1) hR hα hα1 0).2
+  apply uniform_decay_implies_relativistic_mass_gap T hW0 hW1
+  refine ⟨hΔ, hVac, fun ψ hψ => ?_⟩
+  obtain ⟨f, hLim, hStep⟩ := hShell ψ hψ
+  let L := fun k : ℕ => ∫ p, Real.exp (-((k : ℝ)*R)*YangMills.time p) ∂(T.energyMomentum.diagonal ψ)
+  have hrec (k : ℕ) : L (k+1) ≤ α * L k :=
+    le_of_tendsto_of_tendsto' (hLim (k+1)) (tendsto_const_nhds.mul (hLim k)) (fun n => hStep n k)
+  have hL0 : 0 ≤ L 0 := integral_nonneg (fun _ => (Real.exp_pos _).le)
+  apply state_decay_of_shell_bounds T hW0 ψ hR hΔ.le hL0
+  intro k
+  have hb : L k ≤ L 0 * α ^ k := by
+    induction k with
+    | zero => simp
+    | succ k ih =>
+      calc L (k+1) ≤ α * L k := hrec k
+        _ ≤ α * (L 0 * α ^ k) := mul_le_mul_of_nonneg_left ih hα.le
+        _ = L 0 * α ^ (k+1) := by ring
+  exact hb.trans_eq (dobrushin_shlosman_exponential_decay (C := L 0) hR hα hα1 k).1
+
+#print axioms shell_limits_imply_relativistic_mass_gap
+
 /-- **Theorem 4B (Phase II Conditional RG-to-DS Continuum Mass-Gap Theorem):**
 Suppose for a sequence of lattice spacings `a_n > 0` (`a_n → 0`), after `k_n` steps of
 2x gauge-covariant block-spin RG blocking reaching a fixed physical confinement scale

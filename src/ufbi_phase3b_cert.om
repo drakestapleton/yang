@@ -3,26 +3,17 @@ note src/ufbi_phase3b_cert.om: Pure Seeded-OM-2 Zero-Monte-Carlo Dual-Cliff Veri
 note
 note Part A computes numerical box estimates for the parallel and transverse one-link speeds.
 note Part B evaluates the star-cell remainder formulas on the sampled beta and cutoff grid.
-note Both use padded binary64 arithmetic. End-to-end enclosure correctness remains open.
+note Part A uses integer dyadic quadrature. Part B uses padded binary64 arithmetic.
 
-note Composed after: src/ufbi_math.om and src/ufbi_ivmath.om
+note Composed after src/ufbi_math.om, src/ufbi_ivmath.om and src/ufbi_w2_dyadic.om.
 
-global pZ f64 2
-global pM f64 2
-global pPerp f64 2
-global pPar f64 2
-global pAcc f64 8
-global pSt f64 10
-global pFlux f64 4
-global maxW2Par f64 1
-global maxW2Perp f64 1
 global bRes f64 8
 global bTmp f64 8
 
 text tP3Hdr "=== PHASE III-B ZERO-MONTE-CARLO DUAL-CLIFF VERIFIER (PURE SEEDED OM-2) ===\n"
-text tP3AHdr "=== PART A: RIGHT CLIFF — S^3 W_2 CONTINUITY-FIELD ESTIMATES (2048 x 128 BOXES) ===\n"
+text tP3AHdr "=== PART A: RIGHT CLIFF — DYADIC S^3 W_2 TRIAL ENERGIES (2048 x 128 BOXES) ===\n"
 text tP3ACols "beta\tW2_par_hi\tW2_perp_hi\tL_W2_hi\tUnfix18_W2_hi\tTG14_W2_hi\tcert\n"
-text tP3BHdr "=== PART B: LEFT CLIFF — 4D STAR K_{2,2,2,2} THEOREM 13 (161/96b, y_max=u^2/64b, e^{+y}-1, chi_21^2) ===\n"
+text tP3BHdr "=== PART B: PADDED BINARY64 STAR-CELL DIAGNOSTICS — 4D STAR K_{2,2,2,2} THEOREM 13 (161/96b, y_max=u^2/64b, e^{+y}-1, chi_21^2) ===\n"
 text tP3BCols "beta\topt_u\trMax_hi\tyMax_hi\trem_exp_hi\trem_haar_hi\ttail_LF_hi\ttot_int_hi\ttot_full_hi\tstatus\n"
 text tPassU "PASS_UNFIX18"
 text tPassTG "PASS_TG14_W2"
@@ -33,13 +24,6 @@ text tTab "\t"
 text tNl "\n"
 text tDone "PHASE3B_CERT_DONE status=PASS\n"
 
-fn min2 a f64 b f64 to f64
-if lt a b
-ret a
-end
-ret b
-end
-
 fn max2 a f64 b f64 to f64
 if gt a b
 ret a
@@ -47,214 +31,20 @@ end
 ret b
 end
 
-fn ivMulLo alo f64 ahi f64 blo f64 bhi f64 to f64
-p1 = mul alo blo
-p2 = mul alo bhi
-p3 = mul ahi blo
-p4 = mul ahi bhi
-ret ivLo min2 min2 p1 p2 min2 p3 p4
-end
-
-fn ivMulHi alo f64 ahi f64 blo f64 bhi f64 to f64
-p1 = mul alo blo
-p2 = mul alo bhi
-p3 = mul ahi blo
-p4 = mul ahi bhi
-ret ivHi max2 max2 p1 p2 max2 p3 p4
-end
-
-fn sinLo t0 f64 t1 f64 to f64
-ret max2 0.0f64 ivLo min2 ivSin64 t0 ivSin64 t1
-end
-
-fn sinHi t0 f64 t1 f64 to f64
-hp = uHalfPi
-if and le t0 hp ge t1 hp
-ret 1.0f64
-end
-ret ivHi min2 1.0f64 max2 ivSin64 t0 ivSin64 t1
-end
-
-fn cosLo t0 f64 t1 f64 to f64
-ret ivLo ivCos64 t1
-end
-
-fn cosHi t0 f64 t1 f64 to f64
-ret ivHi ivCos64 t0
-end
-
-note pSt: 0=t0, 1=t1, 2=cLo, 3=cHi, 4=s2Lo, 5=s2Hi, 6=wLo, 7=wHi, 8=pL, 9=pH
-fn boxTrig i ulong dt f64 to void
-t0 = mul f64 i dt
-t1 = mul f64 add i 1 dt
-put pSt 0 t0
-put pSt 1 t1
-put pSt 2 cosLo t0 t1
-put pSt 3 cosHi t0 t1
-sL = sinLo t0 t1
-sH = sinHi t0 t1
-put pSt 4 ivLo mul sL sL
-put pSt 5 ivHi mul sH sH
-end
-
-fn boxWeight dt f64 rLo f64 rHi f64 to void
-eL = ivLo uExp64 ivMulLo rLo rHi get pSt 2 get pSt 3
-eH = ivHi uExp64 ivMulHi rLo rHi get pSt 2 get pSt 3
-ws = mul div 2.0f64 uPi dt
-wL = ivLo mul ws mul get pSt 4 eL
-wH = ivHi mul ws mul get pSt 5 eH
-if lt wL 0.0f64
-wL = 0.0f64
-end
-put pSt 6 wL
-put pSt 7 wH
-end
-
-note Pass 1 split into two <=6-register helpers to stay comfortably inside omc FP reg pool
-fn accumPass1A to void
-cL = get pSt 2
-cH = get pSt 3
-wL = get pSt 6
-wH = get pSt 7
-put pAcc 0 ivLo add get pAcc 0 wL
-put pAcc 1 ivHi add get pAcc 1 wH
-put pAcc 2 ivLo add get pAcc 2 ivMulLo cL cH wL wH
-put pAcc 3 ivHi add get pAcc 3 ivMulHi cL cH wL wH
-csH = ivHi max2 mul cL cL mul cH cH
-put pAcc 4 ivHi add get pAcc 4 mul csH wH
-end
-
-fn accumPass1B rLo f64 rHi f64 to void
-scL = ivMulLo get pSt 4 get pSt 5 get pSt 2 get pSt 3
-scH = ivMulHi get pSt 4 get pSt 5 get pSt 2 get pSt 3
-rscL = ivMulLo rLo rHi scL scH
-rscH = ivMulHi rLo rHi scL scH
-dL = ivLo sub div 1.0f64 3.0f64 div rscH 6.0f64
-dH = ivHi sub div 1.0f64 3.0f64 div rscL 6.0f64
-put pAcc 5 ivHi add get pAcc 5 mul ivHi max2 mul dL dL mul dH dH get pSt 7
-end
-
-fn pass1Box rLo f64 rHi f64 to void
-dt = div uPi 2048.0f64
-for k ulong 6
-put pAcc k 0.0f64
-end
-for i ulong 2048
-boxTrig i dt
-boxWeight dt rLo rHi
-accumPass1A
-accumPass1B rLo rHi
-end
-zL = get pAcc 0
-zH = get pAcc 1
-put pZ 0 zL
-put pZ 1 zH
-put pM 0 ivLo min2 div get pAcc 2 zH div get pAcc 2 zL
-put pM 1 ivHi max2 div get pAcc 3 zL div get pAcc 3 zH
-c2H = ivHi div get pAcc 4 zL
-d2H = ivHi div get pAcc 5 zL
-ePerp = ivHi add div c2H 27.0f64 mul div 2.0f64 3.0f64 d2H
-put pPerp 1 ivHi uSqrt64 ePerp
-end
-
-note Pass 2: Benamou-Brenier W2_par via cumulative flux F_fwd / G_bwd (split into <=6-reg helpers)
-fn boxProb to void
-put pSt 8 ivLo div get pSt 6 get pZ 1
-put pSt 9 ivHi div get pSt 7 get pZ 0
-end
-
-fn stepFluxFwdUpdate to void
-put pAcc 0 ivMulLo ivLo sub get pSt 2 get pM 1 ivHi sub get pSt 3 get pM 0 get pSt 8 get pSt 9
-put pAcc 1 ivMulHi ivLo sub get pSt 2 get pM 1 ivHi sub get pSt 3 get pM 0 get pSt 8 get pSt 9
-put pAcc 2 get pFlux 0
-put pAcc 3 get pFlux 1
-put pFlux 0 ivLo add get pAcc 2 get pAcc 0
-put pFlux 1 ivHi add get pAcc 3 get pAcc 1
-a0 = max2 uAbs64 get pAcc 2 uAbs64 get pAcc 3
-a1 = max2 uAbs64 get pFlux 0 uAbs64 get pFlux 1
-put pAcc 4 max2 a0 a1
-end
-
-fn stepFluxFwd i ulong dt f64 rLo f64 rHi f64 to void
-boxTrig i dt
-boxWeight dt rLo rHi
-boxProb
-stepFluxFwdUpdate
-if eq i 0
-eb = ivHi mul mul ivHi sub 1.0f64 get pM 0 ivHi uExp64 mul 0.5f64 mul rHi mul dt dt dt
-put pPar 1 ivHi add get pPar 1 mul mul eb eb get pSt 9
-else
-fd = ivHi mul get pAcc 4 dt
-put pPar 1 ivHi add get pPar 1 ivHi div ivHi mul fd fd get pSt 8
-end
-end
-
-fn stepFluxBwdUpdate to void
-put pAcc 0 ivMulLo ivLo sub get pM 0 get pSt 3 ivHi sub get pM 1 get pSt 2 get pSt 8 get pSt 9
-put pAcc 1 ivMulHi ivLo sub get pM 0 get pSt 3 ivHi sub get pM 1 get pSt 2 get pSt 8 get pSt 9
-put pAcc 2 get pFlux 2
-put pAcc 3 get pFlux 3
-put pFlux 2 ivLo add get pAcc 2 get pAcc 0
-put pFlux 3 ivHi add get pAcc 3 get pAcc 1
-a0 = max2 uAbs64 get pAcc 2 uAbs64 get pAcc 3
-a1 = max2 uAbs64 get pFlux 2 uAbs64 get pFlux 3
-put pAcc 4 max2 a0 a1
-end
-
-fn stepFluxBwd i ulong dt f64 rLo f64 rHi f64 to void
-boxTrig i dt
-boxWeight dt rLo rHi
-boxProb
-stepFluxBwdUpdate
-if eq i 2047
-eb = ivHi mul mul ivHi add 1.0f64 get pM 1 ivHi uExp64 mul 0.5f64 mul rHi mul dt dt dt
-put pPar 1 ivHi add get pPar 1 mul mul eb eb get pSt 9
-else
-gd = ivHi mul get pAcc 4 dt
-put pPar 1 ivHi add get pPar 1 ivHi div ivHi mul gd gd get pSt 8
-end
-end
-
-fn pass2W2Par rLo f64 rHi f64 to void
-dt = div uPi 2048.0f64
-put pFlux 0 0.0f64
-put pFlux 1 0.0f64
-put pFlux 2 0.0f64
-put pFlux 3 0.0f64
-put pPar 1 0.0f64
-for i ulong 1024
-stepFluxFwd i dt rLo rHi
-end
-for j ulong 1024
-stepFluxBwd sub 2047 j dt rLo rHi
-end
-put pPar 0 ivHi uSqrt64 get pPar 1
-end
-
-fn scanW2Beta beta f64 to void
-dr = div mul 6.0f64 beta 128.0f64
-put maxW2Par 0 0.0f64
-put maxW2Perp 0 0.0f64
-for k ulong 128
-r0 = mul f64 k dr
-r1 = mul f64 add k 1 dr
-pass1Box r0 r1
-pass2W2Par r0 r1
-if gt get pPar 0 get maxW2Par 0
-put maxW2Par 0 get pPar 0
-end
-if gt get pPerp 1 get maxW2Perp 0
-put maxW2Perp 0 get pPerp 1
-end
-end
-lW2 = max2 get maxW2Par 0 get maxW2Perp 0
-u18 = ivHi mul 18.0f64 mul beta lW2
-tg14 = ivHi mul 14.0f64 mul beta lW2
+fn scanW2Beta bps long to void
+scanDyadicW2 bps
+beta = div f64 bps 10000.0f64
+par = uSqrt64 div f64 get wMaxEnergy 0 f64 wScale
+perp = uSqrt64 div f64 get wMaxEnergy 1 f64 wScale
+energy = larger get wMaxEnergy 0 get wMaxEnergy 1
+lW2 = max2 par perp
+u18 = mul 18.0f64 mul beta lW2
+tg14 = mul 14.0f64 mul beta lW2
 uPrintF64 beta
 uPrint tTab
-uPrintF64 get maxW2Par 0
+uPrintF64 par
 uPrint tTab
-uPrintF64 get maxW2Perp 0
+uPrintF64 perp
 uPrint tTab
 uPrintF64 lW2
 uPrint tTab
@@ -262,10 +52,10 @@ uPrintF64 u18
 uPrint tTab
 uPrintF64 tg14
 uPrint tTab
-if lt u18 1.0f64
+if ne dyadicSubunit energy 18 bps 0
 uPrint tPassU
 else
-if lt tg14 1.0f64
+if ne dyadicSubunit energy 14 bps 0
 uPrint tPassTG
 else
 uPrint tOpen
@@ -359,24 +149,29 @@ end
 text tTrigFail "TRIG_ENDPOINT status=FAIL\n"
 
 fn main to int
-if or lt cosHi 0.0f64 0.0f64 1.0f64 gt cosLo uPi uPi neg 1.0f64
+initTrigGrid
+initW2Angles
+if eq trigGridOK 0
 uPrint tTrigFail
 ret 1
 end
 uPrint tP3Hdr
 uPrint tP3AHdr
 uPrint tP3ACols
-scanW2Beta 0.100f64
-scanW2Beta 0.1272f64
-scanW2Beta 0.150f64
-scanW2Beta 0.180f64
-scanW2Beta 0.190f64
-scanW2Beta 0.195f64
-scanW2Beta 0.200f64
-scanW2Beta 0.220f64
-scanW2Beta 0.240f64
-scanW2Beta 0.245f64
-scanW2Beta 0.250f64
+scanW2Beta 1000
+scanW2Beta 1272
+scanW2Beta 1500
+scanW2Beta 1800
+scanW2Beta 1900
+scanW2Beta 1950
+scanW2Beta 2000
+scanW2Beta 2200
+scanW2Beta 2400
+scanW2Beta 2450
+scanW2Beta 2500
+if ne get wFailed 0 0
+ret 1
+end
 uPrint tP3BHdr
 uPrint tP3BCols
 evalStarSaddle 2.30f64

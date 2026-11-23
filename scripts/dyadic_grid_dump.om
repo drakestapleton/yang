@@ -1,0 +1,19 @@
+note Dump the integer cell endpoints used by all three numerical verifiers.
+text space " "
+text newline "\n"
+fn main to int
+initTrigGrid
+for i ulong 2048
+uPrintU i
+uPrint space
+uPrintI get gridLo add i 1
+uPrint space
+uPrintI get gridHi i
+uPrint space
+uPrintU gridSinSqLoUnits i
+uPrint space
+uPrintU gridSinSqHiUnits i
+uPrint newline
+end
+ret 0
+end

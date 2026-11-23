@@ -384,6 +384,8 @@ elif [ "$MODE" = "check10" ]; then
     cat '$REMOTE_DIR/evidence/check10_gb10_run.tsv'
     exit \$rc
   "
+elif [ "$MODE" = "dyadic_grid" ]; then
+  ssh spark "sh '$REMOTE_DIR/scripts/check_dyadic_grid.sh' '$REMOTE_DIR' '$OMEGA_DIR/seed/out/omc'"
 elif [ "$MODE" = "interval_cert" ]; then
   echo "=== Building & running pure OM-2 Zero-MC Interval-Arithmetic Verifier on Spark CPU ==="
   ssh spark "set -eu
@@ -405,7 +407,7 @@ elif [ "$MODE" = "phase3b_cert" ]; then
     OMC=seed/out/omc
     {
       printf 'om2\n'
-      cat '$REMOTE_DIR/src/ufbi_math.om' '$REMOTE_DIR/src/ufbi_ivmath.om' '$REMOTE_DIR/src/ufbi_phase3b_cert.om'
+      cat '$REMOTE_DIR/src/ufbi_math.om' '$REMOTE_DIR/src/ufbi_ivmath.om' '$REMOTE_DIR/src/ufbi_w2_dyadic.om' '$REMOTE_DIR/src/ufbi_phase3b_cert.om'
     } | \"\$OMC\" > '$REMOTE_DIR/build/ufbi_phase3b_cert'
     chmod 755 '$REMOTE_DIR/build/ufbi_phase3b_cert'
     file '$REMOTE_DIR/build/ufbi_phase3b_cert'
@@ -421,7 +423,7 @@ elif [ "$MODE" = "phase4_cert" ]; then
     OMC=seed/out/omc
     {
       printf 'om2\n'
-      cat '$REMOTE_DIR/src/ufbi_math.om' '$REMOTE_DIR/src/ufbi_ivmath.om' '$REMOTE_DIR/src/ufbi_phase4_cert.om'
+      cat '$REMOTE_DIR/src/ufbi_math.om' '$REMOTE_DIR/src/ufbi_ivmath.om' '$REMOTE_DIR/src/ufbi_w2_dyadic.om' '$REMOTE_DIR/src/ufbi_phase4_cert.om'
     } | \"\$OMC\" > '$REMOTE_DIR/build/ufbi_phase4_cert'
     chmod 755 '$REMOTE_DIR/build/ufbi_phase4_cert'
     ls -la '$REMOTE_DIR/build/ufbi_phase4_cert'
@@ -440,15 +442,16 @@ elif [ "$MODE" = "proofs" ]; then
   "
 elif [ "$MODE" = "openai_bridge" ]; then
   echo "=== Checking Mathlib-linked OpenAiYmBridge, DobrushinShlosman, WilsonPolymerBridge & PhaseFourBridge on Spark ==="
-  scp "$ROOT/proofs/OpenAiYmBridge.lean" "$ROOT/proofs/DobrushinShlosman.lean" "$ROOT/proofs/WilsonPolymerBridge.lean" "$ROOT/proofs/PhaseFourBridge.lean" spark:~/workspace/yang-lean-bridge/
+  scp "$ROOT/proofs/OpenAiYmBridge.lean" "$ROOT/proofs/DobrushinShlosman.lean" "$ROOT/proofs/WilsonPolymerBridge.lean" "$ROOT/proofs/PhaseFourBridge.lean" "$ROOT/proofs/OneLinkTransport.lean" spark:~/workspace/yang-lean-bridge/
   ssh spark "set -eu
     export PATH=\"\$HOME/.elan/bin:\$PATH\"
     cd ~/workspace/yang-lean-bridge
     lean --version
     lake build OpenAiYmBridge DobrushinShlosman WilsonPolymerBridge PhaseFourBridge
+    lake env lean OneLinkTransport.lean
     echo 'LEAN_PHASE4_BRIDGES status=PASS'
   "
 else
-  echo "usage: $0 check1 | obs_synth | obs_synth_w2 | obs_synth_w3 | check3 | check4 | check5 | check6 | check7 | check8 | check9 | check10 | interval_cert | phase3b_cert | phase4_cert | proofs | openai_bridge" >&2
+  echo "usage: $0 check1 | obs_synth | obs_synth_w2 | obs_synth_w3 | check3 | check4 | check5 | check6 | check7 | check8 | check9 | check10 | dyadic_grid | interval_cert | phase3b_cert | phase4_cert | proofs | openai_bridge" >&2
   exit 2
 fi

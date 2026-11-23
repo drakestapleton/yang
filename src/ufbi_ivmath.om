@@ -1,56 +1,8 @@
 note SPDX-License-Identifier: Apache-2.0
-note src/ufbi_ivmath.om: elementary functions accurate enough for the interval certificates.
-note Composed after src/ufbi_math.om and before a certificate source.
-note
-note WHY THIS FILE EXISTS (review finding F1, 2026-11-22):
-note   uSin64 in ufbi_math.om stops its Taylor series at x^15/15!. At |x| = pi/2 the omitted term is
-note   (pi/2)^17/17! = 6.1e-12, larger than the certificates' inflation margin, so "upper bounds" built
-note   from it were not upper bounds (ivHi(uCos64 0) < 1). ufbi_math.om is left unchanged so the GPU
-note   check binaries keep their recorded hashes; certificates must use ivSin64 / ivCos64 instead.
-note
-note The Taylor remainder after degree 23 on the folded interval is bounded by (pi/2)^25/25!.
-note scripts/ivmath_crosscheck.py samples binary64 reduction and evaluation against mpmath.
-note Its thresholds are regression checks. A full enclosure proof also requires roundoff
-note analysis of each composed expression, its argument range, and the quadrature.
-note The certificate sources share the same absolute and relative padding below.
-
-fn ivSin64 theta f64 to f64
-pi = uPi
-twopi = uTwoPi
-halfpi = uHalfPi
-k = long div theta twopi
-x = sub theta mul f64 k twopi
-while gt x pi bound 8
-x = sub x twopi
-end
-while lt x neg pi bound 8
-x = add x twopi
-end
-if gt x halfpi
-x = sub pi x
-end
-if lt x neg halfpi
-x = sub neg pi x
-end
-x2 = mul x x
-s = f64 1.0f64
-s = sub 1.0f64 div mul x2 s 506.0f64
-s = sub 1.0f64 div mul x2 s 420.0f64
-s = sub 1.0f64 div mul x2 s 342.0f64
-s = sub 1.0f64 div mul x2 s 272.0f64
-s = sub 1.0f64 div mul x2 s 210.0f64
-s = sub 1.0f64 div mul x2 s 156.0f64
-s = sub 1.0f64 div mul x2 s 110.0f64
-s = sub 1.0f64 div mul x2 s 72.0f64
-s = sub 1.0f64 div mul x2 s 42.0f64
-s = sub 1.0f64 div mul x2 s 20.0f64
-s = sub 1.0f64 div mul x2 s 6.0f64
-ret mul x s
-end
-
-fn ivCos64 theta f64 to f64
-ret ivSin64 add theta uHalfPi
-end
+note Dyadic trigonometric enclosures and padding for the remaining binary64 diagnostics.
+note The shared trigonometric grid and the radian-index brackets are checked in DyadicTrig.lean.
+note W2 energy arithmetic lives in ufbi_w2_dyadic.om. The III-A moment sums and
+note star-cell exponential, logarithm and quadrature still use these padding functions.
 
 fn ivLo x f64 to f64
 m = add mul uAbs64 x 0.000000000001f64 0.0000000000001f64
@@ -60,4 +12,144 @@ end
 fn ivHi x f64 to f64
 m = add mul uAbs64 x 0.000000000001f64 0.0000000000001f64
 ret add x m
+end
+
+note Dyadic bounds for cos(i*pi/2048), backed by proofs/DyadicTrig.lean.
+note Q=2^30. The half-angle radicand is (Q+parent)*Q/2, in [0,2^60].
+global gridLo long 2049
+global gridHi long 2049
+
+fn gridRoot a long to long
+rad = mul ulong add 1073741824 a 536870912
+lo = ulong 0
+hi = ulong 1073741825
+while gt sub hi lo 1 bound 31
+mid = shr add lo hi 1
+if le mul mid mid rad
+lo = mid
+else
+hi = mid
+end
+end
+ret long lo
+end
+
+fn initTrigGrid to void
+put gridLo 0 1073741824
+put gridHi 0 1073741824
+put gridLo 1024 0
+put gridHi 1024 0
+put gridLo 2048 neg 1073741824
+put gridHi 2048 neg 1073741824
+stride = ulong 512
+for level ulong 10
+i = stride
+while lt i 1024 bound 512
+parent = mul 2 i
+lo = gridRoot get gridLo parent
+hi = add gridRoot get gridHi parent 1
+if gt hi 1073741824
+hi = long 1073741824
+end
+put gridLo i lo
+put gridHi i hi
+put gridLo sub 2048 i neg hi
+put gridHi sub 2048 i neg lo
+i = add i mul 2 stride
+end
+stride = shr stride 1
+end
+end
+
+fn gridCosLo i ulong to f64
+ret div f64 get gridLo add i 1 1073741824.0f64
+end
+
+fn gridCosHi i ulong to f64
+ret div f64 get gridHi i 1073741824.0f64
+end
+
+note Endpoint sine values are cos(|1024-i|*pi/2048). Each cell lies on one side of pi/2.
+note Squaring is exact in 64 bits. Convert on a 2^-50 grid to represent the endpoints exactly in f64.
+fn gridSinSqLoUnits i ulong to ulong
+j = ulong 0
+if lt i 1024
+j = sub 1024 i
+else
+j = sub i 1023
+end
+s = ulong get gridLo j
+ret shr mul s s 10
+end
+
+fn gridSinSqHiUnits i ulong to ulong
+j = ulong 0
+if lt i 1024
+j = sub 1023 i
+else
+j = sub i 1024
+end
+s = ulong get gridHi j
+ret shr add mul s s 1023 10
+end
+
+fn gridSinSqLo i ulong to f64
+ret div f64 gridSinSqLoUnits i 1125899906842624.0f64
+end
+
+fn gridSinSqHi i ulong to f64
+ret div f64 gridSinSqHiUnits i 1125899906842624.0f64
+end
+
+note For a binary64 radian argument t in [0,1.5], let a=floor(t*2^28).
+note Multiplication by a power of two is exact here. Bracket 2048*t/pi using
+note 3.14159 < pi < 3.14160; largest numerator < 2^57. On this first-quadrant
+note interval sine increases and cosine decreases. Other inputs get global bounds.
+fn radialIndexLo t f64 to ulong
+a = ulong mul t 268435456.0f64
+ret div mul a 204800000 mul ulong 314160 268435456
+end
+
+fn radialIndexHi t f64 to ulong
+a = ulong mul t 268435456.0f64
+d = mul ulong 314159 268435456
+ret div add mul add a 1 204800000 sub d 1 d
+end
+
+fn radialCosLo t f64 to f64
+if or lt t 0.0f64 gt t 1.5f64
+ret neg 1.0f64
+end
+ret div f64 get gridLo radialIndexHi t 1073741824.0f64
+end
+
+fn radialCosHi t f64 to f64
+if or lt t 0.0f64 gt t 1.5f64
+ret 1.0f64
+end
+ret div f64 get gridHi radialIndexLo t 1073741824.0f64
+end
+
+fn radialSinLo t f64 to f64
+if or lt t 0.0f64 gt t 1.5f64
+ret neg 1.0f64
+end
+ret div f64 get gridLo sub 1024 radialIndexLo t 1073741824.0f64
+end
+
+fn radialSinHi t f64 to f64
+if or lt t 0.0f64 gt t 1.5f64
+ret 1.0f64
+end
+ret div f64 get gridHi sub 1024 radialIndexHi t 1073741824.0f64
+end
+
+fn trigGridOK to long
+if ne get gridHi 0 1073741824
+ret 0
+end
+if ne get gridLo 2048 neg long 1073741824
+ret 0
+end
+ret 1
 end

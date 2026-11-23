@@ -1016,6 +1016,38 @@ theorem energy_gap_implies_relativistic_mass_gap {H : HilbertSpace} {Labels : Fi
   rw [hApply, hMapEq]
   exact hStripNull _
 
+/-- Values at equally spaced Euclidean times suffice for spectral decay. Forward
+spectral support makes the diagonal Laplace transform decreasing between shells. -/
+theorem state_decay_of_shell_bounds {H : HilbertSpace} {Labels : FieldLabels}
+    (theory : WightmanTheory H Labels) (hW0 : theory.W0) (ψ : H.carrier)
+    {R Δ C : ℝ} (hR : 0 < R) (hΔ : 0 ≤ Δ) (hC : 0 ≤ C)
+    (hs : ∀ k : ℕ, (∫ p, Real.exp (-((k : ℝ)*R)*YangMills.time p)
+      ∂(theory.energyMomentum.diagonal ψ)) ≤ C * Real.exp (-Δ*((k : ℝ)*R))) :
+    StateLaplaceDecay theory Δ ψ := by
+  let μ := theory.energyMomentum.diagonal ψ
+  haveI : IsFiniteMeasure μ := theory.energyMomentum.finite ψ
+  have hcone : ∀ᵐ p ∂μ, p ∈ YangMills.forwardCone := by
+    rw [ae_iff]
+    exact diagonal_forwardCone_compl_eq_zero theory hW0 ψ
+  have he := hcone.mono fun p hp => time_nonneg_of_mem_forwardCone hp
+  have hi (u : ℝ) (hu : 0 ≤ u) : Integrable (fun p => Real.exp (-u * YangMills.time p)) μ := by
+    refine Integrable.mono' (integrable_const (1 : ℝ))
+      ((Real.continuous_exp.comp (continuous_const.mul continuous_time)).aestronglyMeasurable) ?_
+    exact he.mono fun p hp => by
+      rw [Real.norm_of_nonneg (Real.exp_pos _).le, Real.exp_le_one_iff]
+      exact mul_nonpos_of_nonpos_of_nonneg (neg_nonpos.mpr hu) hp
+  refine ⟨C * Real.exp (Δ*R), by positivity, fun t ht => ?_⟩
+  let k := ⌊t/R⌋₊
+  have hleft : (k : ℝ)*R ≤ t := (le_div_iff₀ hR).mp (Nat.floor_le (div_nonneg ht hR.le))
+  have hright : t < ((k : ℝ)+1)*R := (div_lt_iff₀ hR).mp (Nat.lt_floor_add_one _)
+  have hm := integral_mono_ae (hi t ht) (hi ((k:ℝ)*R) (by positivity))
+    (he.mono fun p hp => Real.exp_le_exp.mpr (mul_le_mul_of_nonneg_right (neg_le_neg hleft) hp))
+  apply hm.trans ((hs k).trans ?_)
+  rw [mul_assoc, ← Real.exp_add]
+  apply mul_le_mul_of_nonneg_left _ hC
+  apply Real.exp_le_exp.mpr
+  nlinarith [mul_nonneg hΔ (sub_nonneg.mpr hright.le)]
+
 /-- **Theorem 5 (Uniform Exponential Decay ⇒ Exact Relativistic Mass-Hyperboloid Gap):**
 Combines `uniform_decay_implies_energy_gap` and `energy_gap_implies_relativistic_mass_gap`. -/
 theorem uniform_decay_implies_relativistic_mass_gap {H : HilbertSpace} {Labels : FieldLabels}
@@ -1062,6 +1094,7 @@ theorem part1_conditional_mass_gap_over_openai_ym
 #print axioms ufbi_collapses_phase_mixture
 #print axioms ufbi_collapses_character_space
 #print axioms exponential_decay_kills_energy_strip_measure
+#print axioms state_decay_of_shell_bounds
 #print axioms uniform_decay_implies_energy_gap
 #print axioms energy_gap_implies_relativistic_mass_gap
 #print axioms uniform_decay_implies_relativistic_mass_gap

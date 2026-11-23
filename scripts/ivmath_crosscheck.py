@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Offline cross-check of the elementary functions used by the interval certificates.
 
-Emulates src/ufbi_math.om (uSin64 15th order, uExp64, uLog64) and src/ufbi_ivmath.om (ivSin64 23rd
+Emulates src/ufbi_math.om (uSin64 15th order, uExp64, uLog64) and the historical pre-dyadic certificate (ivSin64 23rd
 order) operation by operation in IEEE binary64 and compares against 50-digit mpmath references.
 Evidence only (floating point + sampling); it is not a proof of the error budget.
 """

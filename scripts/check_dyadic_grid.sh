@@ -1,0 +1,35 @@
+#!/bin/sh
+# Runs on Spark after build_and_run_spark.sh has synchronized the checkout.
+set -eu
+root=$1
+omc=$2
+build=$(mktemp -d)
+trap 'rm -rf "$build"' EXIT
+pin=$(sed -n 's/^omc_sha256=//p' "$root/PIN")
+echo "$pin  $omc" | sha256sum -c -
+{ echo om2; cat "$root/src/ufbi_math.om" "$root/src/ufbi_ivmath.om" "$root/scripts/dyadic_grid_dump.om"; } > "$build/unit.om"
+"$omc" < "$build/unit.om" > "$build/dump"
+chmod +x "$build/dump"
+"$build/dump" > "$build/omega.tsv"
+{ echo om2; cat "$root/src/ufbi_math.om" "$root/src/ufbi_ivmath.om" "$root/src/ufbi_w2_dyadic.om" "$root/scripts/dyadic_w2_dump.om"; } > "$build/w2.om"
+"$omc" < "$build/w2.om" > "$build/w2"
+chmod +x "$build/w2"
+"$build/w2" > "$build/w2-omega.tsv"
+cd "$HOME/workspace/yang-lean-bridge"
+export PATH="$HOME/.elan/bin:$PATH"
+lake env sh -ec '
+  export LEAN_PATH="$1:$LEAN_PATH"
+  cd "$2"
+  lean -o "$1/DyadicTrig.olean" proofs/DyadicTrig.lean
+  lean -o "$1/DyadicExp.olean" proofs/DyadicExp.lean
+  lean --run scripts/ReplayDyadicTrig.lean > "$1/lean.tsv"
+  lean --run scripts/ReplayDyadicW2.lean > "$1/w2-lean.tsv"
+' sh "$build" "$root"
+cmp "$build/omega.tsv" "$build/lean.tsv"
+test "$(wc -l < "$build/lean.tsv")" = 2048
+sha256sum "$build/lean.tsv"
+echo 'DYADIC_GRID_REPLAY cells=2048 status=PASS'
+cmp "$build/w2-omega.tsv" "$build/w2-lean.tsv"
+test "$(wc -l < "$build/w2-lean.tsv")" = 2048
+sha256sum "$build/w2-lean.tsv"
+echo 'DYADIC_W2_REPLAY couplings=16 field_boxes=2048 angle_cells_per_box=2048 status=PASS'
