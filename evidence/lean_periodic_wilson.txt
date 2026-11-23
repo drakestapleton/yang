@@ -34,7 +34,7 @@ LEAN_PHASE4_BRIDGES status=PASS
 Negative controls (temporary source copies, same Lean and dependencies):
 1. Replace 24/125 by 193/1000. Lean rejects strict_witness.
 2. Remove the inverse of (U c) in the first oriented staple. Lean rejects
-   the single-plaquette update identity.
+   staple_eq_neighbor_product at line 178. The proof of face_delta also fails.
 witness exit=1
 Witness.lean:319:4: error: linarith failed to find a contradiction
 orientation exit=1
@@ -47,5 +47,7 @@ FullSimplify[{19/100 < 24/125 < Sqrt[3]/9, (18 (24/125)/Sqrt[12])^2, Sqrt[3]/9 <
 For every torus side l >= 2 the Wilson one-link resampling law is a
 normalized Haar tilt and the sum of its 18 analytic trial-speed bounds is
 subunit for 0 <= beta < sqrt(3)/9. The proof uses real integrals directly.
-A metric W2 heat-bath contraction would require an additional transport
+The full-density factorization and local Haar tilt use the same staple.
+Formal disintegration of the full law and the angular pushforward of Haar
+are open. A metric W2 heat-bath contraction also requires a transport
 comparison. The l = 1 plaquette has repeated links and is a commutator.

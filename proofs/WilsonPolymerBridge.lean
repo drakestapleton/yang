@@ -1071,9 +1071,9 @@ theorem s3_w2_perp_energy_reduction (e_c2 e_s4c2 r : ℝ) :
       (1 / 12 : ℝ) - (7 / 27) * (e_c2 - 1 / 4) + (r ^ 2 / 54) * e_s4c2 := by
   ring
 
-/-- **Theorem 12C (Unfixed 18-Neighbor 4D SU(2) Geodesic W₂ Dobrushin Basin: `β < √3 / 9 ≈ 0.19245`):**
-Eliminating the `√2` penalty via `s3_w2_orthogonality_bound` pushes 1-link unfixed 4D SU(2)
-Dobrushin contraction past our `0.180` Kotecký-Preiss ceiling to `β < √3 / 9 ≈ 0.19245`! -/
+/-- **Theorem 12C (Degree-18 scalar coefficient).**
+The one-link bound `1/(2√3)` gives a subunit trial coefficient for `β < √3/9`.
+A Dobrushin contraction also requires a metric bound for Wilson heat-bath updates. -/
 theorem su2_4d_w2_dobrushin_window {β : ℝ} (hβ : β < Real.sqrt 3 / 9) :
     18 * (1 / (2 * Real.sqrt 3)) * β < 1 := by
   have hs3_pos : 0 < Real.sqrt 3 := Real.sqrt_pos.mpr (by norm_num)
