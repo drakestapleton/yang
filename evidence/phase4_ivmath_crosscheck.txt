@@ -1,0 +1,17 @@
+# elementary-function cross-check vs 50-digit mpmath
+uSin64  (15th order, OLD)          [-8.0, 8.0] n=200000  max_abs_err=6.023e-12 at x=-1.5708000000000002
+uCos64  (15th order, OLD)          [-8.0, 8.0] n=200000  max_abs_err=6.023e-12 at x=0.0
+ivSin64 (23rd order, NEW)          [-8.0, 8.0] n=200000  max_abs_err=2.965e-16 at x=-6.86432
+ivCos64 (23rd order, NEW)          [-8.0, 8.0] n=200000  max_abs_err=3.445e-16 at x=7.304080000000001
+uExp64                             [-100.0, 100.0] n=200000  max_rel_err=1.006e-14 at x=91.149
+uLog64                             [8.673617379884035e-19, 1.152921504606847e+18] n=200000  max_rel_err=3.36e-14 at x=1.4140175243330373
+uLog64 near 1                      [0.5, 2.0] n=200000  max_rel_err=3.387e-14 at x=1.414205
+uLog64 near 1 (abs)                [0.5, 2.0] n=200000  max_abs_err=1.174e-14 at x=1.414205
+old cos(0) = 0.9999999999939766  (must be 1; old margin 1e-12*|x|+1e-15)
+new cos(0) = 0.9999999999999999
+# sampled regression thresholds
+ivSin64 abs <= 4e-15       observed=2.965e-16  OK
+ivCos64 abs <= 5e-15       observed=3.445e-16  OK
+uExp64 rel <= 3e-14        observed=1.006e-14  OK
+uLog64 rel <= 1e-13        observed=3.387e-14  OK
+old uSin64/uCos64 exceed the old margin 1e-12: True

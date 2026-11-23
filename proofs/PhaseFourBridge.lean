@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: Apache-2.0
 -- proofs/PhaseFourBridge.lean:
--- Phase IV Unconditional Dual-Cliff & Continuum-Transfer Theorems directly over
+-- Phase IV Dual-Cliff & Continuum-Transfer Theorems directly over
 -- `OpenAI-YM-20261028` (`PublicWilson.lean`, `ChallengeSpec.lean`), `OpenAiYmBridge.lean`,
 -- `DobrushinShlosman.lean`, and `WilsonPolymerBridge.lean`.
 --
@@ -20,10 +20,10 @@
 --      SCOPE: 14F-1..14F-4 are arithmetic on the contraction constants. The W₂ constant `1/(2√3)`
 --      comes from `s3_w2_orthogonality_bound`, which TAKES `L_par² ≤ 1/12`, `L_perp² ≤ 1/12` AS
 --      HYPOTHESES; they are not proved anywhere in this repository, and the Phase IV interval
---      certificate's own upper enclosure `W2_par_hi ≈ 0.2926..0.2947 > 1/√12 ≈ 0.28868` does not
+--      certificate's own upper enclosure `W2_par_hi ≈ 0.2929..0.2950 > 1/√12 ≈ 0.28868` does not
 --      confirm them. The W₂ windows are therefore CONDITIONAL. Nothing here formalizes that a
 --      W₁/W₂ Dobrushin contraction implies uniqueness or decay for `wilsonLaw`, and the
---      acyclicity theorem 14B is stated on `ℤ⁴`, not on the periodic torus `Site l`.
+--      height-increment identity 14B is stated on `ℤ⁴`, not on the periodic torus `Site l`.
 --   2. Theorem 15 (Zero-Loophole Global Quaternion Landau-Gauge 4D Star-Cell Theory `K_{2,2,2,2}`):
 --      - `quaternion_chordal_exact_splitting`: Positive strictly-damping quartic `Δ_quat ≥ 0` (ZERO `e^{+y}`!).
 --      - `quaternion_landau_faddeev_popov_exact`: Exact all-orders Faddeev-Popov identity on `∑ q_a = 0`.

@@ -391,7 +391,7 @@ elif [ "$MODE" = "interval_cert" ]; then
     OMC=seed/out/omc
     {
       printf 'om2\n'
-      cat '$REMOTE_DIR/src/ufbi_math.om' '$REMOTE_DIR/src/ufbi_interval_rg_cert.om'
+      cat '$REMOTE_DIR/src/ufbi_math.om' '$REMOTE_DIR/src/ufbi_ivmath.om' '$REMOTE_DIR/src/ufbi_interval_rg_cert.om'
     } | \"\$OMC\" > '$REMOTE_DIR/build/ufbi_interval_rg_cert'
     chmod 755 '$REMOTE_DIR/build/ufbi_interval_rg_cert'
     sha256sum '$REMOTE_DIR/build/ufbi_interval_rg_cert'
@@ -405,7 +405,7 @@ elif [ "$MODE" = "phase3b_cert" ]; then
     OMC=seed/out/omc
     {
       printf 'om2\n'
-      cat '$REMOTE_DIR/src/ufbi_math.om' '$REMOTE_DIR/src/ufbi_phase3b_cert.om'
+      cat '$REMOTE_DIR/src/ufbi_math.om' '$REMOTE_DIR/src/ufbi_ivmath.om' '$REMOTE_DIR/src/ufbi_phase3b_cert.om'
     } | \"\$OMC\" > '$REMOTE_DIR/build/ufbi_phase3b_cert'
     chmod 755 '$REMOTE_DIR/build/ufbi_phase3b_cert'
     file '$REMOTE_DIR/build/ufbi_phase3b_cert'
@@ -421,7 +421,7 @@ elif [ "$MODE" = "phase4_cert" ]; then
     OMC=seed/out/omc
     {
       printf 'om2\n'
-      cat '$REMOTE_DIR/src/ufbi_math.om' '$REMOTE_DIR/src/ufbi_phase4_cert.om'
+      cat '$REMOTE_DIR/src/ufbi_math.om' '$REMOTE_DIR/src/ufbi_ivmath.om' '$REMOTE_DIR/src/ufbi_phase4_cert.om'
     } | \"\$OMC\" > '$REMOTE_DIR/build/ufbi_phase4_cert'
     chmod 755 '$REMOTE_DIR/build/ufbi_phase4_cert'
     ls -la '$REMOTE_DIR/build/ufbi_phase4_cert'

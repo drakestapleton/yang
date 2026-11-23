@@ -1,17 +1,28 @@
-# Phase IV zero-MC dual-cliff certificate receipt (Spark CPU, 2026-11-22)
-host=spark-b87b  compiler=~/canon/omega-mv/seed/out/omc
-omc_sha256=708fdc0f81866594ed6df2f492b7a8a6bc7456f2d733a838b7f840549ebba6c3 (matches PIN)
-src/ufbi_math.om sha256=ef1373564afe5e549fbf8dbb9cc0fea91b329e343b7727a07edee5f5fcb2f45a
-src/ufbi_phase4_cert.om sha256=5d3af22d53491d0abd7370d8bc4adeb786bc0c971c7ceed1daf9bce66e05e059
-build/ufbi_phase4_cert: 55908 B, ELF 64-bit LSB executable, ARM aarch64, statically linked, not a dynamic executable
-build/ufbi_phase4_cert sha256=6f49c583a9d0afc57f29c1a7ad56d7e6005cfcf3cb0a88e45d572dbbabeab20f
-omc_exit=0  run_exit=0  wall_seconds=2.754  output=evidence/phase4_dual_cliff_cert.tsv
-final_line="PHASE4_CERT_DONE status=PASS"
-CPU only; GPU not used. No randomness.
-Built-in negative rows: beta=0.283 and beta=0.288 report OPEN (BT12 coefficient 1.000747 and 1.018656, both >= 1).
-Compile history: the Antigravity draft failed with "omc: line 676: error 12" (16-register pool).
-Fixed by splitting eval1BadEta (new lnZ1bHi), scan1BadR7 (new shift7Hi, best1bOverEta) and
-coreBoxFpStep (new fpCoeffHi). Every split keeps the same interval rounding direction.
-Scope: the Part A numbers are interval enclosures of the 1-link W2 constants; the claim that a
-W2 Dobrushin coefficient < 1 implies uniqueness/decay for the lattice Wilson measure is NOT
-formalized in this repository. Part B is a single 4D star cell (one site), not a lattice-wide bound.
+Phase IV numerical verifier review, 2026-11-22, Spark CPU
+Compiler: ~/canon/omega-mv/seed/out/omc, SHA-256 matches PIN.
+Build and run: sh scripts/build_and_run_spark.sh phase4_cert
+omc_exit=0 run_exit=0 final_line="PHASE4_CERT_DONE status=PASS"
+Static AArch64 ELF: 57616 bytes
+binary_sha256=489bf785bc7a632312d1a25398b7cd9f067a6422424ff5fd208cf68612067d88
+
+Failure controls (each mutation applied separately to a temporary source):
+1. Make ivCos64 call the original uSin64. Compile exit 0; run exit 1, TRIG_ENDPOINT status=FAIL.
+2. Change the expected 0.283 row from OPEN (0) to BT12 (12). Compile exit 0; run exit 1, PHASE4_CERT_DONE status=FAIL.
+
+Sibling modes interval_cert and phase3b_cert compiled and ran with exit 0.
+Their ELF SHA-256 values are cf75a2f0b5b4044787cbd26e1fda3c036c203cd293b5682ae5420c8d7cd48801
+and 12ffd0a85989aefbeb3b87ed7bfe94f841349f78c1eb0c590d71efc3a57216d4.
+
+math-check: FullSimplify[(1-s/2-Sqrt[1-s])/s^2==1/(2(1+Sqrt[1-s])^2),0<s<1] -> True.
+The FP core evaluates this rational form to avoid subtracting nearly equal quantities.
+For the sampled trig/exp/log errors run: uv run --with mpmath python scripts/ivmath_crosscheck.py
+Output: evidence/phase4_ivmath_crosscheck.txt. For the transverse field see phase4_w2_hypothesis_numeric.md.
+The row checks exercise the numerical classifications. The enclosure of every composed
+operation and the implication from a one-link coefficient to lattice decay remain open.
+The star-cell rows concern individual sampled couplings for one cell.
+
+Source and output SHA-256:
+ef1373564afe5e549fbf8dbb9cc0fea91b329e343b7727a07edee5f5fcb2f45a  src/ufbi_math.om
+7c090ed78e43968bc3793c3dcccc3c1a80dd3dd725e954d4cf76cc361a18649b  src/ufbi_ivmath.om
+5721abc84b7fde33a6872d44da99c48c4b5cb5fd71fdacf02fc2896eaae68c22  src/ufbi_phase4_cert.om
+48b9750e7ec312f65651cf26658fbc584dad4935725154766d38adcc0afd3fc2  evidence/phase4_dual_cliff_cert.tsv

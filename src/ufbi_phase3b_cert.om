@@ -3,7 +3,7 @@ note src/ufbi_phase3b_cert.om: Pure Seeded-OM-2 Zero-Monte-Carlo Dual-Cliff Veri
 note
 note Zero randomness, zero Monte Carlo, zero C/Python/Rust/libcuda:
 note   PART A (Right Cliff — Exact S^3 W_2 Orthogonal Continuity-Field Interval Enclosure):
-note     Uses outward-rounded interval arithmetic (rel=1e-12, abs=1e-15, 2048 theta-boxes x 128 r-boxes
+note     Uses outward-rounded interval arithmetic (rel=1e-12, abs=1e-13, 2048 theta-boxes x 128 r-boxes
 note     covering ALL staple fields r in [0, 6*beta]) to enclose:
 note       1. Exact Benamou-Brenier parallel speed W2_par(r) via cumulative flux F(theta)^2 / p(theta)
 note          with rigorous analytic endpoint boxes on [0, delta] and [pi - delta, pi] (ZERO 0/0!).
@@ -30,7 +30,7 @@ note     Scans optimal energy-ball cutoff u in [22.0, 120.0] to report BOTH:
 note       - tot_int_hi  = rem_exp_hi + tail_LF_hi (non-Gaussian interaction + LF tail)
 note       - tot_full_hi = rem_exp_hi + rem_haar_hi + tail_LF_hi (full L^1 density distance)
 note
-note Composed after: src/ufbi_math.om
+note Composed after: src/ufbi_math.om and src/ufbi_ivmath.om
 
 global pZ f64 2
 global pM f64 2
@@ -57,16 +57,6 @@ text tClosedInt "CLOSED_INT_ONLY"
 text tTab "\t"
 text tNl "\n"
 text tDone "PHASE3B_CERT_DONE status=PASS\n"
-
-fn ivLo x f64 to f64
-m = add mul uAbs64 x 0.000000000001f64 0.000000000000001f64
-ret sub x m
-end
-
-fn ivHi x f64 to f64
-m = add mul uAbs64 x 0.000000000001f64 0.000000000000001f64
-ret add x m
-end
 
 fn min2 a f64 b f64 to f64
 if lt a b
@@ -99,7 +89,7 @@ ret ivHi max2 max2 p1 p2 max2 p3 p4
 end
 
 fn sinLo t0 f64 t1 f64 to f64
-ret ivLo max2 0.0f64 min2 uSin64 t0 uSin64 t1
+ret max2 0.0f64 ivLo min2 ivSin64 t0 ivSin64 t1
 end
 
 fn sinHi t0 f64 t1 f64 to f64
@@ -107,15 +97,15 @@ hp = uHalfPi
 if and le t0 hp ge t1 hp
 ret 1.0f64
 end
-ret ivHi min2 1.0f64 max2 uSin64 t0 uSin64 t1
+ret ivHi min2 1.0f64 max2 ivSin64 t0 ivSin64 t1
 end
 
 fn cosLo t0 f64 t1 f64 to f64
-ret ivLo uCos64 t1
+ret ivLo ivCos64 t1
 end
 
 fn cosHi t0 f64 t1 f64 to f64
-ret ivHi uCos64 t0
+ret ivHi ivCos64 t0
 end
 
 note pSt: 0=t0, 1=t1, 2=cLo, 3=cHi, 4=s2Lo, 5=s2Hi, 6=wLo, 7=wHi, 8=pL, 9=pH
@@ -391,7 +381,13 @@ end
 uPrint tNl
 end
 
+text tTrigFail "TRIG_ENDPOINT status=FAIL\n"
+
 fn main to int
+if or lt cosHi 0.0f64 0.0f64 1.0f64 gt cosLo uPi uPi neg 1.0f64
+uPrint tTrigFail
+ret 1
+end
 uPrint tP3Hdr
 uPrint tP3AHdr
 uPrint tP3ACols

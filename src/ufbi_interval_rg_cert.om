@@ -4,7 +4,7 @@ note Outward-Rounded Interval-Arithmetic Contraction Verifier for 4D SU(2) Latti
 note
 note Zero randomness, zero Monte Carlo, zero C/Python/Rust/libcuda:
 note   1. Uses rigorous outward-rounded IEEE-754 interval arithmetic [lo, hi] with explicit
-note      outward safety inflation (rel = 1e-12, abs = 1e-15) after EVERY arithmetic/transcendental op.
+note      outward safety inflation (rel = 1e-12, abs = 1e-13) at interval endpoints.
 note   2. Encloses S^3 Haar/vMF integrals (Z(r), m(r), Var_par(r), Var_perp(r), L1-MAD(r),
 note      Geodesic W1 L_par(r) & L_perp(r), and exact SU(2) character ratios u_{1/2}(beta), u_1(beta))
 note      over ALL theta in [0, pi] AND ALL staple fields r in [0, 6*beta] via monotone interval
@@ -17,7 +17,7 @@ note        - Tier 4: 4D SU(2) Kotecky-Preiss closed-surface character cluster s
 note                  (6-plaquette 3-cube minimum surface, exact interval enclosure on u_{1/2}(beta))
 note                  AND 2x2 block-decimation character contraction u_{1/2}(beta)^4!
 note
-note Composed after: src/ufbi_math.om
+note Composed after: src/ufbi_math.om and src/ufbi_ivmath.om
 
 note Interval scratch registers (each interval = 2 f64: [lo, hi])
 global ivA f64 2
@@ -41,7 +41,7 @@ global maxVparHi f64 1
 global maxVperpHi f64 1
 
 text tIvHdr "=== PHASE III-A ZERO-MONTE-CARLO INTERVAL-ARITHMETIC 4D SU(2) CONTRACTION VERIFIER (PURE OM-2) ===\n"
-text tIvNote "# Outward-rounded [lo, hi] enclosures (rel=1e-12, abs=1e-15), 2048 theta-boxes x 32 r-boxes covering ALL r in [0, 6*beta]\n"
+text tIvNote "# Outward-rounded [lo, hi] enclosures (rel=1e-12, abs=1e-13), 2048 theta-boxes x 32 r-boxes covering ALL r in [0, 6*beta]\n"
 text tIvCols "beta\tTV_osc_hi\tTV_S3L1_hi\tW1_geod_hi\tTG14_W1_hi\tu12_lo\tu12_hi\tu1_hi\tKP_surf_hi\tdecim_u12_4_hi\tcert_tier\n"
 text tIvT0 "NONE"
 text tIvT1 "T1_TV_OSC"
@@ -53,16 +53,6 @@ text tTab "\t"
 text tNl "\n"
 text tIvSum "=== CERTIFIED ZERO-MC CEILINGS (RIGOROUS UPPER BOUND < 1.0) ===\n"
 text tIvDone "INTERVAL_RG_CERT_DONE status=PASS\n"
-
-fn ivInflateLo x f64 to f64
-m = add mul uAbs64 x 0.000000000001f64 0.000000000000001f64
-ret sub x m
-end
-
-fn ivInflateHi x f64 to f64
-m = add mul uAbs64 x 0.000000000001f64 0.000000000000001f64
-ret add x m
-end
 
 fn min2 a f64 b f64 to f64
 if lt a b
@@ -83,7 +73,7 @@ p1 = mul alo blo
 p2 = mul alo bhi
 p3 = mul ahi blo
 p4 = mul ahi bhi
-ret ivInflateLo min2 min2 p1 p2 min2 p3 p4
+ret ivLo min2 min2 p1 p2 min2 p3 p4
 end
 
 fn ivMulHi alo f64 ahi f64 blo f64 bhi f64 to f64
@@ -91,12 +81,12 @@ p1 = mul alo blo
 p2 = mul alo bhi
 p3 = mul ahi blo
 p4 = mul ahi bhi
-ret ivInflateHi max2 max2 p1 p2 max2 p3 p4
+ret ivHi max2 max2 p1 p2 max2 p3 p4
 end
 
 note Rigorous enclosure of sin(t) on [t0, t1] subset [0, pi]
 fn sinBoxLo t0 f64 t1 f64 to f64
-ret ivInflateLo max2 0.0f64 min2 uSin64 t0 uSin64 t1
+ret max2 0.0f64 ivLo min2 ivSin64 t0 ivSin64 t1
 end
 
 fn sinBoxHi t0 f64 t1 f64 to f64
@@ -104,16 +94,16 @@ hp = uHalfPi
 if and le t0 hp ge t1 hp
 ret 1.0f64
 end
-ret ivInflateHi min2 1.0f64 max2 uSin64 t0 uSin64 t1
+ret ivHi min2 1.0f64 max2 ivSin64 t0 ivSin64 t1
 end
 
 note Rigorous enclosure of cos(t) on [t0, t1] subset [0, pi] (strictly decreasing!)
 fn cosBoxLo t0 f64 t1 f64 to f64
-ret ivInflateLo uCos64 t1
+ret ivLo ivCos64 t1
 end
 
 fn cosBoxHi t0 f64 t1 f64 to f64
-ret ivInflateHi uCos64 t0
+ret ivHi ivCos64 t0
 end
 
 fn encloseS3Trig i ulong dt f64 to void
@@ -125,18 +115,18 @@ put ivStep 2 cosBoxLo t0 t1
 put ivStep 3 cosBoxHi t0 t1
 sLo = sinBoxLo t0 t1
 sHi = sinBoxHi t0 t1
-put ivStep 6 ivInflateLo mul sLo sLo
-put ivStep 7 ivInflateHi mul sHi sHi
+put ivStep 6 ivLo mul sLo sLo
+put ivStep 7 ivHi mul sHi sHi
 end
 
 fn encloseS3Weight dt f64 rLo f64 rHi f64 to void
 cLo = get ivStep 2
 cHi = get ivStep 3
-eLo = ivInflateLo uExp64 ivMulLo rLo rHi cLo cHi
-eHi = ivInflateHi uExp64 ivMulHi rLo rHi cLo cHi
+eLo = ivLo uExp64 ivMulLo rLo rHi cLo cHi
+eHi = ivHi uExp64 ivMulHi rLo rHi cLo cHi
 wScale = mul div 2.0f64 uPi dt
-wLo = ivInflateLo mul wScale mul get ivStep 6 eLo
-wHi = ivInflateHi mul wScale mul get ivStep 7 eHi
+wLo = ivLo mul wScale mul get ivStep 6 eLo
+wHi = ivHi mul wScale mul get ivStep 7 eHi
 if lt wLo 0.0f64
 wLo = 0.0f64
 end
@@ -156,26 +146,26 @@ cLo = get ivStep 2
 cHi = get ivStep 3
 wLo = get ivStep 4
 wHi = get ivStep 5
-put ivAcc 0 ivInflateLo add get ivAcc 0 wLo
-put ivAcc 1 ivInflateHi add get ivAcc 1 wHi
-put ivAcc 2 ivInflateLo add get ivAcc 2 ivMulLo cLo cHi wLo wHi
-put ivAcc 3 ivInflateHi add get ivAcc 3 ivMulHi cLo cHi wLo wHi
+put ivAcc 0 ivLo add get ivAcc 0 wLo
+put ivAcc 1 ivHi add get ivAcc 1 wHi
+put ivAcc 2 ivLo add get ivAcc 2 ivMulLo cLo cHi wLo wHi
+put ivAcc 3 ivHi add get ivAcc 3 ivMulHi cLo cHi wLo wHi
 csLo = 0.0f64
 if gt cLo 0.0f64
-csLo = ivInflateLo mul cLo cLo
+csLo = ivLo mul cLo cLo
 end
 if lt cHi 0.0f64
-csLo = ivInflateLo mul cHi cHi
+csLo = ivLo mul cHi cHi
 end
-csHi = ivInflateHi max2 mul cLo cLo mul cHi cHi
-put ivAcc 4 ivInflateLo add get ivAcc 4 mul csLo wLo
-put ivAcc 5 ivInflateHi add get ivAcc 5 mul csHi wHi
-put ivAcc 6 ivInflateLo add get ivAcc 6 mul t0 wLo
-put ivAcc 7 ivInflateHi add get ivAcc 7 mul t1 wHi
+csHi = ivHi max2 mul cLo cLo mul cHi cHi
+put ivAcc 4 ivLo add get ivAcc 4 mul csLo wLo
+put ivAcc 5 ivHi add get ivAcc 5 mul csHi wHi
+put ivAcc 6 ivLo add get ivAcc 6 mul t0 wLo
+put ivAcc 7 ivHi add get ivAcc 7 mul t1 wHi
 tcLoB = ivMulLo t0 t1 cLo cHi
 tcHiB = ivMulHi t0 t1 cLo cHi
-put ivAcc 8 ivInflateLo add get ivAcc 8 ivMulLo tcLoB tcHiB wLo wHi
-put ivAcc 9 ivInflateHi add get ivAcc 9 ivMulHi tcLoB tcHiB wLo wHi
+put ivAcc 8 ivLo add get ivAcc 8 ivMulLo tcLoB tcHiB wLo wHi
+put ivAcc 9 ivHi add get ivAcc 9 ivMulHi tcLoB tcHiB wLo wHi
 end
 
 note Enclose S^3 vMF integrals uniformly over ALL r in [rLo, rHi] (0 <= rLo <= rHi)
@@ -193,23 +183,23 @@ zLo = get ivAcc 0
 zHi = get ivAcc 1
 put ivZ 0 zLo
 put ivZ 1 zHi
-put ivM 0 ivInflateLo min2 div get ivAcc 2 zHi div get ivAcc 2 zLo
-put ivM 1 ivInflateHi max2 div get ivAcc 3 zLo div get ivAcc 3 zHi
-put ivM2 0 ivInflateLo div get ivAcc 4 zHi
-put ivM2 1 ivInflateHi div get ivAcc 5 zLo
-put ivTh 0 ivInflateLo div get ivAcc 6 zHi
-put ivTh 1 ivInflateHi div get ivAcc 7 zLo
-put ivThC 0 ivInflateLo min2 div get ivAcc 8 zHi div get ivAcc 8 zLo
-put ivThC 1 ivInflateHi max2 div get ivAcc 9 zLo div get ivAcc 9 zHi
+put ivM 0 ivLo min2 div get ivAcc 2 zHi div get ivAcc 2 zLo
+put ivM 1 ivHi max2 div get ivAcc 3 zLo div get ivAcc 3 zHi
+put ivM2 0 ivLo div get ivAcc 4 zHi
+put ivM2 1 ivHi div get ivAcc 5 zLo
+put ivTh 0 ivLo div get ivAcc 6 zHi
+put ivTh 1 ivHi div get ivAcc 7 zLo
+put ivThC 0 ivLo min2 div get ivAcc 8 zHi div get ivAcc 8 zLo
+put ivThC 1 ivHi max2 div get ivAcc 9 zLo div get ivAcc 9 zHi
 end
 
 fn encloseMadStep i ulong dt f64 rLo f64 rHi f64 to void
 encloseS3Trig i dt
 encloseS3Weight dt rLo rHi
-dLo = ivInflateLo sub get ivStep 2 get ivM 1
-dHi = ivInflateHi sub get ivStep 3 get ivM 0
+dLo = ivLo sub get ivStep 2 get ivM 1
+dHi = ivHi sub get ivStep 3 get ivM 0
 absHi = max2 uAbs64 dLo uAbs64 dHi
-put ivMad 0 ivInflateHi add get ivMad 0 mul absHi get ivStep 5
+put ivMad 0 ivHi add get ivMad 0 mul absHi get ivStep 5
 end
 
 note Separate pass for exact L1-MAD = E_r[|cos(t) - m(r)|] over r in [rLo, rHi] using enclosed m in [mLo, mHi]
@@ -219,16 +209,16 @@ put ivMad 0 0.0f64
 for i ulong 2048
 encloseMadStep i dt rLo rHi
 end
-put ivMad 1 ivInflateHi div get ivMad 0 get ivZ 0
+put ivMad 1 ivHi div get ivMad 0 get ivZ 0
 end
 
 fn uTanhHi x f64 to f64
 if ge x 20.0f64
 ret 1.0f64
 end
-e2 = ivInflateHi uExp64 mul 2.0f64 x
-e2lo = ivInflateLo uExp64 mul 2.0f64 x
-ret ivInflateHi div sub e2 1.0f64 add e2lo 1.0f64
+e2 = ivHi uExp64 mul 2.0f64 x
+e2lo = ivLo uExp64 mul 2.0f64 x
+ret ivHi div sub e2 1.0f64 add e2lo 1.0f64
 end
 
 fn updateFieldMax r0 f64 r1 f64 to void
@@ -239,15 +229,15 @@ if gt madH get maxMadHi 0
 put maxMadHi 0 madH
 end
 prodHi = ivMulHi get ivTh 0 get ivTh 1 get ivM 0 get ivM 1
-lParHi = ivInflateHi sub prodHi get ivThC 0
+lParHi = ivHi sub prodHi get ivThC 0
 if lt lParHi 0.0f64
 lParHi = 0.0f64
 end
-lPerpHi = ivInflateHi mul div uPi 8.0f64 sub 1.0f64 get ivM2 0
+lPerpHi = ivHi mul div uPi 8.0f64 sub 1.0f64 get ivM2 0
 if lt lPerpHi 0.0f64
 lPerpHi = 0.0f64
 end
-w1Hi = ivInflateHi uSqrt64 ivInflateHi add mul lParHi lParHi mul lPerpHi lPerpHi
+w1Hi = ivHi uSqrt64 ivHi add mul lParHi lParHi mul lPerpHi lPerpHi
 if gt w1Hi get maxW1Hi 0
 put maxW1Hi 0 w1Hi
 end
@@ -267,21 +257,21 @@ end
 encloseS3Box beta beta
 put ivU12 0 get ivM 0
 put ivU12 1 get ivM 1
-put ivU1 1 ivInflateHi div sub mul 4.0f64 get ivM2 1 1.0f64 3.0f64
+put ivU1 1 ivHi div sub mul 4.0f64 get ivM2 1 1.0f64 3.0f64
 
-tvOscHi = ivInflateHi mul 18.0f64 uTanhHi beta
-tvS3L1Hi = ivInflateHi mul 18.0f64 mul beta get maxMadHi 0
-w1GeodHi = ivInflateHi mul 18.0f64 mul beta get maxW1Hi 0
-tg14W1Hi = ivInflateHi mul 14.0f64 mul beta get maxW1Hi 0
-qKP = ivInflateHi mul 13.591409143f64 get ivU12 1
+tvOscHi = ivHi mul 18.0f64 uTanhHi beta
+tvS3L1Hi = ivHi mul 18.0f64 mul beta get maxMadHi 0
+w1GeodHi = ivHi mul 18.0f64 mul beta get maxW1Hi 0
+tg14W1Hi = ivHi mul 14.0f64 mul beta get maxW1Hi 0
+qKP = ivHi mul 13.591409143f64 get ivU12 1
 kpHi = 999.0f64
 if lt qKP 0.999f64
-q2 = ivInflateHi mul qKP qKP
-q6 = ivInflateHi mul q2 mul q2 q2
-kpHi = ivInflateHi div mul 4.0f64 q6 sub 1.0f64 qKP
+q2 = ivHi mul qKP qKP
+q6 = ivHi mul q2 mul q2 q2
+kpHi = ivHi div mul 4.0f64 q6 sub 1.0f64 qKP
 end
-u2 = ivInflateHi mul get ivU12 1 get ivU12 1
-dec4Hi = ivInflateHi mul u2 u2
+u2 = ivHi mul get ivU12 1 get ivU12 1
+dec4Hi = ivHi mul u2 u2
 
 uPrintF64 beta
 uPrint tTab
@@ -327,7 +317,13 @@ end
 uPrint tNl
 end
 
+text tTrigFail "TRIG_ENDPOINT status=FAIL\n"
+
 fn main to int
+if or lt cosBoxHi 0.0f64 0.0f64 1.0f64 gt cosBoxLo uPi uPi neg 1.0f64
+uPrint tTrigFail
+ret 1
+end
 uPrint tIvHdr
 uPrint tIvNote
 uPrint tIvCols

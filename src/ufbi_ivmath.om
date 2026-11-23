@@ -1,0 +1,63 @@
+note SPDX-License-Identifier: Apache-2.0
+note src/ufbi_ivmath.om: elementary functions accurate enough for the interval certificates.
+note Composed after src/ufbi_math.om and before a certificate source.
+note
+note WHY THIS FILE EXISTS (review finding F1, 2026-11-22):
+note   uSin64 in ufbi_math.om stops its Taylor series at x^15/15!. At |x| = pi/2 the omitted term is
+note   (pi/2)^17/17! = 6.1e-12, larger than the certificates' inflation margin, so "upper bounds" built
+note   from it were not upper bounds (ivHi(uCos64 0) < 1). ufbi_math.om is left unchanged so the GPU
+note   check binaries keep their recorded hashes; certificates must use ivSin64 / ivCos64 instead.
+note
+note The Taylor remainder after degree 23 on the folded interval is bounded by (pi/2)^25/25!.
+note scripts/ivmath_crosscheck.py samples binary64 reduction and evaluation against mpmath.
+note Its thresholds are regression checks. A full enclosure proof also requires roundoff
+note analysis of each composed expression, its argument range, and the quadrature.
+note The certificate sources share the same absolute and relative padding below.
+
+fn ivSin64 theta f64 to f64
+pi = uPi
+twopi = uTwoPi
+halfpi = uHalfPi
+k = long div theta twopi
+x = sub theta mul f64 k twopi
+while gt x pi bound 8
+x = sub x twopi
+end
+while lt x neg pi bound 8
+x = add x twopi
+end
+if gt x halfpi
+x = sub pi x
+end
+if lt x neg halfpi
+x = sub neg pi x
+end
+x2 = mul x x
+s = f64 1.0f64
+s = sub 1.0f64 div mul x2 s 506.0f64
+s = sub 1.0f64 div mul x2 s 420.0f64
+s = sub 1.0f64 div mul x2 s 342.0f64
+s = sub 1.0f64 div mul x2 s 272.0f64
+s = sub 1.0f64 div mul x2 s 210.0f64
+s = sub 1.0f64 div mul x2 s 156.0f64
+s = sub 1.0f64 div mul x2 s 110.0f64
+s = sub 1.0f64 div mul x2 s 72.0f64
+s = sub 1.0f64 div mul x2 s 42.0f64
+s = sub 1.0f64 div mul x2 s 20.0f64
+s = sub 1.0f64 div mul x2 s 6.0f64
+ret mul x s
+end
+
+fn ivCos64 theta f64 to f64
+ret ivSin64 add theta uHalfPi
+end
+
+fn ivLo x f64 to f64
+m = add mul uAbs64 x 0.000000000001f64 0.0000000000001f64
+ret sub x m
+end
+
+fn ivHi x f64 to f64
+m = add mul uAbs64 x 0.000000000001f64 0.0000000000001f64
+ret add x m
+end

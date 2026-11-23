@@ -3,24 +3,24 @@ note src/ufbi_phase4_cert.om: Pure Seeded-OM-2 Zero-Monte-Carlo Phase IV Dual-Cl
 note
 note Zero randomness, zero Monte Carlo, zero C/Python/Rust/libcuda:
 note   PART A (Right Cliff — Period-2 Balanced Acyclic Spanning-Tree Gauge deg=12 + S^3 W_2 Enclosure):
-note     Uses outward-rounded interval arithmetic (rel=1e-12, abs=1e-15, 2048 theta-boxes x 128 r-boxes
+note     Uses outward-rounded interval arithmetic (rel=1e-12, abs=1e-13, 2048 theta-boxes x 128 r-boxes
 note     covering ALL staple fields r in [0, 6*beta]) to enclose exact Benamou-Brenier W2_par and
 note     closed-form transverse W2_perp, certifying:
 note       - Unfixed 18-neighbor W2 Dobrushin (18 * L_W2 * beta < 1) up to beta = 0.180
 note       - Temporal-Gauge 14-neighbor W2 Dobrushin (14 * L_W2 * beta < 1) up to beta = 0.240
 note       - Period-2 Balanced Acyclic Tree 12-neighbor W2 Dobrushin (12 * L_W2 * beta < 1) up to beta = 0.280!
 note
-note   PART B (Left Cliff — 100% ZERO-LOOPHOLE 4-Region Shifted Quaternion Landau-Gauge Star Cell K_{2,2,2,2}):
+note   PART B (Left Cliff — 4-Region Shifted Quaternion Landau-Gauge Star Cell K_{2,2,2,2}):
 note     Covers 100% of the compact manifold (S^3)^7 via Lean-verified Theorems 15A-15F:
 note       - Exact strictly-damping quaternion quartic Delta_quat >= 0 (ZERO e^{+y_max} blowup!)
 note       - Shifted 21D Gaussian spectrum {6*beta - 5/8, 8*beta - 5/8} absorbing O(1/beta) Jacobian+FP
-note       - Outward-rounded 1D chi_21^2 unimodal box integration (peak t=19.0, 400 core boxes, 400 tail boxes
+note       - Outward-rounded 1D chi_21^2 unimodal box integration (peak t=19.0, 200 core boxes, 400 tail boxes
 note         + analytic Chernoff tail on [240, inf) < 1e-35 -> ZERO quadrature gap!)
 note       - Exact 1-bad-link K_{1,2,2,2} (spectrum {5,5,5,7,7,7}) + exact S^3 Haar cap measure
 note       - Exact 2-bad-link global quaternion action floor s2(R2_eff)*beta
 note       - Exact sharp normalized TV bound d_TV <= max(A_+, A_- / (1 - A_-)) & full L^1 = A_+ + A_-!
 note
-note Composed after: src/ufbi_math.om
+note Composed after: src/ufbi_math.om and src/ufbi_ivmath.om
 
 global pZ f64 2
 global pM f64 2
@@ -29,6 +29,7 @@ global pPar f64 2
 global pAcc f64 8
 global pSt f64 10
 global pFlux f64 4
+global rowFailures ulong 1
 global maxW2Par f64 1
 global maxW2Perp f64 1
 note Part B globals (keep every fn <= 6 FP locals to stay inside omc FP reg pool)
@@ -40,8 +41,8 @@ global qFar f64 8
 text tP4Hdr "=== PHASE IV ZERO-MONTE-CARLO DUAL-CLIFF VERIFIER (PURE SEEDED OM-2) ===\n"
 text tP4AHdr "=== PART A: RIGHT CLIFF — PERIOD-2 BALANCED TREE (deg=12) + S^3 W_2 ENCLOSURE (2048 x 128 BOXES) ===\n"
 text tP4ACols "beta\tW2_par_hi\tW2_perp_hi\tL_W2_hi\tUnfix18_hi\tTG14_hi\tBT12_hi\tcert\n"
-text tP4BHdr "=== PART B: LEFT CLIFF — ZERO-LOOPHOLE 4-REGION SHIFTED QUATERNION LANDAU GAUGE (K_{2,2,2,2} + K_{1,2,2,2}) ===\n"
-text tP4BCols "beta\tR1\tR7\tu_core\tA_up_hi\tA_dn_hi\tmid_hi\tgt_hi\t1bad_hi\t2bad_hi\tdTV_hi\tL1_hi\tstatus\n"
+text tP4BHdr "=== PART B: LEFT CLIFF — 4-REGION SHIFTED QUATERNION LANDAU GAUGE (K_{2,2,2,2} + K_{1,2,2,2}) ===\n"
+text tP4BCols "beta\tR1\tR7\tu_core\tcore_up_hi\tcore_dn_hi\tmid_hi\tgt_hi\t1bad_hi\t2bad_hi\tdTV_hi\tL1_hi\tstatus\n"
 text tPassU "PASS_UNFIX18"
 text tPassTG "PASS_TG14_W2"
 text tPassBT "PASS_BT12_W2"
@@ -51,16 +52,6 @@ text tClosedTV "CLOSED_TV_ONLY"
 text tTab "\t"
 text tNl "\n"
 text tDone "PHASE4_CERT_DONE status=PASS\n"
-
-fn ivLo x f64 to f64
-m = add mul uAbs64 x 0.000000000001f64 0.000000000000001f64
-ret sub x m
-end
-
-fn ivHi x f64 to f64
-m = add mul uAbs64 x 0.000000000001f64 0.000000000000001f64
-ret add x m
-end
 
 fn min2 a f64 b f64 to f64
 if lt a b
@@ -93,7 +84,7 @@ ret ivHi max2 max2 p1 p2 max2 p3 p4
 end
 
 fn sinLo t0 f64 t1 f64 to f64
-ret ivLo max2 0.0f64 min2 uSin64 t0 uSin64 t1
+ret max2 0.0f64 ivLo min2 ivSin64 t0 ivSin64 t1
 end
 
 fn sinHi t0 f64 t1 f64 to f64
@@ -101,15 +92,15 @@ hp = uHalfPi
 if and le t0 hp ge t1 hp
 ret 1.0f64
 end
-ret ivHi min2 1.0f64 max2 uSin64 t0 uSin64 t1
+ret ivHi min2 1.0f64 max2 ivSin64 t0 ivSin64 t1
 end
 
 fn cosLo t0 f64 t1 f64 to f64
-ret ivLo uCos64 t1
+ret ivLo ivCos64 t1
 end
 
 fn cosHi t0 f64 t1 f64 to f64
-ret ivHi uCos64 t0
+ret ivHi ivCos64 t0
 end
 
 note =========================================================================
@@ -260,14 +251,18 @@ end
 put pPar 0 ivHi uSqrt64 get pPar 1
 end
 
-fn printPartACert u18 f64 tg14 f64 bt12 f64 to void
+fn printPartACert u18 f64 tg14 f64 bt12 f64 expected ulong to void
+actual = ulong 0
 if lt u18 1.0f64
+actual = ulong 18
 uPrint tPassU
 else
 if lt tg14 1.0f64
+actual = ulong 14
 uPrint tPassTG
 else
 if lt bt12 1.0f64
+actual = ulong 12
 uPrint tPassBT
 else
 uPrint tOpen
@@ -275,9 +270,12 @@ end
 end
 end
 uPrint tNl
+if ne actual expected
+put rowFailures 0 add get rowFailures 0 1
+end
 end
 
-fn scanW2Beta beta f64 to void
+fn scanW2Beta beta f64 expected ulong to void
 dr = div mul 6.0f64 beta 128.0f64
 put maxW2Par 0 0.0f64
 put maxW2Perp 0 0.0f64
@@ -311,7 +309,7 @@ uPrintF64 tg14
 uPrint tTab
 uPrintF64 bt12
 uPrint tTab
-printPartACert u18 tg14 bt12
+printPartACert u18 tg14 bt12 expected
 end
 
 note =========================================================================
@@ -355,7 +353,7 @@ h = ivHi div sub 240.0f64 a 400.0f64
 acc = f64 0.0f64
 for i ulong 400
 t0 = add a mul f64 i h
-acc = ivHi add acc ivHi mul fChi21PtHi t0 h
+acc = ivHi add acc ivHi mul fChi21BoxHi t0 add t0 h h
 end
 ret ivHi add acc 0.000000000000001f64
 end
@@ -387,14 +385,14 @@ end
 
 note Exact lower bound on s1_floor(R) = 24*(1 - r_*^2) where 4 r_*^2 - cos(R)*r_* - 3 = 0
 fn s1FloorLo R f64 to f64
-cH = ivHi uCos64 R
+cH = ivHi ivCos64 R
 rH = ivHi div ivHi add cH ivHi uSqrt64 ivHi add ivHi mul cH cH 48.0f64 8.0f64
 ret ivLo mul 24.0f64 ivLo sub 1.0f64 ivHi mul rH rH
 end
 
 note Exact lower bound on s2_floor(R) = 24*(1 - r_*^2) where 5 r_*^2 - 2*cos(R)*r_* - 3 = 0
 fn s2FloorLo R f64 to f64
-cH = ivHi uCos64 R
+cH = ivHi ivCos64 R
 rH = ivHi div ivHi add cH ivHi uSqrt64 ivHi add ivHi mul cH cH 15.0f64 5.0f64
 ret ivLo mul 24.0f64 ivLo sub 1.0f64 ivHi mul rH rH
 end
@@ -407,7 +405,9 @@ end
 if ge th0 uPi
 ret 0.0f64
 end
-scH = ivHi mul ivHi uSin64 th0 ivHi uCos64 th0
+s = ivSin64 th0
+c = ivCos64 th0
+scH = ivMulHi ivLo s ivHi s ivLo c ivHi c
 numL = ivLo sub th0 scH
 ret ivHi sub 1.0f64 ivLo div numL uPi
 end
@@ -442,7 +442,7 @@ end
 
 note Shift for the 7 near links given the far-link sine bound s7 = sin(R7)^2 (split out of scan1BadR7, error 12)
 fn shift7Hi R7 f64 s7 f64 to f64
-sLo = ivLo uSin64 R7
+sLo = ivLo ivSin64 R7
 cLog7 = ivHi div neg ivLo uLog64 ivLo sub 1.0f64 s7 ivLo mul sLo sLo
 ret max2 0.0f64 ivHi sub cLog7 div 3.0f64 7.0f64
 end
@@ -463,7 +463,7 @@ end
 fn scan1BadR7 R7 f64 rMin f64 delta f64 cap0 f64 to void
 beta = get qPrm 0
 R1 = get qPrm 10
-s7 = ivHi mul ivHi uSin64 R7 ivHi uSin64 R7
+s7 = ivHi mul ivHi ivSin64 R7 ivHi ivSin64 R7
 if ge s7 0.998f64
 ret
 end
@@ -525,12 +525,16 @@ end
 
 note Faddeev-Popov remainder coefficient upper bound on a box with s in [stL, stH]
 note (split out of coreBoxFpStep: one function holding all these values exceeded omc's 16-register pool, error 12)
-fn fpCoeffHi stH f64 stL f64 to f64
+fn fpCoeffHi stH f64 to f64
 sqOm = ivLo uSqrt64 ivLo sub 1.0f64 stH
 xH = ivHi sub 1.0f64 sqOm
-d2H = ivHi div max2 0.0f64 ivHi sub ivHi sub 1.0f64 mul 0.5f64 stL sqOm ivLo mul stL stL
-c2XH = ivHi div max2 0.0f64 ivHi sub neg ivLo uLog64 sqOm xH ivLo mul xH xH
-csqH = ivHi div xH stL
+note (1 - s/2 - sqrt(1-s))/s^2 = 1/(2*(1+sqrt(1-s))^2).
+denL = ivLo add 1.0f64 sqOm
+d2H = ivHi div 0.5f64 ivLo mul denL denL
+note (-log(1-x)-x)/x^2 has a positive power series, hence increases in x.
+note Evaluate at xH; enclose log(1-xH) directly at that same point.
+c2XH = ivHi div ivHi sub neg ivLo uLog64 ivLo sub 1.0f64 xH xH ivLo mul xH xH
+csqH = ivHi div 1.0f64 denL
 tA = ivHi mul mul 0.375f64 d2H ivHi mul 120.0f64 ivHi mul get qPrm 3 get qPrm 3
 tB = ivHi mul 3.0f64 ivHi mul c2XH ivHi mul ivHi mul div csqH 8.0f64 div csqH 8.0f64 get qPrm 8
 ret ivHi div ivHi add tA tB 483.0f64
@@ -547,11 +551,7 @@ if ge stH 0.995f64
 put qTmp 2 999.0f64
 ret
 end
-stL = ivLo div t1 lam1
-if le stL 0.0001f64
-stL = 0.0001f64
-end
-fpC = fpCoeffHi stH stL
+fpC = fpCoeffHi stH
 put qTmp 2 ivHi add get qTmp 2 ivHi mul fpC ivHi mul ivHi mul t1 t1 ivHi mul ftH h
 end
 
@@ -616,8 +616,8 @@ end
 fn scanR1 R1 f64 to void
 lam1 = get qPrm 1
 put qPrm 10 R1
-s1H = ivHi mul ivHi uSin64 R1 ivHi uSin64 R1
-s1L = ivLo mul ivLo uSin64 R1 ivLo uSin64 R1
+s1H = ivHi mul ivHi ivSin64 R1 ivHi ivSin64 R1
+s1L = ivLo mul ivLo ivSin64 R1 ivLo ivSin64 R1
 if ge s1H 0.996f64
 ret
 end
@@ -646,7 +646,7 @@ end
 end
 end
 
-fn evalZeroLoopholeStar beta f64 to void
+fn evalZeroLoopholeStar beta f64 expected ulong to void
 initBetaParams beta
 put qRes 0 999.0f64
 put qRes 1 999.0f64
@@ -687,41 +687,58 @@ uPrintF64 get qRes 1
 uPrint tTab
 uPrintF64 get qRes 0
 uPrint tTab
+actual = ulong 0
 if lt get qRes 0 1.0f64
+actual = ulong 2
 uPrint tClosedL1
 else
 if lt get qRes 1 1.0f64
+actual = ulong 1
 uPrint tClosedTV
 else
 uPrint tOpen
 end
 end
 uPrint tNl
+if ne actual expected
+put rowFailures 0 add get rowFailures 0 1
+end
 end
 
+text tRowFail "PHASE4_CERT_DONE status=FAIL\n"
+text tTrigFail "TRIG_ENDPOINT status=FAIL\n"
+
 fn main to int
+if or lt cosHi 0.0f64 0.0f64 1.0f64 gt cosLo uPi uPi neg 1.0f64
+uPrint tTrigFail
+ret 1
+end
 initChi21Norm
 uPrint tP4Hdr
 uPrint tP4AHdr
 uPrint tP4ACols
-scanW2Beta 0.1272f64
-scanW2Beta 0.180f64
-scanW2Beta 0.240f64
-scanW2Beta 0.260f64
-scanW2Beta 0.275f64
-scanW2Beta 0.280f64
-scanW2Beta 0.283f64
-scanW2Beta 0.288f64
+scanW2Beta 0.1272f64 18
+scanW2Beta 0.180f64 18
+scanW2Beta 0.240f64 14
+scanW2Beta 0.260f64 12
+scanW2Beta 0.275f64 12
+scanW2Beta 0.280f64 12
+scanW2Beta 0.283f64 0
+scanW2Beta 0.288f64 0
 uPrint tP4BHdr
 uPrint tP4BCols
-evalZeroLoopholeStar 6.0f64
-evalZeroLoopholeStar 6.5f64
-evalZeroLoopholeStar 7.0f64
-evalZeroLoopholeStar 8.0f64
-evalZeroLoopholeStar 10.0f64
-evalZeroLoopholeStar 12.0f64
-evalZeroLoopholeStar 15.0f64
-evalZeroLoopholeStar 20.0f64
+evalZeroLoopholeStar 6.0f64 1
+evalZeroLoopholeStar 6.5f64 2
+evalZeroLoopholeStar 7.0f64 2
+evalZeroLoopholeStar 8.0f64 2
+evalZeroLoopholeStar 10.0f64 2
+evalZeroLoopholeStar 12.0f64 2
+evalZeroLoopholeStar 15.0f64 2
+evalZeroLoopholeStar 20.0f64 2
+if ne get rowFailures 0 0
+uPrint tRowFail
+ret 1
+end
 uPrint tDone
 ret 0
 end
