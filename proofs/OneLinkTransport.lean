@@ -87,7 +87,7 @@ private theorem slope_integral_zero (r : ℝ) : (∫ t in 0..π/2, slope r t) = 
     (a := 0) (b := π/2) (fun t _ => slope_spec r t) (hd.intervalIntegrable _ _)
   simpa [primitive] using hf
 
-private theorem sin_moment_cap {r : ℝ} (hr : 0 ≤ r) :
+theorem sin_moment_cap {r : ℝ} (hr : 0 ≤ r) :
     (∫ t in 0..π, weight r t * sin t^2) ≤ (3/4)*(∫ t in 0..π, weight r t) := by
   let f := fun t => weight r t * sin t^2 - (3/4)*weight r t
   have hc : Continuous f := by dsimp [f,weight]; fun_prop

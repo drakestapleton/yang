@@ -449,7 +449,7 @@ elif [ "$MODE" = "proofs" ]; then
   "
 elif [ "$MODE" = "openai_bridge" ]; then
   echo "=== Checking the Mathlib bridges and periodic SU(2) Wilson specialization on Spark ==="
-  scp "$ROOT/proofs/OpenAiYmBridge.lean" "$ROOT/proofs/DobrushinShlosman.lean" "$ROOT/proofs/WilsonPolymerBridge.lean" "$ROOT/proofs/PhaseFourBridge.lean" "$ROOT/proofs/OneLinkTransport.lean" "$ROOT/proofs/FundamentalSU2.lean" "$ROOT/proofs/PeriodicWilson.lean" "$ROOT/proofs/WilsonConditional.lean" "$ROOT/proofs/WilsonAngle.lean" "$ROOT/proofs/WilsonRadialTransport.lean" "$ROOT/proofs/WilsonLinkTransport.lean" "$ROOT/proofs/WilsonPoleTransport.lean" "$ROOT/proofs/WilsonFieldResponse.lean" spark:~/workspace/yang-lean-bridge/
+  scp "$ROOT/proofs/OpenAiYmBridge.lean" "$ROOT/proofs/DobrushinShlosman.lean" "$ROOT/proofs/WilsonPolymerBridge.lean" "$ROOT/proofs/PhaseFourBridge.lean" "$ROOT/proofs/OneLinkTransport.lean" "$ROOT/proofs/FundamentalSU2.lean" "$ROOT/proofs/PeriodicWilson.lean" "$ROOT/proofs/WilsonConditional.lean" "$ROOT/proofs/WilsonAngle.lean" "$ROOT/proofs/WilsonRadialTransport.lean" "$ROOT/proofs/WilsonLinkTransport.lean" "$ROOT/proofs/WilsonPoleTransport.lean" "$ROOT/proofs/WilsonFieldResponse.lean" "$ROOT/proofs/PeriodicWilsonDS.lean" spark:~/workspace/yang-lean-bridge/
   ssh spark "set -eu
     export PATH=\"\$HOME/.elan/bin:\$PATH\"
     cd ~/workspace/yang-lean-bridge
@@ -467,7 +467,8 @@ elif [ "$MODE" = "openai_bridge" ]; then
       lean -o \"\$1/WilsonRadialTransport.olean\" WilsonRadialTransport.lean
       lean -o \"\$1/WilsonLinkTransport.olean\" WilsonLinkTransport.lean
       lean -o \"\$1/WilsonPoleTransport.olean\" WilsonPoleTransport.lean
-      lean WilsonFieldResponse.lean
+      lean -o \"\$1/WilsonFieldResponse.olean\" WilsonFieldResponse.lean
+      lean PeriodicWilsonDS.lean
     ' sh \"\$bridge_out\"
     echo 'LEAN_PHASE4_BRIDGES status=PASS'
   "

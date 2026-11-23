@@ -723,6 +723,49 @@ theorem dobrushin_shlosman_exponential_decay
     field_simp [hR.ne']
   rw [hExpArg, mul_comm, Real.exp_mul, Real.exp_log hα0, Real.rpow_natCast]
 
+/-- Iterate a nonnegative finite influence matrix on a boundary error profile. -/
+def influenceIterate {ι : Type*} [Fintype ι] (A : ι → ι → ℝ) (b : ι → ℝ) : ℕ → ι → ℝ
+  | 0 => b
+  | k+1 => fun e => ∑ a, A e a * influenceIterate A b k a
+
+/-- The sum of weights of all length-k influence paths sends a bounded profile
+below its initial bound times the kth power of the uniform row bound. -/
+theorem influenceIterate_le {ι : Type*} [Fintype ι] {A : ι → ι → ℝ} {α B : ℝ}
+    (hA : ∀ e a, 0 ≤ A e a) (hrow : ∀ e, ∑ a, A e a ≤ α)
+    (hα : 0 ≤ α) (hB : 0 ≤ B) {b : ι → ℝ} (hb : ∀ a, b a ≤ B) (k : ℕ) (e : ι) :
+    influenceIterate A b k e ≤ B * α^k := by
+  induction k generalizing e with
+  | zero => simpa [influenceIterate] using hb e
+  | succ k ih =>
+    calc influenceIterate A b (k+1) e ≤ ∑ a, A e a * (B*α^k) :=
+           Finset.sum_le_sum fun a _ => mul_le_mul_of_nonneg_left (ih a) (hA e a)
+         _ = (∑ a, A e a) * (B*α^k) := by rw [Finset.sum_mul]
+         _ ≤ α * (B*α^k) := mul_le_mul_of_nonneg_right (hrow e) (mul_nonneg hB (pow_nonneg hα _))
+         _ = B*α^(k+1) := by ring
+
+/-- A geometric upper envelope at fixed physical shell spacing survives a
+finite-volume limit. Approximants need not obey a ratio bound between shells. -/
+theorem shell_envelopes_imply_relativistic_mass_gap {H : HilbertSpace} {Labels : FieldLabels}
+    (T : WightmanTheory H Labels) (hW0 : T.W0) (hW1 : T.W1) (hW2 : T.W2)
+    {R α : ℝ} (hR : 0 < R) (hα : 0 < α) (hα1 : α < 1)
+    (hShell : ∀ ψ : H.carrier, inner ℂ T.fields.vacuum.1 ψ = 0 →
+      ∃ (C : ℝ) (f : ℕ → ℕ → ℝ), 0 ≤ C ∧
+        (∀ k : ℕ, Tendsto (fun n => f n k) atTop
+          (𝓝 (∫ p, Real.exp (-((k : ℝ)*R)*YangMills.time p) ∂(T.energyMomentum.diagonal ψ)))) ∧
+        ∀ n k, f n k ≤ C*α^k) :
+    HasRelativisticMassGap T ((1/R)*Real.log (1/α)) := by
+  have hΔ := (dobrushin_shlosman_exponential_decay (C := 1) hR hα hα1 0).2
+  apply uniform_decay_implies_relativistic_mass_gap T hW0 hW1
+  refine ⟨hΔ,vacuum_diagonal_energyGapStrip T hW0 hW1 hW2 _,fun ψ hψ => ?_⟩
+  obtain ⟨C,f,hC,hlim,hbound⟩ := hShell ψ hψ
+  apply state_decay_of_shell_bounds T hW0 ψ hR hΔ.le hC
+  intro k
+  exact (le_of_tendsto (hlim k) (.of_forall fun n => hbound n k)).trans_eq
+    (dobrushin_shlosman_exponential_decay (C := C) hR hα hα1 k).1
+
+#print axioms influenceIterate_le
+#print axioms shell_envelopes_imply_relativistic_mass_gap
+
 /-- Transfer finite-volume shell recurrence to the continuum on each vacuum-orthogonal
 state. The shell spacing is physical and independent of the volume index. -/
 theorem shell_limits_imply_relativistic_mass_gap {H : HilbertSpace} {Labels : FieldLabels}

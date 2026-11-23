@@ -31,7 +31,7 @@ private theorem cum_angle_deriv (r t : ℝ) :
   exact (intervalIntegral.integral_hasDerivAt_right (h.intervalIntegrable _ _)
     h.aestronglyMeasurable.stronglyMeasurableAtFilter h.continuousAt).div_const _
 
-private theorem mass_deriv (r t : ℝ) :
+theorem weightMass_hasDerivAt (r t : ℝ) :
     HasDerivAt (fun s => ∫ x in 0..t, weight s x) (∫ x in 0..t, weight r x*cos x) r := by
   let dw := fun s x => weight s x * cos x
   have hd : Continuous (Function.uncurry dw) := continuous_weight_pair.mul (continuous_cos.comp continuous_snd)
@@ -50,7 +50,7 @@ private theorem mass_deriv (r t : ℝ) :
 
 private theorem cum_field_deriv (r t : ℝ) :
     HasDerivAt (fun s => angleCumulative s t) (polarFlux r t / angleNormalizer r) r := by
-  have h := (mass_deriv r t).div (mass_deriv r π) (angleNormalizer_pos r).ne'
+  have h := (weightMass_hasDerivAt r t).div (weightMass_hasDerivAt r π) (angleNormalizer_pos r).ne'
   apply h.congr_deriv
   have hw : Continuous (weight r) := by unfold weight; fun_prop
   have h₁ : Continuous (fun x => weight r x*cos x) := hw.mul continuous_cos
@@ -270,29 +270,35 @@ theorem quantile_mean_square_speed (r : ℝ) :
   · simp [hw]
   · field_simp
 
-private theorem square_increment {a b : ℝ} (hab : a < b) {p : unitInterval} (hp : p ≠ 0 ∧ p ≠ 1) :
-    (angleQuantile b p - angleQuantile a p)^2 ≤ (b-a) * ∫ r in a..b, (rankSpeed r p)^2 := by
-  let D := angleQuantile b p - angleQuantile a p
+/-- Integral Cauchy–Schwarz on an interval, in the form used for path energies. -/
+theorem interval_square_increment {a b D : ℝ} (hab : a < b) {f : ℝ → ℝ}
+    (hc : Continuous f) (hD : (∫ r in a..b, f r) = D) :
+    D^2 ≤ (b-a) * ∫ r in a..b, f r^2 := by
   let L := b-a
   have hL : 0 < L := sub_pos.mpr hab
-  have hc := speed_in_field hp
-  have hD : (∫ r in a..b, rankSpeed r p) = D := intervalIntegral.integral_eq_sub_of_hasDerivAt
-    (fun r _ => quantile_field_deriv r hp) (hc.intervalIntegrable _ _)
   have hz := intervalIntegral.integral_nonneg_of_forall (μ := volume) hab.le
-    (fun r => sq_nonneg (L*rankSpeed r p-D))
-  have he (r : ℝ) : (L*rankSpeed r p-D)^2 =
-      L^2*(rankSpeed r p)^2 - (2*L*D)*(rankSpeed r p) + D^2 := by ring
+    (fun r => sq_nonneg (L*f r-D))
+  have he (r : ℝ) : (L*f r-D)^2 =
+      L^2*(f r)^2 - (2*L*D)*(f r) + D^2 := by ring
   simp_rw [he] at hz
-  have c₁ : Continuous (fun r => L^2 * (rankSpeed r p)^2) := continuous_const.mul (hc.pow 2)
-  have c₂ : Continuous (fun r => (2*L*D)*(rankSpeed r p)) := continuous_const.mul hc
-  have c₃ : Continuous (fun r => L^2 * rankSpeed r p^2 - (2*L*D)*rankSpeed r p) := c₁.sub c₂
+  have c₁ : Continuous (fun r => L^2 * (f r)^2) := continuous_const.mul (hc.pow 2)
+  have c₂ : Continuous (fun r => (2*L*D)*(f r)) := continuous_const.mul hc
+  have c₃ : Continuous (fun r => L^2 * f r^2 - (2*L*D)*f r) := c₁.sub c₂
   rw [intervalIntegral.integral_add (c₃.intervalIntegrable _ _) (intervalIntegrable_const (c := D^2)),
     intervalIntegral.integral_sub (c₁.intervalIntegrable _ _) (c₂.intervalIntegrable _ _),
     intervalIntegral.integral_const_mul,intervalIntegral.integral_const_mul,hD,intervalIntegral.integral_const] at hz
-  change 0 ≤ L^2 * (∫ r in a..b, rankSpeed r p ^ 2) - 2*L*D*D + L * D^2 at hz
+  change 0 ≤ L^2 * (∫ r in a..b, f r ^ 2) - 2*L*D*D + L * D^2 at hz
   apply (mul_le_mul_iff_right₀ hL).mp
-  change L*D^2 ≤ L*(L * ∫ r in a..b, rankSpeed r p^2)
+  change L*D^2 ≤ L*(L * ∫ r in a..b, f r^2)
   linarith only [hz]
+
+private theorem square_increment {a b : ℝ} (hab : a < b) {p : unitInterval} (hp : p ≠ 0 ∧ p ≠ 1) :
+    (angleQuantile b p - angleQuantile a p)^2 ≤ (b-a) * ∫ r in a..b, (rankSpeed r p)^2 := by
+  let D := angleQuantile b p - angleQuantile a p
+  have hc := speed_in_field hp
+  have hD : (∫ r in a..b, rankSpeed r p) = D := intervalIntegral.integral_eq_sub_of_hasDerivAt
+    (fun r _ => quantile_field_deriv r hp) (hc.intervalIntegrable _ _)
+  exact interval_square_increment hab hc hD
 
 private theorem path_square_integrable {a : ℝ} (ha : 0 ≤ a) (b : ℝ) :
     Integrable (fun z : ℝ × unitInterval => (rankSpeed z.1 z.2)^2)

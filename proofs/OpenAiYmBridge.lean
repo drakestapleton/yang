@@ -201,6 +201,27 @@ lemma time_nonneg_of_mem_forwardCone {p : Spacetime} (hp : p ∈ YangMills.forwa
     0 ≤ YangMills.time p :=
   le_trans (norm_nonneg _) hp
 
+/-- Translation covariance fixes the normalized vacuum. Its characteristic function
+is identically one, so its energy–momentum measure is the point mass at zero. -/
+theorem vacuum_diagonal_eq_dirac {H : HilbertSpace} {Labels : FieldLabels}
+    (T : WightmanTheory H Labels) (hW0 : T.W0) (hW1 : T.W1) (hW2 : T.W2) :
+    T.energyMomentum.diagonal T.fields.vacuum.1 = Measure.dirac 0 := by
+  haveI := T.energyMomentum.finite T.fields.vacuum.1
+  apply Measure.ext_of_charFun
+  funext x
+  rw [hW0.spectralRepresentation, ← T.translationCompatibility,
+    hW2.vacuumInvariant, inner_self_eq_norm_sq_to_K, hW1.domain.normalizedVacuum]
+  simp [charFun_dirac]
+
+theorem vacuum_diagonal_energyGapStrip {H : HilbertSpace} {Labels : FieldLabels}
+    (T : WightmanTheory H Labels) (hW0 : T.W0) (hW1 : T.W1) (hW2 : T.W2) (Δ : ℝ) :
+    T.energyMomentum.diagonal T.fields.vacuum.1 (energyGapStrip Δ) = 0 := by
+  rw [vacuum_diagonal_eq_dirac T hW0 hW1 hW2, Measure.dirac_apply' _ (measurableSet_energyGapStrip Δ)]
+  simp [energyGapStrip,YangMills.time]
+
+#print axioms vacuum_diagonal_eq_dirac
+#print axioms vacuum_diagonal_energyGapStrip
+
 /-- Every sub-strip `0 < p₀ ≤ Δ - ε` (`0 < ε < Δ`) has zero `diagonal ψ` measure
 whenever `ψ` satisfies `StateLaplaceDecay theory Δ ψ`. -/
 lemma diagonal_subStrip_eq_zero {H : HilbertSpace} {Labels : FieldLabels}

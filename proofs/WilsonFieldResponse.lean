@@ -9,32 +9,24 @@ open scoped Matrix.Norms.Frobenius ENNReal
 noncomputable section
 private abbrev G := gaugeGroup.image
 
-private theorem tanh_le_strength {x : ℝ} (hx : 0 ≤ x) : tanh x ≤ x := by
-  rw [tanh_eq_sinh_div_cosh,div_le_iff₀ (cosh_pos _)]
-  have h := intervalIntegral.integral_mono_on (μ := volume) hx (continuous_cosh.intervalIntegrable _ _) intervalIntegrable_const
-    (fun t ht => (show cosh t ≤ cosh x from cosh_le_cosh.mpr (by simpa only [abs_of_nonneg ht.1,abs_of_nonneg hx] using ht.2)))
-  rw [intervalIntegral.integral_eq_sub_of_hasDerivAt (fun t _ => hasDerivAt_sinh t)
-    (continuous_cosh.intervalIntegrable _ _),intervalIntegral.integral_const,sinh_zero,sub_zero,sub_zero,smul_eq_mul] at h
-  exact h
-
 private theorem inverse_distance (k j : G) : linkGeodesic k⁻¹ j⁻¹ = linkGeodesic k j := calc
   _ = linkGeodesic (k*k⁻¹*j) (k*j⁻¹*j) := by rw [linkGeodesic_mul_right,linkGeodesic_mul_left]
   _ = linkGeodesic j k := by simp [mul_assoc]
   _ = _ := by simp only [linkGeodesic_eq_angle]; exact InnerProductGeometry.angle_comm ..
 
 /-- A uniform Lipschitz estimate in the Cartesian staple field. Its squared constant
-contains the radial contribution 1/12 and the round arc-to-chord factor π²/4. -/
-theorem cartesian_field_wasserstein {r s : ℝ} (hr : 0 ≤ r) (hs : 0 ≤ s) (k j : G) :
+contains the radial contribution 1/12 and the round angular contribution π²/16 after the arc-to-chord estimate. -/
+theorem cartesian_field_mean_square {r s : ℝ} (hr : 0 ≤ r) (hs : 0 ≤ s) (k j : G) :
     linkWassersteinSq (poleLaw r k) (poleLaw s j) ≤ ENNReal.ofReal
-      ((1/12 + π^2/4) * ‖r • linkCoordinates k - s • linkCoordinates j‖^2) := by
-  apply (strength_weighted_pole_wasserstein hr hs k j).trans (ENNReal.ofReal_le_ofReal ?_)
+      ((1/12 + π^2/16) * ‖r • linkCoordinates k - s • linkCoordinates j‖^2) := by
+  apply (mean_square_pole_wasserstein hr hs k j).trans (ENNReal.ofReal_le_ofReal ?_)
   rw [inverse_distance]
   let D := linkGeodesic k j
   let m := min r s
   let a := |s-r|
   let b := 2/π*m*D
   let L := (sqrt 12)⁻¹
-  let B := π/2
+  let B := π/4
   have hm : 0 ≤ m := le_min hr hs
   have hD : 0 ≤ D := arccos_nonneg _
   have hpi : π ≠ 0 := pi_pos.ne'
@@ -58,19 +50,22 @@ theorem cartesian_field_wasserstein {r s : ℝ} (hr : 0 ≤ r) (hs : 0 ≤ s) (k
     rw [norm_sub_sq_real,norm_smul,norm_smul,Real.norm_eq_abs,Real.norm_eq_abs,abs_of_nonneg hr,
       abs_of_nonneg hs,coordinates_norm,coordinates_norm,real_inner_smul_left,real_inner_smul_right,← hc]
     dsimp only [a]; rw [sq_abs]; ring
-  have hBb : B*b = m*D := by dsimp [B,b]; field_simp
+  have hBb : B*b = m/2*D := by dsimp [B,b]; field_simp; ring
   have hL : L^2 = 1/12 := by simp [L,inv_pow,Real.sq_sqrt]
-  have hB : B^2 = π^2/4 := by dsimp [B]; ring
-  have htan : 0 ≤ tanh m := by rw [tanh_eq_sinh_div_cosh]; exact div_nonneg (sinh_nonneg_iff.mpr hm) (cosh_pos _).le
-  have hstep : a/sqrt 12 + tanh m*D ≤ L*a+B*b := by
-    rw [hBb,div_eq_inv_mul]; exact add_le_add_right (mul_le_mul_of_nonneg_right (tanh_le_strength hm) hD) _
-  have hnn : 0 ≤ a/sqrt 12 + tanh m*D := add_nonneg (div_nonneg (abs_nonneg _) (sqrt_nonneg _)) (mul_nonneg htan hD)
+  have hB : B^2 = π^2/16 := by dsimp [B]; ring
+  have hstep : a/sqrt 12 + m/2*D = L*a+B*b := by rw [hBb,div_eq_inv_mul]
   calc
-    _ ≤ (L*a+B*b)^2 := pow_le_pow_left₀ hnn hstep 2
+    _ = (L*a+B*b)^2 := congrArg (·^2) hstep
     _ ≤ (L^2+B^2)*(a^2+b^2) := by nlinarith only [sq_nonneg (L*b-B*a)]
     _ ≤ (L^2+B^2)*‖r • linkCoordinates k-s • linkCoordinates j‖^2 := by
       rw [hv]; exact mul_le_mul_of_nonneg_left (add_le_add_right hb _) (add_nonneg (sq_nonneg _) (sq_nonneg _))
     _ = _ := by rw [hL,hB]
+
+theorem cartesian_field_wasserstein {r s : ℝ} (hr : 0 ≤ r) (hs : 0 ≤ s) (k j : G) :
+    linkWassersteinSq (poleLaw r k) (poleLaw s j) ≤ ENNReal.ofReal
+      ((1/12 + π^2/4) * ‖r • linkCoordinates k - s • linkCoordinates j‖^2) := by
+  exact (cartesian_field_mean_square hr hs k j).trans (ENNReal.ofReal_le_ofReal
+    (mul_le_mul_of_nonneg_right (by nlinarith [sq_nonneg π]) (sq_nonneg _)))
 
 private theorem matrixCoordinates_smul_sub (a b : ℝ) (A B : M) :
     matrixCoordinates (a • A - b • B) = a • matrixCoordinates A - b • matrixCoordinates B := by
@@ -87,10 +82,10 @@ private theorem matrixCoordinates_norm {A : M} (ha : A ∈ quaternionAlgebra) :
 
 /-- The full-link response to all changed neighboring links, counted with their
 periodic plaquette multiplicities. The bound covers every background and zero staples. -/
-theorem periodic_neighbor_wasserstein {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ : 0 ≤ β)
+theorem periodic_neighbor_mean_square {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ : 0 ≤ β)
     (U V : Configuration gaugeGroup l) (e : Edge l) :
     linkWassersteinSq (heatBath β U e) (heatBath β V e) ≤ ENNReal.ofReal
-      ((1/12+π^2/4)*(β * ∑ i ∈ incidences e,
+      ((1/12+π^2/16)*(β * ∑ i ∈ incidences e,
         linkChord (U (neighbor e i.1 i.2).1) (V (neighbor e i.1 i.2).1) / sqrt 2)^2) := by
   let r := fieldStrength β U e
   let s := fieldStrength β V e
@@ -98,7 +93,7 @@ theorem periodic_neighbor_wasserstein {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (h�
   obtain ⟨j,hj,hproj'⟩ := su2_field_pole_with_matrix β V e
   rw [heatBath_eq_tilt_of_projection hl β U e k hproj,heatBath_eq_tilt_of_projection hl β V e j hproj']
   change linkWassersteinSq (poleLaw r k) (poleLaw s j) ≤ _
-  apply (cartesian_field_wasserstein (fieldStrength_mem hβ U e).1 (fieldStrength_mem hβ V e).1 k j).trans
+  apply (cartesian_field_mean_square (fieldStrength_mem hβ U e).1 (fieldStrength_mem hβ V e).1 k j).trans
   apply ENNReal.ofReal_le_ofReal
   apply mul_le_mul_of_nonneg_left _ (by positivity)
   apply pow_le_pow_left₀ (norm_nonneg _) _ 2
@@ -116,6 +111,14 @@ theorem periodic_neighbor_wasserstein {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (h�
   rw [he,matrixCoordinates_norm ha,norm_smul,Real.norm_eq_abs,abs_of_nonneg hβ,
     mul_div_assoc, ← Finset.sum_div]
   exact mul_le_mul_of_nonneg_left (div_le_div_of_nonneg_right (staple_perturbation hl U V e) (sqrt_nonneg _)) hβ
+
+theorem periodic_neighbor_wasserstein {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ : 0 ≤ β)
+    (U V : Configuration gaugeGroup l) (e : Edge l) :
+    linkWassersteinSq (heatBath β U e) (heatBath β V e) ≤ ENNReal.ofReal
+      ((1/12+π^2/4)*(β * ∑ i ∈ incidences e,
+        linkChord (U (neighbor e i.1 i.2).1) (V (neighbor e i.1 i.2).1) / sqrt 2)^2) := by
+  exact (periodic_neighbor_mean_square hl hβ U V e).trans (ENNReal.ofReal_le_ofReal
+    (mul_le_mul_of_nonneg_right (by nlinarith [sq_nonneg π]) (sq_nonneg _)))
 
 /-- Subunit finite-volume one-link response in the uniform neighbor distance. -/
 theorem periodic_neighbor_subunit {l : ℕ+} (hl : 1 < l.val) {β δ : ℝ} (hβ : 0 ≤ β) (hδ : 0 < δ)
@@ -167,40 +170,65 @@ Repeated appearances of one periodic neighbor contribute to the same entry. -/
 def neighborInfluence {l : ℕ+} (β : ℝ) (e a : Edge l) :=
   sqrt (1/12+π^2/4) * β * (neighborIncidenceCount e a : ℝ)
 
+private theorem chordSum_single {l : ℕ+} (U V : Configuration gaugeGroup l) (e a : Edge l)
+    (hfix : ∀ b, b ≠ a → U b = V b) : (∑ i ∈ incidences e,
+      linkChord (U (neighbor e i.1 i.2).1) (V (neighbor e i.1 i.2).1) / sqrt 2) =
+      (neighborIncidenceCount e a : ℝ) * (linkChord (U a) (V a) / sqrt 2) := by
+  simp only [neighborIncidenceCount,Nat.cast_sum,Nat.cast_ite,Nat.cast_one,Nat.cast_zero,Finset.sum_mul]
+  apply Finset.sum_congr rfl
+  intro i _
+  by_cases hi : (neighbor e i.1 i.2).1 = a
+  · simp [hi]
+  · simp [hi,hfix _ hi,linkChord]
+
+/-- Mean-square circle transport reduces the coefficient of each periodic incidence. -/
+def meanSquareInfluence {l : ℕ+} (β : ℝ) (e a : Edge l) :=
+  sqrt (1/12+π^2/16) * β * (neighborIncidenceCount e a : ℝ)
+
+theorem single_neighbor_mean_square {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ : 0 ≤ β)
+    (U V : Configuration gaugeGroup l) (e a : Edge l) (hfix : ∀ b, b ≠ a → U b = V b) :
+    linkWassersteinSq (heatBath β U e) (heatBath β V e) ≤
+      ENNReal.ofReal ((meanSquareInfluence β e a * linkGeodesic (U a) (V a))^2) := by
+  apply (periodic_neighbor_mean_square hl hβ U V e).trans (ENNReal.ofReal_le_ofReal ?_)
+  have hsum := chordSum_single U V e a hfix
+  have hm : 0 ≤ (neighborIncidenceCount e a : ℝ) := Nat.cast_nonneg _
+  have hcoef : 0 ≤ meanSquareInfluence β e a := mul_nonneg (mul_nonneg (sqrt_nonneg _) hβ) hm
+  rw [hsum]
+  calc _ = (meanSquareInfluence β e a * (linkChord (U a) (V a) / sqrt 2))^2 := by
+          unfold meanSquareInfluence; simp only [mul_pow,Real.sq_sqrt (by positivity : (0:ℝ) ≤ 1/12+π^2/16)]; ring
+       _ ≤ _ := pow_le_pow_left₀ (mul_nonneg hcoef (div_nonneg (norm_nonneg _) (sqrt_nonneg _)))
+          (mul_le_mul_of_nonneg_left (normalized_chord_le_geodesic _ _) hcoef) 2
+
 theorem single_neighbor_wasserstein {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ : 0 ≤ β)
     (U V : Configuration gaugeGroup l) (e a : Edge l) (hfix : ∀ b, b ≠ a → U b = V b) :
     linkWassersteinSq (heatBath β U e) (heatBath β V e) ≤
       ENNReal.ofReal ((neighborInfluence β e a * linkGeodesic (U a) (V a))^2) := by
-  apply (periodic_neighbor_wasserstein hl hβ U V e).trans (ENNReal.ofReal_le_ofReal ?_)
-  have hsum : (∑ i ∈ incidences e,
-      linkChord (U (neighbor e i.1 i.2).1) (V (neighbor e i.1 i.2).1) / sqrt 2) =
-      (neighborIncidenceCount e a : ℝ) * (linkChord (U a) (V a) / sqrt 2) := by
-    simp only [neighborIncidenceCount,Nat.cast_sum,Nat.cast_ite,Nat.cast_one,Nat.cast_zero,Finset.sum_mul]
-    apply Finset.sum_congr rfl
-    intro i _
-    by_cases hi : (neighbor e i.1 i.2).1 = a
-    · simp [hi]
-    · simp [hi,hfix _ hi,linkChord]
+  apply (single_neighbor_mean_square hl hβ U V e a hfix).trans (ENNReal.ofReal_le_ofReal ?_)
   have hm : 0 ≤ (neighborIncidenceCount e a : ℝ) := Nat.cast_nonneg _
-  have hcoef : 0 ≤ neighborInfluence β e a := mul_nonneg (mul_nonneg (sqrt_nonneg _) hβ) hm
-  rw [hsum]
-  calc _ = (neighborInfluence β e a * (linkChord (U a) (V a) / sqrt 2))^2 := by
-          unfold neighborInfluence; simp only [mul_pow,Real.sq_sqrt (by positivity : (0:ℝ) ≤ 1/12+π^2/4)]; ring
-       _ ≤ _ := pow_le_pow_left₀ (mul_nonneg hcoef (div_nonneg (norm_nonneg _) (sqrt_nonneg _)))
-          (mul_le_mul_of_nonneg_left (normalized_chord_le_geodesic _ _) hcoef) 2
+  have hc : meanSquareInfluence β e a ≤ neighborInfluence β e a :=
+    mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right
+      (sqrt_le_sqrt (by nlinarith [sq_nonneg π])) hβ) hm
+  exact pow_le_pow_left₀ (mul_nonneg (mul_nonneg (mul_nonneg (sqrt_nonneg _) hβ) hm) (arccos_nonneg _))
+    (mul_le_mul_of_nonneg_right hc (arccos_nonneg _)) 2
+
+private theorem incidence_row {l : ℕ+} (hl : 1 < l.val) (e : Edge l) :
+    (∑ a : Edge l, (neighborIncidenceCount e a : ℝ)) = 18 := by
+  simp only [neighborIncidenceCount,Nat.cast_sum,Nat.cast_ite,Nat.cast_one,Nat.cast_zero]
+  rw [Finset.sum_comm]
+  simp [incidence_count hl]
+
+private theorem incidence_self {l : ℕ+} (hl : 1 < l.val) (e : Edge l) :
+    neighborIncidenceCount e e = 0 := Finset.sum_eq_zero fun i hi =>
+      if_neg (neighbor_ne_self hl (Finset.mem_product.mp hi).1 i.2)
 
 /-- Row sum of the explicit comparison matrix at every physical link. -/
 theorem neighborInfluence_row {l : ℕ+} (hl : 1 < l.val) (β : ℝ) (e : Edge l) :
     ∑ a : Edge l, neighborInfluence β e a = 18 * β * sqrt (1/12+π^2/4) := by
-  simp only [neighborInfluence,← Finset.mul_sum,neighborIncidenceCount,Nat.cast_sum,Nat.cast_ite,Nat.cast_one,Nat.cast_zero]
-  rw [Finset.sum_comm]
-  simp [incidence_count hl]; ring
+  simp only [neighborInfluence,← Finset.mul_sum,incidence_row hl]; ring
 
 theorem neighborInfluence_self {l : ℕ+} (hl : 1 < l.val) (β : ℝ) (e : Edge l) :
     neighborInfluence β e e = 0 := by
-  have h : neighborIncidenceCount e e = 0 := Finset.sum_eq_zero fun i hi =>
-    if_neg (neighbor_ne_self hl (Finset.mem_product.mp hi).1 i.2)
-  simp [neighborInfluence,h]
+  simp [neighborInfluence,incidence_self hl]
 
 theorem neighborInfluence_subunit_iff {l : ℕ+} (hl : 1 < l.val) (β : ℝ) (e : Edge l) :
     (∑ a : Edge l, neighborInfluence β e a) < 1 ↔ β < 1 / (18*sqrt (1/12+π^2/4)) := by
@@ -216,6 +244,33 @@ theorem neighborInfluence_at_0034 {l : ℕ+} (hl : 1 < l.val) (e : Edge l) :
   have hsq := sq_sqrt (by positivity : (0:ℝ) ≤ 1/12+π^2/4)
   nlinarith only [hπ,hsq,sq_nonneg (sqrt (1/12+π^2/4) - 250/153)]
 
+theorem meanSquareInfluence_row {l : ℕ+} (hl : 1 < l.val) (β : ℝ) (e : Edge l) :
+    ∑ a : Edge l, meanSquareInfluence β e a = 18 * β * sqrt (1/12+π^2/16) := by
+  simp only [meanSquareInfluence,← Finset.mul_sum,incidence_row hl]; ring
+
+theorem meanSquareInfluence_self {l : ℕ+} (hl : 1 < l.val) (β : ℝ) (e : Edge l) :
+    meanSquareInfluence β e e = 0 := by
+  simp [meanSquareInfluence,incidence_self hl]
+
+theorem meanSquareInfluence_subunit_iff {l : ℕ+} (hl : 1 < l.val) (β : ℝ) (e : Edge l) :
+    (∑ a : Edge l, meanSquareInfluence β e a) < 1 ↔ β < 1 / (18*sqrt (1/12+π^2/16)) := by
+  rw [meanSquareInfluence_row hl,lt_div_iff₀ (by positivity)]
+  ring_nf
+
+theorem meanSquareInfluence_at_0066 {l : ℕ+} (hl : 1 < l.val) (e : Edge l) :
+    (∑ a : Edge l, meanSquareInfluence (33/500) e a) < 1 := by
+  rw [meanSquareInfluence_row hl]
+  have hπ := sq_lt_sq' (by linarith [pi_pos] : -(3.15:ℝ) < π) pi_lt_d2
+  have hsq := sq_sqrt (by positivity : (0:ℝ) ≤ 1/12+π^2/16)
+  nlinarith only [hπ,hsq,sq_nonneg (sqrt (1/12+π^2/16)-250/297)]
+
+#print axioms cartesian_field_mean_square
+#print axioms periodic_neighbor_mean_square
+#print axioms single_neighbor_mean_square
+#print axioms meanSquareInfluence_row
+#print axioms meanSquareInfluence_self
+#print axioms meanSquareInfluence_subunit_iff
+#print axioms meanSquareInfluence_at_0066
 #print axioms normalized_chord_le_geodesic
 #print axioms single_neighbor_wasserstein
 #print axioms neighborInfluence_self

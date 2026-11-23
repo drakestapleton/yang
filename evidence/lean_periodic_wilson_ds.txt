@@ -1,0 +1,125 @@
+Periodic Wilson mean-square pole transport and Dobrushin–Shlosman shell comparison
+2026-11-22 | Spark AArch64 | sh scripts/build_and_run_spark.sh openai_bridge
+Lean 4.32.0 | Lean commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35
+Mathlib commit 81a5d257c8e410db227a6665ed08f64fea08e997
+
+Source SHA-256
+eeb103e79ddb8c86b34efa2c2680df42e8876d1b95582d91c0b9b06c96703b79  proofs/OneLinkTransport.lean
+bc7d82314ca01ca30bd97e88e04d12d592b37490bba3880bc1d477c30c2b32f8  proofs/WilsonAngle.lean
+64b64c8407bb940900ac299bfe64c7f0b60e2023370ba4281342cc1d698dccde  proofs/WilsonRadialTransport.lean
+2523ba8d974c23cc58baee984e782b85957ea4064e47036c6dd4483b58e71e5e  proofs/WilsonPoleTransport.lean
+c563a6d37c2a8f68c298791f628fe2803f176944e030249118623ef9ed9db0f3  proofs/WilsonFieldResponse.lean
+4fad4da26f08d902e9cc3716c2713f78e5140879d3e4e68595bcb3d753f58d7d  proofs/DobrushinShlosman.lean
+aec9a0753028b9dba6e3c8216061f9bbb6f00f1e554ec5f2d114d96340298cbb  proofs/OpenAiYmBridge.lean
+c93c14446b6f06806cfd48a9be948329e806c2458eedc8d6fbc63c35457e6fdd  proofs/PeriodicWilsonDS.lean
+
+For a pole angle D the compensating shift sweeps unnormalized mass D around
+each circle orbit. At intermediate time t its angular velocity relative to the
+pole rotation is 1 - exp(-r x), where x is the scalar coordinate after the
+mass-preserving shift. With Z(r) the Haar integral of exp(r x), symmetry gives
+Z(-r)=Z(r), so the centered tilted mean square is 2(1-1/Z(r)).
+Integration by parts against sin²(t) exp(r cos(t)) and the proved sine moment
+bound give Z'(r) ≤ (r/4) Z(r). Hence Z(r) ≤ exp(r²/8), and the mean-square
+circle speed is at most r²/4. Integration along the measure-preserving flow
+and composition with the common-pole radial coupling give a complete full-link
+map at equal strength and a geodesic coupling bound at different strengths.
+
+For the periodic Wilson conditional laws the uniform row is
+18 beta sqrt(1/12 + pi²/16). A single matrix bounds simultaneous link changes
+and all powers acting on bounded initial profiles, including repeated
+incidences on small periodic tori. W0/W1/W2 imply that the normalized vacuum
+spectral measure is the Dirac measure at zero. A relativistic gap at fixed
+physical shell spacing R additionally requires both an observable comparison
+to the finite-volume path weights and convergence of those shell observables
+to the diagonal Laplace transform of each vacuum-orthogonal state.
+
+Lean axiom audit
+YangMills.UfbiBridge.vacuum_diagonal_eq_dirac [propext, Classical.choice, Quot.sound]
+YangMills.UfbiBridge.vacuum_diagonal_energyGapStrip [propext, Classical.choice, Quot.sound]
+YangMills.PhaseTwo.influenceIterate_le [propext, Classical.choice, Quot.sound]
+YangMills.PhaseTwo.shell_envelopes_imply_relativistic_mass_gap [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.mean_square_pole_transport [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.mean_square_pole_wasserstein [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.cartesian_field_mean_square [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.periodic_neighbor_mean_square [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.single_neighbor_mean_square [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.meanSquareInfluence_row [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.meanSquareInfluence_self [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.meanSquareInfluence_subunit_iff [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.meanSquareInfluence_at_0066 [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.heatBath_influence_sum [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.periodic_influence_paths [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.periodic_shell_limits_mass_gap [propext, Classical.choice, Quot.sound]
+
+Concrete Lean applications
+import PeriodicWilsonDS
+open YangMills YangMills.PeriodicWilson YangMills.PhaseTwo YangMills.UfbiBridge
+open YangMills.FundamentalSU2 MeasureTheory Real Filter Set
+open scoped ENNReal Topology
+
+-- A vanishing field carries no pole cost even when the poles are antipodal.
+example {s : ℝ} (hs : 0 ≤ s) (k j : gaugeGroup.image) :
+    linkWassersteinSq (poleLaw 0 k) (poleLaw s j) ≤ ENNReal.ofReal (s^2/12) := by
+  simpa [min_eq_left hs,div_pow,Real.sq_sqrt,sq_abs] using mean_square_pole_wasserstein (r := 0) le_rfl hs k j
+
+example {r : ℝ} (hr : 0 ≤ r) (k j : gaugeGroup.image) :
+    linkWassersteinSq (poleLaw r k) (poleLaw r j) ≤ ENNReal.ofReal ((r/2 * linkGeodesic k⁻¹ j⁻¹)^2) := by
+  simpa using mean_square_pole_wasserstein hr hr k j
+
+example {l : ℕ+} (hl : 1 < l.val) (e : Edge l) : ∑ a, meanSquareInfluence (17/500) e a < 1 := by
+  apply (meanSquareInfluence_subunit_iff hl _ e).2
+  exact lt_trans (by norm_num : (17/500:ℝ) < 33/500)
+    ((meanSquareInfluence_subunit_iff hl _ e).1 (meanSquareInfluence_at_0066 hl e))
+
+example {l : ℕ+} (hl : 1 < l.val) (e : Edge l) : 1 < ∑ a, meanSquareInfluence (67/1000) e a := by
+  rw [meanSquareInfluence_row hl]
+  have hπ := sq_lt_sq' (by linarith [pi_pos] : -π < (3.14:ℝ)) pi_gt_d2
+  have hs := sq_sqrt (by positivity : (0:ℝ) ≤ 1/12+π^2/16)
+  nlinarith only [hs,hπ,sqrt_nonneg (1/12+π^2/16),sq_nonneg (sqrt (1/12+π^2/16)-500/603)]
+
+-- The constant profile saturates the path bound at every k and on each volume.
+example {l : ℕ+} (hl : 1 < l.val) (β : ℝ) (k : ℕ) (e : Edge l) :
+    influenceIterate (meanSquareInfluence β) (fun _ => 1) k e = periodicRow β ^ k := by
+  induction k generalizing e with
+  | zero => simp [influenceIterate]
+  | succ k ih =>
+    simp only [influenceIterate,ih,← Finset.sum_mul,meanSquareInfluence_row hl]
+    unfold periodicRow; ring
+
+example {H : HilbertSpace} {L : FieldLabels} (T : WightmanTheory H L)
+    (h : T.Axioms) : T.energyMomentum.diagonal T.fields.vacuum.1 = Measure.dirac 0 :=
+  vacuum_diagonal_eq_dirac T h.w0 h.w1 h.w2
+
+-- Even inserting the target transverse speed into this additive/arc-to-chord
+-- proof leaves its comparison row above one at 0.192.
+example : 1 < 18 * (24/125 : ℝ) * sqrt (1/12+π^2/48) := by
+  have hπ := sq_lt_sq' (by linarith [pi_pos] : -π < (3:ℝ)) pi_gt_three
+  have hs := sq_sqrt (by positivity : (0:ℝ) ≤ 1/12+π^2/48)
+  nlinarith only [hπ,hs,sqrt_nonneg (1/12+π^2/48),sq_nonneg (sqrt (1/12+π^2/48)-125/432)]
+periodic shell and endpoint controls PASS
+
+Four source mutations, each compiled separately with the same pinned dependencies.
+Energy | WilsonPoleTransport.rotation_energy | replace (r/2)^2 by (r/3)^2 in its conclusion.
+Window | WilsonFieldResponse.meanSquareInfluence_at_0066 | replace 33/500 by 67/1000.
+Shell | PeriodicWilsonDS.periodic_shell_limits_mass_gap | reverse the inequality bounding f n k by path influence.
+Vacuum | final spectral measure example in the concrete controls | replace Measure.dirac 0 by the zero measure.
+Energy rejected exit=1
+MutantEnergy.lean:351:11: error: linarith failed to find a contradiction
+Window rejected exit=1
+MutantWindow.lean:265:2: error: linarith failed to find a contradiction
+Shell rejected exit=1
+MutantShell.lean:82:17: error: Application type mismatch: The argument
+Vacuum rejected exit=1
+MutantVacuum.lean:37:2: error: Type mismatch
+
+math-check | Wolfram Language
+{Expand[w*(1-1/w)^2],FullSimplify[D[Sin[t]^3 Exp[r Cos[t]],t]/(Sin[t]^2 Exp[r Cos[t]]),0<t<Pi],N[{1,18*33/500,18*67/1000}*{1/(18*Sqrt[1/12+Pi^2/16]),Sqrt[1/12+Pi^2/16],Sqrt[1/12+Pi^2/16]},12]}
+Output: {-2 + w^(-1) + w, 3*Cos[t] - r*Sin[t]^2,
+         {0.0663928826276, 0.994082458660, 1.00914431409}}
+
+{Series[2 (1-r/(2 BesselI[1,r])),{r,0,4}],N[1/(18 Sqrt[1/12+Pi^2/48]),12]}
+Output: {r^2/4 - r^4/48 + O[r]^5, 0.103351331612}
+The last threshold substitutes the target transverse coefficient 1/sqrt(12)
+in the current additive, arc-to-chord argument. The final exact Lean control
+shows why this substitution alone cannot certify the 0.192 row. Numerical
+values and the Bessel series are explanatory and do not enter the proofs.

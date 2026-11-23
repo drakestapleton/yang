@@ -298,8 +298,8 @@ theorem haar_polarAngle_density :
   simp [OneLinkTransport.weight,angleNormalizer,integral_sin_sq]
   ring
 
-private theorem tilted_numerator (r : ℝ) (k : G) (f : ℝ → ℝ) (hf : Continuous f) :
-    (∫ u, exp (r*scalarPart (u*k)) * f (polarAngle (u*k)) ∂su2Haar) =
+theorem tilted_haar_numerator (r : ℝ) (k : G) (f : ℝ → ℝ) (hf : Continuous f) :
+    (∫ u, exp (r*(suMat (u*k) 0 0).re) * f (polarAngle (u*k)) ∂su2Haar) =
       (2/π) * ∫ t in 0..π, OneLinkTransport.weight r t * f t := by
   let g := fun x => exp (r*x) * f (arccos x)
   have hg : Continuous g := (continuous_exp.comp (continuous_const.mul continuous_id)).mul
@@ -328,13 +328,13 @@ theorem tilted_polarAngle (r : ℝ) (k : gaugeGroup.image) :
   apply ext_of_forall_integral_eq_of_IsFiniteMeasure
   intro f
   have hd : (∫ u, exp (field u) ∂su2Haar) = (2/π) * angleNormalizer r := by
-    simpa [field, angleNormalizer] using tilted_numerator r k (fun _ => 1) continuous_const
+    simpa [field, scalarPart, angleNormalizer] using tilted_haar_numerator r k (fun _ => 1) continuous_const
   rw [integral_map hθ.measurable.aemeasurable f.continuous.aestronglyMeasurable,
     integral_tilted, integral_angleLaw, hd]
   have hp : ∀ u, (exp (field u) / ((2/π)*angleNormalizer r)) • f (θ u) =
       (exp (field u)*f (θ u)) / ((2/π)*angleNormalizer r) := fun u => by rw [smul_eq_mul]; ring
   simp_rw [hp, integral_div]
-  rw [show (∫ u, exp (field u) * f (θ u) ∂su2Haar) = _ from tilted_numerator r k f f.continuous]
+  rw [show (∫ u, exp (field u) * f (θ u) ∂su2Haar) = _ from tilted_haar_numerator r k f f.continuous]
   field_simp [pi_pos.ne', (angleNormalizer_pos r).ne']
 
 /-- Angular distribution of the actual energy resampling law at every background. -/
