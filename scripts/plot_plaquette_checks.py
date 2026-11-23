@@ -7,12 +7,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
-def original_rows(table, extent):
+def original_rows(table, extent, column=6):
     original = []
     for line in table.read_text().splitlines():
         fields = line.split("\t")
         if len(fields) == 9 and fields[0] == str(extent) and fields[1].isdigit():
-            original.append((int(fields[1]), float(fields[6]), float(fields[7])))
+            original.append((int(fields[1]), float(fields[column]), float(fields[column+1])))
     if [row[0] for row in original] != list(range(extent // 2 + 1)):
         raise ValueError(f"incomplete or unordered table {table}")
     return original
@@ -40,6 +40,33 @@ def all_pair_rows(table, extent):
     if [row[0] for row in rows] != list(range(extent // 2 + 1)):
         raise ValueError(f"incomplete or unordered replica table {table}")
     return rows
+
+
+def confirmation_curves(directory):
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.7), dpi=170, layout="constrained", sharey=True)
+    datasets = ((8, "primary-offset-check.tsv", -0.16, "^", "#5d7350", "Original T=8"),
+                (16, "primary-offset-check.tsv", 0, "o", "#195683", "Original T=16"),
+                (16, "confirmation/analysis.tsv", 0.16, "s", "#b35228", "Confirmation T=16"))
+    for ax, title, column in zip(axes, ("Ordinary estimator", "Two-level estimator"), (2, 4)):
+        for extent, table, shift, marker, color, label in datasets:
+            series = original_rows(directory / table, extent, column)
+            lag, value, error = zip(*series)
+            ax.errorbar([d+shift for d in lag], [v*1e6 for v in value],
+                        yerr=[e*1e6 for e in error], fmt=marker, color=color,
+                        markerfacecolor="white", capsize=2.5, ms=4.4, lw=1, label=label)
+        ax.axhline(0, color="#51595f", lw=1)
+        ax.set_yscale("symlog", linthresh=1)
+        ax.set_yticks([-1, 0, 1, 10, 100], labels=["−1", "0", "1", "10", "100"])
+        ax.set_xticks(range(9))
+        ax.set_title(title, loc="left", fontsize=13)
+        ax.set_xlabel("Time separation (lattice steps)")
+        ax.grid(axis="y", alpha=0.17)
+        ax.spines[["top", "right"]].set_visible(False)
+    axes[0].set_ylabel("Connected correlation  (units of 10⁻⁶)")
+    fig.legend(*axes[0].get_legend_handles_labels(), loc="outside lower center", ncol=3,
+               frameon=False)
+    fig.savefig(directory / "confirmation" / "correlator.png", bbox_inches="tight", facecolor="white")
+    plt.close(fig)
 
 
 def main():
@@ -89,6 +116,9 @@ def main():
     fig.legend(*axes[0].get_legend_handles_labels(), loc="outside lower center", ncol=2,
                frameon=False)
     fig.savefig(output, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    if args.confirmation:
+        confirmation_curves(args.directory)
 
 
 if __name__ == "__main__":

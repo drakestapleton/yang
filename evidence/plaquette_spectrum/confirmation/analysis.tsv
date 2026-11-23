@@ -1,0 +1,72 @@
+# fixed_offset=0.6022
+# burn,observations,inner,slab=(1024, 768, 48, 4) chain_ids=[40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55]
+# chain 40 cold first_half_P=0.6026469 second_half_P=0.6023545
+# chain 41 hot first_half_P=0.6027045 second_half_P=0.6019419
+# chain 42 cold first_half_P=0.6024602 second_half_P=0.6028689
+# chain 43 hot first_half_P=0.6020477 second_half_P=0.6022566
+# chain 44 cold first_half_P=0.6029355 second_half_P=0.6024676
+# chain 45 hot first_half_P=0.6021141 second_half_P=0.6022211
+# chain 46 cold first_half_P=0.6022384 second_half_P=0.6028770
+# chain 47 hot first_half_P=0.6017182 second_half_P=0.6024981
+# chain 48 cold first_half_P=0.6024815 second_half_P=0.6022406
+# chain 49 hot first_half_P=0.6028716 second_half_P=0.6020512
+# chain 50 cold first_half_P=0.6023997 second_half_P=0.6021291
+# chain 51 hot first_half_P=0.6019539 second_half_P=0.6018735
+# chain 52 cold first_half_P=0.6026555 second_half_P=0.6021424
+# chain 53 hot first_half_P=0.6025569 second_half_P=0.6023048
+# chain 54 cold first_half_P=0.6022125 second_half_P=0.6021594
+# chain 55 hot first_half_P=0.6020674 second_half_P=0.6021168
+# T=16 chains=16 one_point=0.602330259 SE=5.5e-05
+T	d	direct	direct_SE	two_level	two_level_SE	difference	paired_SE	agreement
+16	0	0.000212519882	6.12673352e-07	0.000212409181	1.13161181e-07	1.10700585e-07	6.44725509e-07	within_3SE
+16	1	1.56989641e-05	5.15522869e-07	1.55977167e-05	1.5945339e-07	1.01247418e-07	5.44724123e-07	within_3SE
+16	2	2.86243949e-06	4.25095206e-07	2.91764506e-06	3.8404041e-08	-5.52055703e-08	4.27825171e-07	within_3SE
+16	3	1.12319371e-06	6.32150724e-07	7.58671217e-07	2.91259845e-08	3.64522495e-07	6.26358667e-07	unresolved
+16	4	1.09778431e-06	5.26632861e-07	2.35988364e-07	2.86814617e-08	8.61795945e-07	5.36136952e-07	unresolved
+16	5	-4.83791065e-07	5.95260536e-07	1.29619761e-07	2.78281488e-08	-6.13410826e-07	6.12884553e-07	unresolved
+16	6	8.07421784e-07	6.07451619e-07	6.75646784e-08	4.13038369e-08	7.39857106e-07	6.06002411e-07	unresolved
+16	7	-1.81213903e-07	4.81453216e-07	3.66811192e-08	4.01369347e-08	-2.17895023e-07	4.94908543e-07	unresolved
+16	8	7.0009316e-08	4.65719757e-07	2.49752103e-08	4.40801419e-08	4.50341057e-08	4.55387445e-07	unresolved
+T	method	d	cosh_energy	SE	delta_from_previous	paired_SE	plateau_pair
+16	direct	1	2.6134643	0.0317301	-	-	undetermined
+16	direct	2	unresolved	-	-	-	undetermined
+16	direct	3	unresolved	-	-	-	undetermined
+16	direct	4	unresolved	-	-	-	undetermined
+16	direct	5	unresolved	-	-	-	undetermined
+16	direct	6	unresolved	-	-	-	undetermined
+16	direct	7	unresolved	-	-	-	undetermined
+16	direct	8	unresolved	-	-	-	undetermined
+16	two_level	1	2.6197435	0.0102827	-	-	undetermined
+16	two_level	2	1.6903865	0.0123455	-0.929357	0.0182799	outside_tolerance
+16	two_level	3	1.3610795	0.0373739	-0.32930699	0.0355505	outside_tolerance
+16	two_level	4	1.2460213	0.119184	-0.11505823	0.116374	undetermined
+16	two_level	5	unresolved	-	-	-	undetermined
+16	two_level	6	unresolved	-	-	-	undetermined
+16	two_level	7	unresolved	-	-	-	undetermined
+16	two_level	8	unresolved	-	-	-	undetermined
+inner_minus_outer	16	0	0	0
+inner_minus_outer	16	1	1.08653808e-06	6.98079576e-05
+inner_minus_outer	16	2	4.82966043e-05	7.08553479e-05
+inner_minus_outer	16	3	-2.77598411e-05	7.94113593e-05
+# comparison=T16_first-minus-last independent groups, two_level, difference and SE
+one_point_contrast	T16_first-minus-last	0.000133393513	0.000108163904
+contrast	T16_first-minus-last	0	-4.82525529e-07	1.97609881e-07
+contrast	T16_first-minus-last	1	2.34424815e-07	3.26098117e-07
+contrast	T16_first-minus-last	2	-2.08251199e-08	7.4423798e-08
+contrast	T16_first-minus-last	3	-1.57871345e-08	5.91334045e-08
+contrast	T16_first-minus-last	4	-6.32784026e-08	5.18138871e-08
+contrast	T16_first-minus-last	5	-1.06183138e-07	4.84553356e-08
+contrast	T16_first-minus-last	6	-1.61303573e-07	6.80059378e-08
+contrast	T16_first-minus-last	7	-1.03243003e-07	7.83171659e-08
+contrast	T16_first-minus-last	8	-9.93068952e-08	8.83618773e-08
+# comparison=T16_hot-minus-cold independent groups, two_level, difference and SE
+one_point_contrast	T16_hot-minus-cold	-0.000248213206	9.25727725e-05
+contrast	T16_hot-minus-cold	0	8.41444837e-08	2.44530709e-07
+contrast	T16_hot-minus-cold	1	-5.59488174e-08	3.36080062e-07
+contrast	T16_hot-minus-cold	2	-5.08936033e-09	7.80046116e-08
+contrast	T16_hot-minus-cold	3	6.47618402e-08	5.52645589e-08
+contrast	T16_hot-minus-cold	4	9.55068192e-09	5.82138046e-08
+contrast	T16_hot-minus-cold	5	1.22133511e-08	7.12574803e-08
+contrast	T16_hot-minus-cold	6	6.98531712e-09	9.31188614e-08
+contrast	T16_hot-minus-cold	7	8.4317831e-08	9.02558483e-08
+contrast	T16_hot-minus-cold	8	3.21539964e-08	1.03272635e-07
