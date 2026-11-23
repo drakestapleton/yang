@@ -1,0 +1,102 @@
+Geodesic Wasserstein transport of complete periodic SU(2) Wilson heat baths
+2026-11-22 America/Chicago | Spark AArch64
+Command: sh scripts/build_and_run_spark.sh openai_bridge
+Lean (version 4.32.0, aarch64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)
+Mathlib commit: 81a5d257c8e410db227a6665ed08f64fea08e997
+SHA-256:
+94111ad258b4218a263fcc0a7136446d5a6eff0e090809b72036fb3a7aecfff8  PublicTheory.lean
+c1542c816cd42d23448b66b4cb021c7f3bdad64b64f1c643dde27147ce0c3233  PublicWilson.lean
+181e395aaa8ecfba1ff1715e2cd24f253a5606e304888e3e6d2d7586b54a19b3  proofs/WilsonLinkTransport.lean
+557a5e0bc357f1050bbcf8c41dc54836abdfb8e1a259fce930a1036277623fba  proofs/WilsonRadialTransport.lean
+c90aa901b9020d0ae818ef1e28b24f00f425cd64c624af9d625c6aefe2ff5a41  proofs/WilsonAngle.lean
+c33410813dd010f93ca7325c67a1550af070cd4bde26f72d46b8213f838dac01  proofs/PeriodicWilson.lean
+9f8f684d6bbcdff4e9f61dd072dca71206fb97d35f711a758bb847380292fb4a  proofs/FundamentalSU2.lean
+
+'YangMills.PeriodicWilson.heatBath_fixed_pole' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.heatBath_beta_wasserstein' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.moving_pole_wasserstein' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.heatBath_link_wasserstein' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.common_pole_degree18' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.linkGeodesic_eq_angle' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.linkCoupling_marginals' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.linkCoupling_common_cost' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.common_pole_wasserstein' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.orbitLink_law' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.link_conjugate_diagonal' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.common_axis_distance' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.equal_angle_antipodes' depends on axioms: [propext, Classical.choice, Quot.sound]
+LEAN_PHASE4_BRIDGES status=PASS
+
+The coupling draws (p,h) from uniform rank times normalized SU(2) Haar.
+The link with strength r and pole k is h diag(exp(i Q_r(p)),exp(-i Q_r(p))) h^-1 k^-1.
+Haar conjugation reproduces the entire tilted matrix law on each marginal.
+The round unit-sphere geodesic equals the angle between the real quaternion
+coordinate vectors. At a common pole the lifted coupling's cost equals
+its angular cost, giving W2^2 <= (s-r)^2/12. A single pole works at all
+bare couplings on a fixed background, yielding W2^2 <= 3 (gamma-beta)^2.
+For arbitrary poles the W2 upper bound includes the distance between
+centers k^-1 and j^-1. The common-pole degree-18 result assumes both
+normalized heat baths admit that pole. A uniform transverse estimate for
+changes of background remains open.
+
+Concrete applications compiled against WilsonLinkTransport.olean:
+import WilsonLinkTransport
+open YangMills YangMills.FundamentalSU2 YangMills.PeriodicWilson Real
+open scoped ENNReal
+
+-- Degenerate staples: changing the nominal pole at zero strength costs zero.
+example (k j : gaugeGroup.image) : linkWassersteinSq (poleLaw 0 k) (poleLaw 0 j) = 0 := by
+  have hz (x : gaugeGroup.image) : poleLaw 0 x = su2Haar := by simp [poleLaw]
+  rw [hz j,← hz k]
+  apply le_antisymm _ zero_le
+  simpa using common_pole_wasserstein (r := 0) (s := 0) le_rfl le_rfl k
+
+-- Same-pole changes in strength are controlled in both orders.
+example (k : gaugeGroup.image) :
+    linkWassersteinSq (poleLaw 0 k) (poleLaw (42/25) k) ≤ ENNReal.ofReal (147/625) := by
+  convert common_pole_wasserstein (r := 0) (s := 42/25) (by norm_num) (by norm_num) k using 1
+  norm_num
+example (k : gaugeGroup.image) :
+    linkWassersteinSq (poleLaw (42/25) k) (poleLaw 0 k) ≤ ENNReal.ofReal (147/625) := by
+  convert common_pole_wasserstein (r := 42/25) (s := 0) (by norm_num) (by norm_num) k using 1
+  norm_num
+
+-- Full periodic heat baths at beta = 0.192 with a common staple pole.
+example {l : ℕ+} (hl : 1 < l.val) (U V : Configuration gaugeGroup l) (e : Edge l)
+    (k : gaugeGroup.image) (δ : ℝ)
+    (hU : heatBath (24/125) U e = poleLaw (fieldStrength (24/125) U e) k)
+    (hV : heatBath (24/125) V e = poleLaw (fieldStrength (24/125) V e) k)
+    (h : ∀ i ∈ incidences e,
+      linkChord (U (neighbor e i.1 i.2).1) (V (neighbor e i.1 i.2).1) / sqrt 2 ≤ δ) :
+    linkWassersteinSq (heatBath (24/125) U e) (heatBath (24/125) V e) ≤
+      ENNReal.ofReal ((15552/15625)*δ^2) := by
+  convert common_pole_degree18 (β := 24/125) hl (by norm_num) U V e k hU hV h using 1
+  norm_num
+
+-- Compare actual heat baths at beta = 0 and 7/25 without any pole hypothesis.
+example {l : ℕ+} (hl : 1 < l.val) (U : Configuration gaugeGroup l) (e : Edge l) :
+    linkWassersteinSq (heatBath 0 U e) (heatBath (7/25) U e) ≤ ENNReal.ofReal (147/625) := by
+  convert heatBath_beta_wasserstein (β := 0) (γ := 7/25) hl (by norm_num) (by norm_num) U e using 1
+  norm_num
+full-link examples PASS
+
+Mutations on separate copies of WilsonLinkTransport.lean, compiled with
+the same project dependencies. Each line describes the sole edit:
+diagonal_class | link_conjugate_diagonal conclusion: use the angle 0 in place of polarAngle u
+relative_inverse | linkGeodesic definition: replace u*v^-1 by u*v
+second_marginal | linkCoupling definition: use rank sample at strength r in both components
+pole_term | moving_pole_wasserstein conclusion: remove the pole separation from the upper bound
+diagonal_class exit=1
+Negative.lean:73:31: error: Application type mismatch: The argument
+relative_inverse exit=1
+Negative.lean:105:19: error: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+second_marginal exit=1
+Negative.lean:240:22: error: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+pole_term exit=1
+Negative.lean:353:2: error: 'change' tactic failed, pattern
+
+math-check | Wolfram Language
+Module[{u=DiagonalMatrix[{Exp[I a],Exp[-I a]}],v=DiagonalMatrix[{Exp[I b],Exp[-I b]}]}, {FullSimplify[Tr[u.ConjugateTranspose[v]]/2==Cos[a-b],Element[{a,b},Reals]],ArcCos[Cos[Pi/2-(-Pi/2)]],Together[27 (24/125)^2]}]
+Out[1]= {True, Pi, 15552/15625}
+{FullSimplify[(6 (g-b))^2/12==3 (g-b)^2,Element[{g,b},Reals]],Together[3 (7/25)^2],FullSimplify[(m+d)^2-(m^2+2 d m+d^2)]}
+Out[1]= {True, 147/625, 0}

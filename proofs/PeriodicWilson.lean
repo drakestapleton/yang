@@ -473,12 +473,11 @@ instance : IsProbabilityMeasure su2Haar := by
 def heatBath {l : ℕ+} (β : ℝ) (U : Configuration gaugeGroup l) (e : Edge l) :=
   su2Haar.tilted fun v => -β * wilsonEnergy (Function.update U e v)
 
-theorem heatBath_eq_tilt {l : ℕ+} (hl : 1 < l.val) (β : ℝ)
-    (U : Configuration gaugeGroup l) (e : Edge l) :
-    ∃ K : gaugeGroup.image, heatBath β U e =
-      su2Haar.tilted (fun v => fieldStrength β U e * (suMat (v*K) 0 0).re) := by
-  obtain ⟨K,hK⟩ := su2_field_pole β U e
-  refine ⟨K,?_⟩
+/-- Identify the resampling law with the tilt at a specified staple pole. -/
+theorem heatBath_eq_tilt_of_projection {l : ℕ+} (hl : 1 < l.val) (β : ℝ)
+    (U : Configuration gaugeGroup l) (e : Edge l) (K : gaugeGroup.image)
+    (hK : ∀ v, β * fieldProjection U e v = fieldStrength β U e * (suMat (v*K) 0 0).re) :
+    heatBath β U e = su2Haar.tilted (fun v => fieldStrength β U e * (suMat (v*K) 0 0).re) := by
   let C := Real.exp (-β*(wilsonEnergy (Function.update U e 1)+fieldProjection U e 1))
   let w := fun v : gaugeGroup.image => Real.exp (fieldStrength β U e * (suMat (v*K) 0 0).re)
   have hw : (fun v => Real.exp (-β * wilsonEnergy (Function.update U e v))) = fun v => C*w v := by
@@ -496,6 +495,13 @@ theorem heatBath_eq_tilt {l : ℕ+} (hl : 1 < l.val) (β : ℝ)
     w v / ∫ a, w a ∂su2Haar
   rw [show Real.exp (-β * wilsonEnergy (Function.update U e v)) = C*w v from congrFun hw v]
   exact mul_div_mul_left _ _ (Real.exp_pos _).ne'
+
+theorem heatBath_eq_tilt {l : ℕ+} (hl : 1 < l.val) (β : ℝ)
+    (U : Configuration gaugeGroup l) (e : Edge l) :
+    ∃ K : gaugeGroup.image, heatBath β U e =
+      su2Haar.tilted (fun v => fieldStrength β U e * (suMat (v*K) 0 0).re) := by
+  obtain ⟨K,hK⟩ := su2_field_pole β U e
+  exact ⟨K,heatBath_eq_tilt_of_projection hl β U e K hK⟩
 
 theorem heatBath_probability {l : ℕ+} (hl : 1 < l.val)
     (β : ℝ) (U : Configuration gaugeGroup l) (e : Edge l) : IsProbabilityMeasure (heatBath β U e) := by

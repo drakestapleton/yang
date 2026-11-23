@@ -87,7 +87,7 @@ private theorem exists_quantile (r : ℝ) (p : unitInterval) :
 are included, although they have probability zero under a uniform rank. -/
 def angleQuantile (r : ℝ) (p : unitInterval) := (exists_quantile r p).choose
 
-private theorem quantile_mem (r : ℝ) (p : unitInterval) : angleQuantile r p ∈ Icc 0 π :=
+theorem quantile_mem (r : ℝ) (p : unitInterval) : angleQuantile r p ∈ Icc 0 π :=
   (exists_quantile r p).choose_spec.1
 
 theorem cumulative_quantile (r : ℝ) (p : unitInterval) : angleCumulative r (angleQuantile r p) = p :=
@@ -201,7 +201,7 @@ private theorem angle_measure_inside (r : ℝ) {t : ℝ} (ht : t ∈ Icc 0 π) :
     (.of_forall fun x => div_nonneg (mul_nonneg (sq_nonneg _) (exp_pos _).le) (angleNormalizer_pos r).le)]
   rw [← intervalIntegral.integral_of_le ht.1, intervalIntegral.integral_div, angleCumulative]
 
-private theorem continuous_Q (r : ℝ) : Continuous (angleQuantile r) :=
+theorem continuous_Q (r : ℝ) : Continuous (angleQuantile r) :=
   quantile_cont.comp (continuous_const.prodMk continuous_id)
 
 /-- Sampling a uniform rank and taking its quantile reproduces the exact Wilson angular law. -/
@@ -382,16 +382,12 @@ theorem heatBath_radial_wasserstein {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ 
   rw [hk,hj,tilted_polarAngle,tilted_polarAngle]
   exact radial_wasserstein_sq_le (fieldStrength_mem hβ U e).1 (fieldStrength_mem hβ V e).1
 
-/-- Degree-18 response of the heat-bath polar angle when all incident normalized
-SU(2) chords are at most δ. Incidences retain their periodic multiplicities. -/
-theorem heatBath_radial_degree18 {l : ℕ+} (hl : 1 < l.val) {β δ : ℝ}
+/-- Degree-18 bound on the squared change in actual Wilson staple strength. -/
+theorem fieldStrength_degree18_sq {l : ℕ+} (hl : 1 < l.val) {β δ : ℝ}
     (hβ : 0 ≤ β) (U V : Configuration gaugeGroup l) (e : Edge l)
     (hneighbors : ∀ i ∈ incidences e,
       linkChord (U (neighbor e i.1 i.2).1) (V (neighbor e i.1 i.2).1) / sqrt 2 ≤ δ) :
-    angleWassersteinSq (angleLaw (fieldStrength β U e)) (angleLaw (fieldStrength β V e)) ≤
-      ENNReal.ofReal (27 * β^2 * δ^2) := by
-  have hcost := radial_wasserstein_sq_le (fieldStrength_mem hβ U e).1 (fieldStrength_mem hβ V e).1
-  apply hcost.trans (ENNReal.ofReal_le_ofReal ?_)
+    (fieldStrength β V e - fieldStrength β U e)^2 / 12 ≤ 27 * β^2 * δ^2 := by
   have hroot : 0 < sqrt 2 := by positivity
   have hnorm : |‖stapleMatrix V e‖ - ‖stapleMatrix U e‖| ≤ 18 * (δ * sqrt 2) := calc
     _ ≤ ‖stapleMatrix U e - stapleMatrix V e‖ := by
@@ -410,6 +406,17 @@ theorem heatBath_radial_degree18 {l : ℕ+} (hl : 1 < l.val) {β δ : ℝ}
   have hs := sq_le_sq' (neg_le_of_abs_le hd) (le_of_abs_le hd)
   change d^2 / 12 ≤ 27 * β^2 * δ^2
   nlinarith only [hs]
+
+/-- Degree-18 response of the heat-bath polar angle when all incident normalized
+SU(2) chords are at most δ. Incidences retain their periodic multiplicities. -/
+theorem heatBath_radial_degree18 {l : ℕ+} (hl : 1 < l.val) {β δ : ℝ}
+    (hβ : 0 ≤ β) (U V : Configuration gaugeGroup l) (e : Edge l)
+    (hneighbors : ∀ i ∈ incidences e,
+      linkChord (U (neighbor e i.1 i.2).1) (V (neighbor e i.1 i.2).1) / sqrt 2 ≤ δ) :
+    angleWassersteinSq (angleLaw (fieldStrength β U e)) (angleLaw (fieldStrength β V e)) ≤
+      ENNReal.ofReal (27 * β^2 * δ^2) := by
+  have hcost := radial_wasserstein_sq_le (fieldStrength_mem hβ U e).1 (fieldStrength_mem hβ V e).1
+  exact hcost.trans (ENNReal.ofReal_le_ofReal (fieldStrength_degree18_sq hl hβ U V e hneighbors))
 
 /-- Strict response relative to a positive input chord bound throughout the
 degree-18 window. Both output observables are measured about their staple poles. -/

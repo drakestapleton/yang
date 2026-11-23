@@ -122,7 +122,7 @@ theorem frobenius_eq {A : M} (ha : A ∈ quaternionAlgebra) :
   ring_nf
   norm_num
 
-private theorem unitary_of_length_one {A : M} (ha : A ∈ quaternionAlgebra) (h : length A = 1) :
+theorem unitary_of_length_one {A : M} (ha : A ∈ quaternionAlgebra) (h : length A = 1) :
     A ∈ Matrix.unitaryGroup (Fin 2) ℂ := by
   obtain ⟨hd,hc⟩ := ha
   have sq := Real.sq_sqrt (show 0 ≤ ‖A 0 0‖^2+‖A 0 1‖^2 by positivity)

@@ -414,6 +414,10 @@ theorem condKernel_polarAngle {l : ℕ+} (hl : 1 < l.val) (β : ℝ) (e : Edge l
   rw [← hb]
   exact heatBath_polarAngle hl β _ e
 
+/-- Scalar quaternion coordinate of a link in polar coordinates. -/
+theorem cos_polarAngle (u : G) : cos (polarAngle u) = (suMat u 0 0).re :=
+  cos_arccos (scalar_range u).1 (scalar_range u).2
+
 #print axioms haar_polarAngle_density
 #print axioms haar_polarAngle
 #print axioms angleLaw_probability
