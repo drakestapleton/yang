@@ -1,0 +1,44 @@
+note SPDX-License-Identifier: Apache-2.0
+note Host-only rectangular geometry control using four noncommuting unit quaternions.
+text cornerSuccess "noncommuting periodic corner PASS\n"
+
+fn setCornerLink s ulong mu ulong i f32 j f32 k f32 to void
+base = mul add mul s 4 mu 4
+put hLinks base 0.5f32
+put hLinks add base 1 i
+put hLinks add base 2 j
+put hLinks add base 3 k
+end
+
+fn checkCornerOrder T ulong to void
+specGeometry T
+specStart mul 512 T false 1
+s = sub mul 512 T 1
+pos = 0.5f32
+minus = neg pos
+setCornerLink s 0 pos pos pos
+setCornerLink getNb s 0 0 1 pos minus minus
+setCornerLink getNb s 1 0 0 minus pos minus
+setCornerLink s 1 minus minus pos
+note The independent exact 2x2 complex-matrix trace is 0 on this wrapping face.
+if ne hPlaq s 0 1 0.0f64
+exit 66
+end
+for t ulong T bound 16
+expected = 1.0f64
+if eq add t 1 T
+note Four neighboring faces contribute 1/2 each, and the marked face contributes 0.
+expected = 0.994140625f64
+end
+if ne sliceP T t expected
+exit 67
+end
+end
+end
+
+fn main to int
+checkCornerOrder 8
+checkCornerOrder 16
+uPrint cornerSuccess
+ret 0
+end

@@ -260,6 +260,40 @@ theorem normalizedTrace_scalar (u : G) : normalizedTrace u = (u.val.val 0 0).re 
   have hd : A 1 1 = (starRingEnd ℂ) (A 0 0) := h
   simp [Matrix.trace_fin_two, hd]
 
+open scoped Quaternion ComplexConjugate
+
+/-- Scalar, i, j and k in the order used by the Omega link buffers. -/
+private def matrixQuaternion (A : FundamentalSU2.M) : Quaternion ℝ :=
+  ⟨(A 0 0).re, (A 0 0).im, (A 0 1).re, (A 0 1).im⟩
+
+def linkQuaternion (u : G) := matrixQuaternion u.val.val
+
+theorem linkQuaternion_mul (u v : G) : linkQuaternion (u*v) = linkQuaternion u * linkQuaternion v := by
+  let A : FundamentalSU2.M := u.val.val
+  let B : FundamentalSU2.M := v.val.val
+  obtain ⟨hd, hc⟩ := (show B ∈ FundamentalSU2.quaternionAlgebra from v.property)
+  change B 1 1 = conj (B 0 0) at hd
+  change B 1 0 = -conj (B 0 1) at hc
+  change matrixQuaternion (A*B) = matrixQuaternion A * matrixQuaternion B
+  ext <;> simp [matrixQuaternion, Matrix.mul_apply, Fin.sum_univ_two, hd, hc,
+    Complex.mul_re, Complex.mul_im, Quaternion.re_mul, Quaternion.imI_mul, Quaternion.imJ_mul,
+    Quaternion.imK_mul] <;> ring
+
+theorem linkQuaternion_inv (u : G) : linkQuaternion u⁻¹ = star (linkQuaternion u) := by
+  let A : FundamentalSU2.M := u.val.val
+  obtain ⟨_, hc⟩ := (show A ∈ FundamentalSU2.quaternionAlgebra from u.property)
+  change A 1 0 = -conj (A 0 1) at hc
+  change matrixQuaternion (star A) = star (matrixQuaternion A)
+  ext <;> simp [matrixQuaternion, Matrix.star_apply,hc]
+
+/-- The scalar of the ordered four Hamilton products, including both return links. -/
+theorem face_quaternion (U : Slice L) (x : Space L) (i j : Fin 3) :
+    face U x i j =
+      (linkQuaternion (U (x,i)) * linkQuaternion (U (shift x i,j)) *
+        star (linkQuaternion (U (shift x j,i))) * star (linkQuaternion (U (x,j)))).re := by
+  have scalar (u : G) : normalizedTrace u = (linkQuaternion u).re := normalizedTrace_scalar u
+  simp only [face, scalar, linkQuaternion_mul, linkQuaternion_inv]
+
 def changeGauge (h : Vertical L) (U : Slice L) : Slice L :=
   fun e => h e.1 * U e * (h (shift e.1 e.2))⁻¹
 
@@ -490,6 +524,7 @@ theorem swap_wrap_excess {q : ℝ} (h0 : 0 < q) (h1 : q < 1) :
 #print axioms kernel_symmetric
 #print axioms operator_physical
 #print axioms plaquette_space_shift
+#print axioms face_quaternion
 #print axioms normalizedTrace_scalar
 #print axioms observable_preserves_physical
 #print axioms positive_partition

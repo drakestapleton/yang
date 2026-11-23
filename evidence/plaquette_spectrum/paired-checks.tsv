@@ -1,0 +1,66 @@
+# sign_flip: T, strongest positive lag, absolute studentized difference, fixed-lag and max-lag probabilities
+# replica: T, method, d, replica estimate and SE, original minus replica and paired SE
+# replica_difference: T, d, replica ordinary minus two-level and paired SE
+# fit: T, method, inclusive start and stop, E and SE, correlated chi-square, degrees of freedom, change dropping earliest and paired SE
+sign_flip	8	1	1.7476879	0.10140991	0.35079956
+replica_difference	8	0	-2.27938945e-06	1.09499188e-06
+replica_difference	8	1	-8.70364903e-07	6.93798441e-07
+replica_difference	8	2	1.37358809e-06	1.49465021e-06
+replica_difference	8	3	-1.85739944e-07	8.27890799e-07
+replica_difference	8	4	-3.17591712e-07	1.80069649e-06
+sign_flip_replica	8	1	1.2544924	0.28125	0.78125
+replica	8	direct	0	0.000210178531	1.30590638e-06	-6.96489141e-08	9.25314401e-07
+replica	8	direct	1	1.41534168e-05	9.64527931e-07	3.22410534e-07	8.45554211e-07
+replica	8	direct	2	4.36301789e-06	1.52242394e-06	-7.60919482e-07	9.57381917e-07
+replica	8	direct	3	5.56487305e-07	9.16074213e-07	1.47279893e-07	8.04823463e-07
+replica	8	direct	4	-1.20506706e-07	1.73596675e-06	1.56571034e-06	1.07347662e-06
+# fit_support T=8 method=direct contiguous_positive_lags=2
+# fit_support T=8 method=direct_replica contiguous_positive_lags=1
+replica	8	two_level	0	0.00021245792	3.46661701e-07	3.96778434e-07	3.0486398e-07
+replica	8	two_level	1	1.50237817e-05	6.13423828e-07	9.12050898e-07	4.41619233e-07
+replica	8	two_level	2	2.9894298e-06	1.60168449e-07	4.38165356e-07	3.58216455e-07
+replica	8	two_level	3	7.4222725e-07	1.91402287e-07	4.38839719e-07	3.28829732e-07
+replica	8	two_level	4	1.97085006e-07	2.27633647e-07	5.58700641e-07	3.54266497e-07
+# fit_support T=8 method=two_level contiguous_positive_lags=3
+fit	8	two_level	1	3	1.6927666	0.06745237	3.2642511	1	nan	nan
+# fit_support T=8 method=two_level_replica contiguous_positive_lags=3
+fit	8	two_level_replica	1	3	1.617255	0.046786215	0.48077148	1	nan	nan
+sign_flip	16	7	3.7264493	0.0010986328	0.01083374
+replica_difference	16	0	2.93908462e-07	9.49325963e-07
+replica_difference	16	1	7.14418307e-08	9.69778711e-07
+replica_difference	16	2	-2.15650414e-07	7.73320151e-07
+replica_difference	16	3	1.39980963e-06	7.01959924e-07
+replica_difference	16	4	1.38422444e-06	6.10476327e-07
+replica_difference	16	5	1.24540733e-06	6.39898936e-07
+replica_difference	16	6	4.08634349e-07	7.6798477e-07
+replica_difference	16	7	-1.15574593e-06	1.16417011e-06
+replica_difference	16	8	7.99342872e-07	1.28248578e-06
+sign_flip_replica	16	4	2.2674498	0.0703125	0.3984375
+replica	16	direct	0	0.000212628233	1.06987321e-06	1.41258191e-07	1.35103445e-06
+replica	16	direct	1	1.59401097e-05	7.79676339e-07	5.18607099e-07	7.20615336e-07
+replica	16	direct	2	2.54766243e-06	7.46506801e-07	-7.7306783e-09	4.22958439e-07
+replica	16	direct	3	2.10171091e-06	7.74182755e-07	-8.929521e-07	5.53010646e-07
+replica	16	direct	4	1.59012681e-06	6.34050226e-07	-4.28487479e-07	1.64656579e-07
+replica	16	direct	5	1.23526044e-06	6.47494262e-07	-5.985472e-07	7.07045474e-07
+replica	16	direct	6	5.76057031e-07	7.47338805e-07	1.11002282e-08	5.56754457e-07
+replica	16	direct	7	-9.61671607e-07	1.12899627e-06	-2.56289028e-07	7.16328663e-07
+replica	16	direct	8	9.27338428e-07	1.26309735e-06	-1.23411691e-06	6.9631374e-07
+# fit_support T=16 method=direct contiguous_positive_lags=2
+# fit_support T=16 method=direct_replica contiguous_positive_lags=2
+replica	16	two_level	0	0.000212334325	1.74217157e-07	6.60279053e-07	2.54375244e-07
+replica	16	two_level	1	1.58686678e-05	4.72460991e-07	7.67725012e-07	2.71612477e-07
+replica	16	two_level	2	2.76331284e-06	1.13965893e-07	5.83735913e-07	1.98783544e-07
+replica	16	two_level	3	7.01901281e-07	1.49353637e-07	6.05144975e-07	2.56006333e-07
+replica	16	two_level	4	2.05902369e-07	1.12999059e-07	5.69665336e-07	2.03539708e-07
+replica	16	two_level	5	-1.0146892e-08	1.59741825e-07	6.56981915e-07	2.08627754e-07
+replica	16	two_level	6	1.67422682e-07	1.13760529e-07	5.18324616e-07	2.36802771e-07
+replica	16	two_level	7	1.94074328e-07	1.08464372e-07	5.15460612e-07	2.5561826e-07
+replica	16	two_level	8	1.27995556e-07	1.28583869e-07	5.68101978e-07	2.59724318e-07
+# fit_support T=16 method=two_level contiguous_positive_lags=6
+fit	16	two_level	1	3	1.8357513	0.058092384	24.356257	1	nan	nan
+fit	16	two_level	1	6	1.8079431	0.030685786	30.787011	4	nan	nan
+fit	16	two_level	2	6	1.2122057	0.10601731	12.806358	3	-0.59573737	0.10805936
+fit	16	two_level	3	6	1.0194182	0.20391356	11.665308	2	-0.1927875	0.18808741
+fit	16	two_level	4	6	nan	nan	nan	1	nan	nan
+# fit_support T=16 method=two_level_replica contiguous_positive_lags=3
+fit	16	two_level_replica	1	3	1.7679523	0.051890707	3.0457675	1	nan	nan

@@ -1,0 +1,78 @@
+note SPDX-License-Identifier: Apache-2.0
+note Sample the same 01 plaquette under two exactly soluble frozen backgrounds.
+note Only even sites of spatial direction 0 update. No two active links share a face.
+text controlStart "field\tseed\tmean_bits\tsecond_bits\n"
+
+fn pinnedField stapleSize ulong to void
+specStart 4096 false 1
+if eq stapleSize 6
+ret
+end
+for s ulong 4096
+v = 0.5f32
+note The fastest spatial coordinate is axis 2. Its two neighbors reverse sign.
+if eq and div s 8 1 1
+v = neg v
+end
+for c ulong 4
+put hLinks add mul s 16 c v
+end
+end
+end
+
+fn pinnedMoments stapleSize ulong seed ulong to void
+pinnedField stapleSize
+if not uploadLinks 4096
+exit 17
+end
+if not seedGpuRng 4096 add mul stapleSize 10000 seed
+exit 19
+end
+m = 0.0f64
+v = 0.0f64
+for rep ulong 64
+if not gpuRunStaple 4096 0 0
+exit 15
+end
+if not gpuRunHeatbath 4096 0 0 2.3f32
+exit 15
+end
+downloadLinks 4096
+for s ulong 4096
+if eq specFlag mul s 4 8 4 0
+p = hPlaq s 0 1
+m = add m p
+v = add v mul p p
+end
+end
+end
+specUInt stapleSize
+specUInt seed
+specUInt bitcast ulong div m 131072.0f64
+uPrintU bitcast ulong div v 131072.0f64
+uPrint nlSpec
+end
+
+fn main to int
+put uStrictRejection 0 1
+rc = openWilsonKernels
+if ne rc 0
+ret rc
+end
+put dLinks 0 specAlloc 262144
+put dStaples 0 specAlloc 262144
+put dFlags 0 specAlloc 65536
+put dNbSite 0 specAlloc 131072
+put dRng 0 specAlloc 16384
+specGeometry 8
+specTables 8 false 4
+specTables 8 true 4
+uPrint controlStart
+for seed ulong 16
+pinnedMoments 6 seed
+pinnedMoments 2 seed
+end
+uPrint specEnd
+rcClose = nvmclose
+ret 0
+end

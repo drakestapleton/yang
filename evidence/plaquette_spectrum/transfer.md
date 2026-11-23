@@ -7,7 +7,7 @@ P(U)=L^{-3}\sum_{x}\tfrac12\operatorname{Re}\operatorname{Tr}
  [U_0(x)U_1(x+\hat 0)U_0(x+\hat 1)^{-1}U_1(x)^{-1}].
 ```
 
-Directions 0 and 1 are spatial. Time is direction 3. The two insertions have separately summed spatial positions. Omega's `sliceP` and Lean's `plaquette01` use exactly this orientation and normalization. A unit quaternion's scalar component equals the real normalized fundamental trace by `normalizedTrace_scalar`. Omega multiplies quaternion components in binary32 and accumulates each slice in binary64. Lean uses exact real integration.
+Directions 0 and 1 are spatial. Time is direction 3. The two insertions have separately summed spatial positions. Omega's `sliceP` and Lean's `plaquette01` use exactly this orientation and normalization. Lean's `linkQuaternion_mul` and `linkQuaternion_inv` identify fundamental-matrix multiplication and inversion with the Hamilton product and quaternion conjugation used by Omega. The theorem `face_quaternion` identifies the scalar of their ordered product with the normalized trace of the four links. Omega multiplies quaternion components in binary32 and accumulates each slice in binary64. Lean uses exact real integration.
 
 ## A finite time circle
 
@@ -25,6 +25,10 @@ C_N(d)=\frac{\operatorname{Tr}(A K^d A K^{N-d})}{\operatorname{Tr}(K^N)}
 ```
 
 Lean realizes the finite trace as a diagonal integral with one closing bond kept explicit (`cutTrace`). The theorem `wilson_plaquette_periodic_trace` starts from the rectangular link array and proves this equality for the actual Wilson operator at every real coupling. The closing bond is one time step, so the formal index satisfies N = d + r + 1. The spatial slice integration is normalized product Haar. `positive_partition` licenses division, and `wilson_time_shift` licenses averaging over source times. The partition ratio cancels any positive overall transfer normalization. A finite circle has a thermal one-point expectation at its own N, which is also the target of the cross-chain subtraction in the measurement.
+
+For all measured extents and lags, `wilson_plaquette_hilbert_trace` also proves the Hilbert-space trace formula in any orthonormal Hilbert basis of spatial Haar $L^2$. With the initial slice inside the unmarked arc, the operator word is $K A K^d A K^{N-d-1}$. Its basis diagonal is absolutely summable and sums to the marked Wilson integral. Replacing one or both insertions by the identity gives the one-point numerator and partition function with the same normalization. This trace theorem uses $N-d\ge2$. The kernel identity above also covers a single closing bond. [Hilbert-space trace](../../proofs/WilsonPlaquetteHilbertTrace.lean)
+
+In a transfer eigenbasis the two insertions give terms proportional to $\lambda_m^{N-d}\lambda_n^d |\langle m,A n\rangle|^2$. At finite $N$ both eigenvalues enter. The diagonal terms and the ensemble one-point subtraction can also contribute a separation-independent term. An effective-energy plateau asks whether a single energy describes neighboring lags within the available precision.
 
 For the state swap and transfer diag(1,q), Lean's `swap_regression` computes (q³ + q⁵)/(1 + q⁸) at N = 8 and d = 3. The vacuum matrix element is q³. `swap_wrap_excess` proves the finite answer is strictly larger for 0 < q < 1.
 
@@ -44,6 +48,12 @@ Set $S=K/\|K\|$ and $v=(P-\langle\Omega,P\Omega\rangle)\Omega$. In the closed ph
 ```
 
 The occupied modes form an at most countable set. At fixed $d$, increasing the other arc projects the normalized transfer powers onto the vacuum. A smoothing step and dominated convergence carry this limit through the cut diagonal integral and the normalization by the finite partition function. The limiting one-point subtraction becomes vacuum centering. Lean proves the result for every integer $d\ge0$, including the total mass at $d=0$, and proves $\mu_P(({-\infty},0])=0$. The final theorem takes the spatial side, the positive coupling and the separation as inputs. Its axiom audit lists `propext`, `Classical.choice` and `Quot.sound`. [Vacuum limit and energy measure](../../proofs/WilsonPlaquetteVacuum.lean)
+
+## The rate under refinement
+
+Write $a$ for physical time per lattice step. At fixed separation $t=ad$, halving $a$ doubles $d$. A common lower edge $E_{\rm lattice}\ge am$ on the observable's measure and a uniform mass bound $\mu_O(\mathbb R)\le A_O$ imply $C_O(d)\le A_O e^{-mad}$ along that trajectory. Lean proves this implication and the dyadic distance identity. For a lower spectral edge $g$ in lattice units the vacuum formula gives $C(d+1)\le e^{-g} C(d)$. Thus a positive measured forward-ratio effective energy can exceed the true gap. An exact three-state regression has eigenvalues $1,q,r$ with $0<r<q<1$ and an observable coupling the vacuum only to $r$. It misses the lighter energy $-\log q$ entirely. [Rate and invisible-state lemmas](../../proofs/WilsonPlaquetteVacuum.lean)
+
+A single spacing and spatial size provide no uniform $m$. The next mathematical target is a common physical rate with observable-dependent bounded spectral mass for a family whose vacuum-excited vectors detect the full excited subspace. Yang's bare row bound loses contraction as the running coupling increases along refinement. [Refinement obstruction and family hypothesis](../lean_wilson_cyclic_gap.txt)
 
 This supplies a positive spectral measure for one lattice observable at fixed spatial volume. Yang's theorem `word_laplace_limit_of_translation_match` takes finite measures on spacetime whose characteristic functions converge to the continuum word correlations. Here the measure is on energy alone. Matching the spatial momenta and field-word translations, and controlling the change in lattice spacing and volume, are further steps. Those are open. [Existing word hypotheses](../lean_wilson_cyclic_gap.txt)
 

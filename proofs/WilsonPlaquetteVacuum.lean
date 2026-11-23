@@ -3,7 +3,7 @@ import WilsonPlaquetteHilbert
 
 /-! Construct the normalized Wilson transfer spectrum directly on spatial Haar L². -/
 namespace YangMills.PlaquetteTransfer
-open Filter MeasureTheory
+open Filter MeasureTheory Matrix
 open scoped Topology InnerProductSpace RealInnerProductSpace ENNReal
 noncomputable section
 variable {L : ℕ+}
@@ -443,6 +443,60 @@ theorem wilson_plaquette_spectral_measure (β : ℝ) (hβ : 0 < β) (d : ℕ) :
   rw [moment, eq]
   exact lim
 
+/-- For dimensionless transfer energies E, a common physical rate m requires
+the moving threshold a*m, where a is the physical time lattice spacing. -/
+def laplaceSteps (ν : Measure ℝ) (d : ℕ) := ∫ E, Real.exp (-(d:ℝ)*E) ∂ν
+
+theorem refinement_rate_bound (ν : Measure ℝ) [IsFiniteMeasure ν] (a m A : ℝ)
+    (mass : ν.real Set.univ ≤ A)
+    (support : ∀ᵐ E ∂ν, a*m ≤ E) (d : ℕ) :
+    laplaceSteps ν d ≤ A * Real.exp (-m*(a*d)) := by
+  have bound : ∀ᵐ E ∂ν, Real.exp (-(d:ℝ)*E) ≤ Real.exp (-m*(a*d)) := by
+    filter_upwards [support] with E he
+    apply Real.exp_le_exp.mpr
+    nlinarith [mul_le_mul_of_nonneg_left he (Nat.cast_nonneg d : (0:ℝ) ≤ d)]
+  have integrable : Integrable (fun E : ℝ => Real.exp (-(d:ℝ)*E)) ν := by
+    apply (integrable_const (Real.exp (-m*(a*d)))).mono' (by fun_prop)
+    simpa only [Real.norm_eq_abs,abs_of_pos (Real.exp_pos _)] using bound
+  calc
+    _ ≤ ∫ _ : ℝ, Real.exp (-m*(a*d)) ∂ν := integral_mono_ae integrable (integrable_const _) bound
+    _ = ν.real Set.univ * Real.exp (-m*(a*d)) := by simp [integral_const,smul_eq_mul]
+    _ ≤ _ := mul_le_mul_of_nonneg_right mass (Real.exp_pos _).le
+
+theorem refinement_same_distance (a m : ℝ) (d : ℕ) :
+    Real.exp (-m*((a/2)*((2*d:ℕ):ℝ))) = Real.exp (-m*(a*d)) := by
+  push_cast
+  congr 1
+  ring
+
+theorem vacuum_one_loop_ratio (ν : Measure ℝ) [IsFiniteMeasure ν] {g : ℝ}
+    (hg : 0 ≤ g) (support : ∀ᵐ E ∂ν, g ≤ E) (d : ℕ) :
+    laplaceSteps ν (d+1) ≤ Real.exp (-g) * laplaceSteps ν d := by
+  have posE := support.mono (fun _ h => hg.trans h)
+  have integ (k : ℕ) : Integrable (fun E : ℝ => Real.exp (-(k:ℝ)*E)) ν := by
+    apply (integrable_const (1:ℝ)).mono' (by fun_prop)
+    filter_upwards [posE] with E he
+    rw [Real.norm_eq_abs, abs_of_pos (Real.exp_pos _), Real.exp_le_one_iff]
+    exact mul_nonpos_of_nonpos_of_nonneg (neg_nonpos.mpr (Nat.cast_nonneg _)) he
+  unfold laplaceSteps
+  rw [← integral_const_mul]
+  apply integral_mono_ae (integ _) ((integ _).const_mul _)
+  filter_upwards [support] with E he
+  rw [show -((↑(d+1):ℝ))*E = -E + -(d:ℝ)*E by push_cast; ring, Real.exp_add]
+  exact mul_le_mul_of_nonneg_right (Real.exp_le_exp.mpr (neg_le_neg he)) (Real.exp_pos _).le
+
+/-- If 0 < r < q < 1 the state at -log q is lighter; this loop has zero
+overlap with it and its vacuum correlation at separation three is r³. -/
+theorem invisible_lighter_state (q r : ℝ) :
+    let T : Matrix (Fin 3) (Fin 3) ℝ := !![1,0,0;0,q,0;0,0,r]
+    let A : Matrix (Fin 3) (Fin 3) ℝ := !![0,0,1;0,0,0;1,0,0]
+    (A * T^3 * A) 0 0 = r^3 ∧ A 1 0 = 0 ∧ T 1 1 = q := by
+  norm_num [pow_succ,Matrix.mul_apply,Fin.sum_univ_three]
+  change r*r*r*1 = r*r*r
+  ring
+#print axioms refinement_rate_bound
+#print axioms vacuum_one_loop_ratio
+#print axioms invisible_lighter_state
 #print axioms wilson_plaquette_spectral_measure
 #print axioms lattice_energy_moments
 #print axioms wilson_cut_limit

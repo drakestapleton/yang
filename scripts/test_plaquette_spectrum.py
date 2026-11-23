@@ -3,11 +3,14 @@ import contextlib
 import io
 import math
 import struct
+import statistics
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from analyze_plaquette_spectrum import ANCHOR, estimate, jk_error, read_chain, summary
+from analyze_plaquette_spectrum import ANCHOR, estimate, jk_error, main, read_chain, summary, value
 
 
 def bits(x):
@@ -49,6 +52,12 @@ class PlaquetteSpectrumTest(unittest.TestCase):
             self.assertAlmostEqual(other[8]-base[8],
                                    (0.625-ANCHOR)*(2*sum(ordinary)/8-endpoint_mean))
             self.assertEqual(phases, [[0, 0.125, 0, -0.125]])
+            with patch.object(sys, "argv", ["analysis", str(p), str(p)]):
+                with self.assertRaisesRegex(ValueError, "duplicate chain"):
+                    main()
+            with patch.object(sys, "argv", ["analysis", "--production", str(p)]):
+                with self.assertRaisesRegex(ValueError, "incomplete production design"):
+                    main()
             p.write_text("\n".join(lines))
             with self.assertRaisesRegex(ValueError, "incomplete"):
                 read_chain(p)
@@ -71,6 +80,32 @@ class PlaquetteSpectrumTest(unittest.TestCase):
         for row in energy_rows:
             self.assertAlmostEqual(float(row[3]), math.log(2), places=7)
         self.assertEqual(energy_rows[-1][-1], "within_tolerance")
+
+    def test_frozen_background_conditional_law(self):
+        # Haar on S³ tilted by exp(a p) gives E[p]=I2(a)/I1(a),
+        # E[p²]=1-3 E[p]/a. Evaluate the positive Bessel series independently.
+        raw = Path(__file__).resolve().parents[1] / "evidence/plaquette_spectrum/conditional-check.tsv"
+        lines = raw.read_text().splitlines()
+        self.assertEqual(lines[0].split(), ["field","seed","mean_bits","second_bits"])
+        self.assertEqual(lines[-1], "END")
+        samples = {}
+        for line in lines[1:-1]:
+            field, seed, m, sq = line.split()
+            key = int(field), int(seed)
+            self.assertNotIn(key, samples)
+            samples[key] = value(m), value(sq)
+        self.assertEqual(set(samples), {(k,s) for k in (2,6) for s in range(16)})
+        for k in (2,6):
+            a = 2.3*k
+            def bessel(order):
+                return math.fsum((a/2)**(2*j+order)/(math.factorial(j)*math.factorial(j+order))
+                                 for j in range(60))
+            mean = bessel(2)/bessel(1)
+            for m, truth in enumerate((mean, 1-3*mean/a)):
+                chains = [samples[k,s][m] for s in range(16)]
+                se = statistics.stdev(chains)/4
+                self.assertGreater(se, 0)
+                self.assertLess(abs(statistics.fmean(chains)-truth), 5*se)
 
     def test_centering_and_chain_uncertainty(self):
         x = [0, 1/4, 1/2, 3/4]

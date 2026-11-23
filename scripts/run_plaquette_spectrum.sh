@@ -28,13 +28,25 @@ build)
     "$out/omc" < "$unit" > "$out/spectrum.new"
     chmod +x "$out/spectrum.new"
     "$out/spectrum.new"
+    # Both fixtures call the production functions with their own entry points.
+    sed 's/^fn main to int$/fn measuredMain to int/' "$unit" > "$out/fixtures.om"
+    cat "$out/fixtures.om" scripts/plaquette_corner_check.om > "$out/corner.om"
+    "$out/omc" < "$out/corner.om" > "$out/corner"
+    chmod +x "$out/corner"
+    "$out/corner"
+    cat "$out/fixtures.om" scripts/plaquette_conditional_check.om > "$out/conditional.om"
+    "$out/omc" < "$out/conditional.om" > "$out/conditional"
+    chmod +x "$out/conditional"
     mv "$out/spectrum.new" "$out/spectrum"
     sha256sum "$out/spectrum" "$unit"
     ;;
-run|batch)
+run|batch|check-conditional)
     mode=$1
     shift
-    if [ "$mode" = run ]; then
+    if [ "$mode" = check-conditional ]; then
+        [ "$#" -eq 0 ] || exit 64
+        name=yang-plaquette-conditional
+    elif [ "$mode" = run ]; then
         [ "$#" -eq 5 ] || { echo 'run T chain burn observations inner-sweeps' >&2; exit 64; }
         T=$1 chain=$2 burn=$3 count=$4 inner=$5
         set -- "$T" "$chain"
@@ -46,7 +58,7 @@ run|batch)
         burn=$1 count=$2 inner=$3
         shift 3
     fi
-    name=yang-plaquette-$1-$2
+    if [ "$mode" != check-conditional ]; then name=yang-plaquette-$1-$2; fi
     board="$HOME/handoffs/BOARD.md"
     post() { flock "$board.lock" sh -c 'echo "$1" >> "$2"' sh "$(date -u +%FT%TZ) $1" "$board"; }
     post "QUEUE $name exclusive GB10, value measurements, lease 20m; contact via board"
@@ -54,6 +66,14 @@ run|batch)
     wid=$(echo "$info" | tail -1)
     cleanup() { spark-window close "$wid"; post "RELEASE $name window $wid"; }
     trap cleanup EXIT
+    if [ "$mode" = check-conditional ]; then
+        raw=$(mktemp "$out/conditional.XXXXXX")
+        post "CLAIM $name $wid; pinned-plaquette conditional check"
+        spark-window run timeout 1100 "$out/conditional" > "$raw"
+        test "$(tail -1 "$raw")" = END
+        echo "raw=$raw"
+        exit 0
+    fi
     post "CLAIM $name $wid; $mode, extent/chain pairs $*"
     # The group deadline fits inside the hardware lease. A partial chain has no END.
     spark-window run timeout 1100 sh -eu -c '
@@ -68,5 +88,5 @@ run|batch)
         done
     ' sh "$out" "$burn" "$count" "$inner" "$@"
     ;;
-*) echo 'usage: build | run T chain burn observations inner | batch burn observations inner T chain [T chain ...]' >&2; exit 64 ;;
+*) echo 'usage: build | check-conditional | run T chain burn observations inner | batch burn observations inner T chain [T chain ...]' >&2; exit 64 ;;
 esac

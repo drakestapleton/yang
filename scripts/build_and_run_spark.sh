@@ -452,7 +452,7 @@ elif [ "$MODE" = "openai_bridge" ]; then
   echo "=== Checking the Mathlib bridges and periodic SU(2) Wilson specialization on Spark ==="
   scp "$ROOT/proofs/OpenAiYmBridge.lean" "$ROOT/proofs/DobrushinShlosman.lean" "$ROOT/proofs/WilsonPolymerBridge.lean" "$ROOT/proofs/PhaseFourBridge.lean" "$ROOT/proofs/OneLinkTransport.lean" "$ROOT/proofs/FundamentalSU2.lean" "$ROOT/proofs/PeriodicWilson.lean" "$ROOT/proofs/WilsonConditional.lean" "$ROOT/proofs/WilsonAngle.lean" "$ROOT/proofs/WilsonRadialTransport.lean" "$ROOT/proofs/WilsonLinkTransport.lean" "$ROOT/proofs/WilsonPoleTransport.lean" "$ROOT/proofs/WilsonFieldResponse.lean" "$ROOT/proofs/WilsonCouplingTriangle.lean" "$ROOT/proofs/WilsonCartesianTransport.lean" "$ROOT/proofs/PeriodicWilsonDS.lean" "$ROOT/proofs/WilsonHeatBathDynamics.lean" "$ROOT/proofs/WilsonSpatialClustering.lean" "$ROOT/proofs/WilsonPlaquetteClustering.lean" "$ROOT/proofs/WilsonWinding.lean" "$ROOT/proofs/WilsonBlocking.lean" "$ROOT/proofs/WilsonBlockedShells.lean" "$ROOT/proofs/WilsonWordClustering.lean" "$ROOT/proofs/WilsonCyclicGap.lean" "$ROOT/proofs/WilsonWordSpectrum.lean" "$ROOT/proofs/WilsonReplicaExchange.lean" "$ROOT/proofs/WilsonReplicaShells.lean" "$ROOT/proofs/WilsonReplicaSlabs.lean" "$ROOT/proofs/WilsonReplicaLoss.lean" "$ROOT/proofs/WilsonReplicaFrame.lean" "$ROOT/proofs/WilsonReplicaEndpoint.lean" "$ROOT/proofs/WilsonReplicaColor.lean" "$ROOT/proofs/WilsonReplicaVertex.lean" "$ROOT/proofs/WilsonReplicaHaar.lean" spark:~/workspace/yang-lean-bridge/
   scp "$ROOT/proofs/WilsonReplicaFreeShell.lean" "$ROOT/proofs/WilsonReplicaPathPacking.lean" "$ROOT/proofs/WilsonReplicaUncross.lean" spark:~/workspace/yang-lean-bridge/
-  scp "$ROOT/proofs/PlaquetteKernelCycle.lean" "$ROOT/proofs/PlaquetteKernelTrace.lean" "$ROOT/proofs/WilsonPlaquetteTransfer.lean" "$ROOT/proofs/PlaquettePositiveKernel.lean" "$ROOT/proofs/WilsonPlaquettePositivity.lean" "$ROOT/proofs/WilsonPlaquetteHilbert.lean" "$ROOT/proofs/WilsonPlaquetteVacuum.lean" spark:~/workspace/yang-lean-bridge/
+  scp "$ROOT/proofs/PlaquetteKernelCycle.lean" "$ROOT/proofs/PlaquetteKernelTrace.lean" "$ROOT/proofs/WilsonPlaquetteTransfer.lean" "$ROOT/proofs/PlaquettePositiveKernel.lean" "$ROOT/proofs/WilsonPlaquettePositivity.lean" "$ROOT/proofs/WilsonPlaquetteHilbert.lean" "$ROOT/proofs/WilsonPlaquetteHilbertTrace.lean" "$ROOT/proofs/WilsonPlaquetteVacuum.lean" spark:~/workspace/yang-lean-bridge/
   ssh spark "set -eu
     export PATH=\"\$HOME/.elan/bin:\$PATH\"
     cd ~/workspace/yang-lean-bridge
@@ -471,6 +471,7 @@ elif [ "$MODE" = "openai_bridge" ]; then
       lean -o \"\$1/PlaquettePositiveKernel.olean\" PlaquettePositiveKernel.lean
       lean -o \"\$1/WilsonPlaquettePositivity.olean\" WilsonPlaquettePositivity.lean
       lean -o \"\$1/WilsonPlaquetteHilbert.olean\" WilsonPlaquetteHilbert.lean
+      lean WilsonPlaquetteHilbertTrace.lean
       lean WilsonPlaquetteVacuum.lean
       lean -o \"\$1/WilsonConditional.olean\" WilsonConditional.lean
       lean -o \"\$1/WilsonAngle.olean\" WilsonAngle.lean
