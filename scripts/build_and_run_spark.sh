@@ -12,6 +12,13 @@ echo "=== Syncing $ROOT -> spark:$REMOTE_DIR ==="
 ssh spark "mkdir -p '$REMOTE_DIR/src' '$REMOTE_DIR/proofs' '$REMOTE_DIR/build' '$REMOTE_DIR/evidence'"
 COPYFILE_DISABLE=1 tar --exclude='.git' --exclude='._*' --exclude='.DS_Store' -C "$ROOT" -cf - PIN README.md src proofs scripts | ssh spark "tar -C '$REMOTE_DIR' -xf -"
 
+case "$MODE" in
+  interval_cert|phase3b_cert|phase4_cert)
+    pin=$(sed -n 's/^omc_sha256=//p' "$ROOT/PIN")
+    ssh spark "echo '$pin  $OMEGA_DIR/seed/out/omc' | sha256sum -c -"
+    ;;
+esac
+
 if [ "$MODE" = "check1" ]; then
   echo "=== Building pure OM-2 Zero-CUDA ufbi_check1_gb10 on Spark ==="
   ssh spark "set -eu

@@ -232,9 +232,8 @@ ret ivHi mul 8.0f64 ivHi mul cap0 ivHi uExp64 arg
 end
 
 note Shift for the 7 near links given the far-link sine bound s7 = sin(R7)^2 (split out of scan1BadR7, error 12)
-fn shift7Hi R7 f64 s7 f64 to f64
-sLo = radialSinLo R7
-cLog7 = ivHi div neg ivLo uLog64 ivLo sub 1.0f64 s7 ivLo mul sLo sLo
+fn shift7Hi squareLo f64 s7 f64 to f64
+cLog7 = ivHi div neg ivLo uLog64 ivLo sub 1.0f64 s7 squareLo
 ret max2 0.0f64 ivHi sub cLog7 div 3.0f64 7.0f64
 end
 
@@ -249,6 +248,11 @@ best1b = v1
 end
 end
 ret best1b
+end
+
+fn sineSquareLo angle f64 to f64
+s = max2 0.0f64 radialSinLo angle
+ret max2 0.0f64 ivLo mul s s
 end
 
 fn scan1BadR7 R7 f64 rMin f64 delta f64 cap0 f64 to void
@@ -267,7 +271,10 @@ t2b = ivHi uExp64 ivHi sub neg ivLo mul s2F beta get qPrm 5
 if gt t2b 0.5f64
 ret
 end
-shift7 = shift7Hi R7 s7
+if le sineSquareLo R7 0.0f64
+ret
+end
+shift7 = shift7Hi sineSquareLo R7 s7
 best1b = best1bOverEta shift7 cap0
 tot = ivHi add best1b t2b
 if lt tot get qFar 0
@@ -408,7 +415,10 @@ fn scanR1 R1 f64 to void
 lam1 = get qPrm 1
 put qPrm 10 R1
 s1H = ivHi mul radialSinHi R1 radialSinHi R1
-s1L = ivLo mul radialSinLo R1 radialSinLo R1
+s1L = sineSquareLo R1
+if le s1L 0.0f64
+ret
+end
 if ge s1H 0.996f64
 ret
 end

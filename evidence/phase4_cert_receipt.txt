@@ -4,36 +4,41 @@ Commands: sh scripts/build_and_run_spark.sh {interval_cert,phase3b_cert,phase4_c
 All three verifier binaries returned 0. Static AArch64 ELF sizes and SHA-256:
  23852 ufbi_interval_rg_cert
  25776 ufbi_phase3b_cert
- 55868 ufbi_phase4_cert
-105496 total
+ 56024 ufbi_phase4_cert
+105652 total
 d613b41bf370d5c51aa3cd7fbb2a661dcacdaa09bd4d54acaae31f882cf4a024  ufbi_interval_rg_cert
 31b62667cc5f404f07a906eb1b90fc12d6306165d6002aeccb8397144373082f  ufbi_phase3b_cert
-b86e30c0716ec207eaead4d6468a4aacb63948748312203ff49504fb985149d7  ufbi_phase4_cert
+265415385a2a2a27500c399ffaa663f63c74f9d52c2b6e9d8d9bf25d71685880  ufbi_phase4_cert
 
 Part A uses integer cosine half-angles, squared sine bounds, two-sided bounds for
-exp from 4096 downward-rounded binomial steps (12 squarings), dyadic moment and
+exp from one rounded binomial base and 12 downward-rounded squarings, dyadic moment and
 flux sums, outward energy quotients, and integer threshold comparisons. Decimal
 speeds and coefficients are rounded for display. The analytic Lean energy bounds
 hold directly for continuum integrals. The quadrature implementation is additionally
 compared with an arbitrary-precision integer evaluation of the same 2048 field boxes.
+The proof that all of the discrete energy sums enclose their continuous integrals
+remains informal. The analytic theorem has a separate direct integral proof at beta <= 0.280.
 Replay SHA-256:
 fc05b2aafa87df12c0a4af7f263210e2fa63380295bc2ea55dba82a33d8b81be  2048 angle-cell rows
 773512459dbfae4b89d6d7e464d570e7fa8aa105e4ab89f415ea9f0a013cf038  2048 field-box energy pairs
+DYADIC_GRID_REPLAY cells=2048 status=PASS
+DYADIC_W2_REPLAY couplings=16 field_boxes=2048 angle_cells_per_box=2048 status=PASS
 Phase III-A uses dyadic angle cells and padded binary64 moment arithmetic. Phase IV
 star-cell trig bounds use first-quadrant dyadic indices. The star-cell exponential,
 logarithm, square root and quadrature paths still use padded binary64.
 
 Temporary mutation controls:
 - Set the upper integer cosine at zero to 2^30-1. Compile 0, run 1, TRIG_ENDPOINT status=FAIL.
+- Add one dyadic unit to each computed polar field-box energy. The Lean replay differs.
 - Change the expected degree-12 classification at beta=0.283 to OPEN. Compile 0, run 1,
   PHASE4_CERT_DONE status=FAIL. The 0.283 coefficient from this quadrature is 0.996962.
 
 Source and output SHA-256:
 a6fcb89a18c45c113a27f266f0249af9cd0672bbbfddd2aec597c85c4a29e2ca  src/ufbi_interval_rg_cert.om
 9cedee6a6d17675061cceceff38ef35214b1444ee8be926643edc8d6b7453fe2  src/ufbi_phase3b_cert.om
-e6a0b49400da98f3a95977dca617b7c6bf9f352846207d6278e624d8acd1f912  src/ufbi_phase4_cert.om
+2145a562235956aa9305fd6a4f66eb3b29c09ae20e2ca2169eedcb0367f3729b  src/ufbi_phase4_cert.om
 fdccfe215aba4a349d30d2574c7842a7b905f64bb70c4be760b94bf4242621c6  src/ufbi_ivmath.om
-ca074e080dd54df851e27e3ef0593d948c19d493417b7be8629c57a47211a498  src/ufbi_w2_dyadic.om
+691f6bf22fdf66cbcb5042116197514870e6bdd56ea66f8f39be2271335a791d  src/ufbi_w2_dyadic.om
 ef1373564afe5e549fbf8dbb9cc0fea91b329e343b7727a07edee5f5fcb2f45a  src/ufbi_math.om
 7b233f2a67e32086342925c19741412f6adacf111bd260ce35b4578a0e14beef  evidence/phase3a_interval_rg_cert.tsv
 884ef7a816b4939efe3462bafbb6c2f506f86f307ed4ca5c8bf2c55bc1ee084c  evidence/phase3b_dual_cliff_cert.tsv

@@ -226,7 +226,7 @@ w2FieldBox lo hi
 end
 end
 
-note energy * (degree * betaBps)^2 < 2^28 * 10000^2; all products fit int64.
+note energy * (degree * betaBps)^2 < 2^28 * 10000^2; degree <= 18, betaBps <= 2880 and energy <= 2^28.
 fn dyadicSubunit energy long degree long betaBps long to long
 if or lt energy 0 gt energy wScale
 put wFailed 0 1

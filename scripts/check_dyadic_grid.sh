@@ -32,4 +32,15 @@ echo 'DYADIC_GRID_REPLAY cells=2048 status=PASS'
 cmp "$build/w2-omega.tsv" "$build/w2-lean.tsv"
 test "$(wc -l < "$build/w2-lean.tsv")" = 2048
 sha256sum "$build/w2-lean.tsv"
+# A one-unit change to the computed polar energy must disagree with the reference.
+sed 's/^par = fluxEnergy zLo$/par = add 1 fluxEnergy zLo/' "$build/w2.om" > "$build/w2-mutant.om"
+"$omc" < "$build/w2-mutant.om" > "$build/w2-mutant"
+chmod +x "$build/w2-mutant"
+"$build/w2-mutant" > "$build/mutant.tsv"
+test "$(wc -l < "$build/mutant.tsv")" = 2048
+if cmp -s "$build/mutant.tsv" "$build/w2-lean.tsv"; then
+  echo 'W2_MUTATION undetected' >&2
+  exit 1
+fi
+echo 'W2_MUTATION polar_energy_plus_one detected'
 echo 'DYADIC_W2_REPLAY couplings=16 field_boxes=2048 angle_cells_per_box=2048 status=PASS'
