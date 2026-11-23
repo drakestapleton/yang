@@ -1,0 +1,17 @@
+# train: quarter units, mean alpha, independent-seed SE
+train	0	1.275328	0.438446
+train	1	1.785246	0.417405
+train	2	2.838520	0.550163
+train	3	5.045432	0.511010
+winner_quarters	0
+# heldout: series, mean, SE, minimum, maximum
+heldout	total_baseline	2.891368	0.350026	2.009615	4.456868
+heldout	total_winner	1.548193	0.264362	0.805431	2.477339
+heldout	total_paired_change	-1.343176	0.236703	-1.979529	-0.489885
+heldout	rectangle_baseline	0.578002	0.112521	0.222120	1.002420
+heldout	rectangle_winner	0.182122	0.044996	0.054810	0.344700
+heldout	rectangle_paired_change	-0.395880	0.083545	-0.733095	-0.167310
+heldout	crown_baseline	0.440710	0.048325	0.248280	0.563580
+heldout	crown_winner	0.485400	0.159861	0.140640	1.241940
+heldout	crown_paired_change	0.044690	0.142092	-0.202080	0.745320
+heldout_winner_below_one	2	6

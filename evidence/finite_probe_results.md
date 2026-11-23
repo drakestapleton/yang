@@ -12,6 +12,18 @@ On the archived 32⁴ step-three fit, the fundamental term is 1.22041 in the iso
 
 The four terms are 0.15198 (adjoint), 0.17532 (rectangle), 0.06388 (2×2 square) and 0.33300 (crown). All totals set the unknown remainder to zero. The TV and $W_1$ rows reuse the favorable coefficient 14 on the adjoint as a numerical screen. The last row is the expression in `temporal_gauge_multiloop_w2_open_ball`. Periodic time leaves a holonomy after fixing a tree. Applying an open-time row count to the actual periodic action would require controlling that seam, the discarded operators and the transport hypotheses. An isotropic replay from the six-decimal couplings agrees with the archived scores within their rounding tolerance on all 23 rows. [Rescored table](check10_temporal_scores.tsv) · [Lean constants](../proofs/WilsonPolymerBridge.lean)
 
+## Blocking-kernel search on the GB10
+
+On the periodic $32^4$ lattice at β = 2.30, we optimized the same staple fraction at all three blocking steps over four candidates. Every path has the same endpoints. A noncommuting gauge transformation checks covariance on all links of the coarse fixture, including the straight-path fallback. On the same three training seeds, the mean five-term scores for staple fractions 0, ¼, ½ and ¾ were 1.275, 1.785, 2.839 and 5.045. The straight two-link path won. [Registered design](check10_kernel_design.md) · [Covariance fixture](../scripts/check_block_covariance.om)
+
+| Step-three diagnostic, six new matched seeds | Original half-staple | Straight path | Paired change |
+|---|---:|---:|---:|
+| Five-term $\alpha$ | 2.891 ± 0.350 | 1.548 ± 0.264 | −1.343 ± 0.237 |
+| Rectangle contribution | 0.578 ± 0.113 | 0.182 ± 0.045 | −0.396 ± 0.084 |
+| Crown contribution | 0.441 ± 0.048 | 0.485 ± 0.160 | +0.045 ± 0.142 |
+
+The straight path lowered the score on all six held-out seeds. Two of six fitted scores were below one and the full range was 0.805–2.477. The rectangle term fell, while the crown change was unresolved. All 24 runs completed with zero projection fallbacks, and matched seeds reproduced the same fine-field fit before blocking. This is a search over one path family and a five-operator fit on finite chains. A uniform contraction would require controlling omitted operators and matching long-distance observables. [Full reductions](check10_kernel_search/summary.tsv) · [Raw GB10 windows and fits](check10_kernel_search/) · [Scorer](../scripts/select_block_kernel.py)
+
 ## Negative bare adjoint coupling
 
 Check 9 defines $dAdj_{nonW}$ as the observed adjoint trace minus a matched Wilson reference. Its value −0.0380 at β = 2.50 is an observable residual. Check 10 estimates an action coefficient by solving the five-operator system. To test an actual deformation, we set the *bare* coefficient of $(4P^2-1)/3$ to −0.038, with $P=\mathrm{Re}\,\mathrm{Tr}(U_p)/2$. Eight independently seeded paired chains per coupling on periodic 4⁴ boxes compare the Wilson and deformed laws. A Wilson heat-bath proposal has a Metropolis correction using the exact change in the six incident adjoint plaquettes. The same random numbers couple the two marginals. Each chain had 96 warmup and 128 measured sweeps, with four hot and four cold starts per coupling. [Original Check 9 definition](../src/ufbi_check9_gb10.om) · [Raw chain moments](mixed_action_pairs.tsv)
@@ -52,7 +64,9 @@ Freeze the tangential links on the entire boundary of an open $L^4$ box. Compare
 | 6 | 2.0 | +0.0040 ± 0.0079 | 0.1791 ± 0.0041 |
 | 6 | 2.3 | +0.0101 ± 0.0050 | 0.1456 ± 0.0036 |
 
-Exactly independent equilibrium marginals would give $|\Delta\langle P\rangle|\le W_1\le\mathbb E|P'-P|$ for the **one-dimensional laws of this scalar observable**, using its absolute-difference metric. The numbers are finite-run estimates for one pair of collars. Inferring a DS contraction requires the appropriate block metric and influence sum, an upper bound over all allowed exterior perturbations, and control of sampling or convergence error. Inferring a physical rate also requires the bound to scale with the lattice spacing. Neither the exact worst-case mixing time nor a minimum certifying box size follows from these measurements.
+We also optimized over identity, sheet and rough Haar backgrounds, keeping the two exterior fields in each pair different at precisely one link. At $L=4$, β = 2.30, the sheet gave the largest absolute change on four training seeds, $-0.01403\pm0.00556$. On eight new validation seeds its change was $-0.00107\pm0.00248$. The training effect did not reproduce at that precision. [Registered search](open_collar_design.md) · [All training and validation pairs](open_collar_search.tsv) · [Search code](../scripts/search_open_collars.py)
+
+For any coupling with the two correct equilibrium marginals, the center observable obeys $|\Delta\langle P\rangle|\le W_1\le\mathbb E|P'-P|$ for the **one-dimensional laws of this scalar observable**, using its absolute-difference metric. The numbers are finite-run estimates for one pair of collars. Inferring a DS contraction requires the appropriate block metric and influence sum, an upper bound over all allowed exterior perturbations, and control of sampling or convergence error. Inferring a physical rate also requires the bound to scale with the lattice spacing. Neither the exact worst-case mixing time nor a minimum certifying box size follows from these measurements.
 
 ## Many-cell expansion and continuous quadrature
 
