@@ -1,0 +1,128 @@
+Contract row 1: PROVED in the pinned finite-volume SU(2) bridge.
+Base: c73bf92caeb1c1a495edc5207d1f5e8eee603018
+Contract SHA256: e7d2749da6183f3cd684bbb0ed2c178fbb8ae138493afd248a7b77f2c92a5ebe
+
+Source SHA256:
+04411a2a4fc0035535302f08b942c59e5ec561b96509cddb745c1ba1d56fc712  proofs/WilsonReplicaHaar.lean
+8127f133572ce33e33cfdd0142419289476357250fc85cc3e792e44bb7a88847  scripts/build_and_run_spark.sh
+1242aac1396ab9b854a5e1e9eedaa8344f59a89193526aa6654c3abde17417fd  proofs/WilsonReplicaVertex.lean (unchanged prerequisite)
+
+Pins observed on Spark:
+Lean: leanprover/lean4:v4.32.0
+Lean --version: Lean (version 4.32.0, aarch64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)
+Mathlib git HEAD: 81a5d257c8e410db227a6665ed08f64fea08e997
+2773c517aa90b66ea8a2c52bddddf84393157797f8341be0df45294fff7fd32e  lean-toolchain
+2f7b545f9aba8348d4be4c18b78da47d7fe7d80fbca737ce3d32415f31f9149e  lakefile.toml
+48a4e2bcfad97fa154139282a40a2c43ac80cd736520e6b9c2acb98c4d60a7bc  lake-manifest.json
+
+Statement and system link:
+vertexIntegral_integral proves the signed estimator's integral is unchanged for ANY
+probability measure on a compact parameter space with a continuous map to vertex
+gauges, provided continuous endpoint factor D is gauge invariant. A probability
+directly on the compact space of all vertex fields is included by taking the map
+as identity. The parameter law has no Wilson-pair argument. Joint continuity on
+the compact product proves joint integrability; integral_integral_swap supplies
+Fubini. The normalization step integrates the constant fixed-field integral.
+vertexIntegral_bound keeps the absolute value outside the signed gauge integral.
+plaquette_probability_slab_covariance reuses the actual signedSlabProduct and
+plaquette_vertex_slab_covariance theorem, with k bounded by cyclic separation.
+It preserves twice the covariance, not an unrelated invariant constant.
+
+boundaryHaar is Measure.pi of normalized su2Haar over a finite selected vertex set.
+Its probability instance is proved; boundaryField extends it by identity off that
+set and is continuous. Thus product Haar with independent coordinates is an
+actual instance of the signed identity/bound, not a hypothesis named Haar.
+plaquette_boundaryHaar_slab_covariance proves this specialization. The source
+mem_outerTopSheets_four proves that outerTopSheets t 0 1 at side four consists
+exactly of sites at time two or three. With t=the sampler's last axis this matches
+scripts/replica_shell_probe.py Lattice.masks['slab'][1] and
+scripts/vertex_slab_orbit.py SlabOrbit top=plus[3,bottom]; the field is identity at
+all remaining sites. The proof uses the original unframed two-replica Wilson law.
+It does NOT establish sampler stationarity, Monte Carlo error, independence of
+shells, any orbit probability estimate, an adaptive estimator, the U(1) analogue,
+a uniform separation rate, continuum limit or mass gap. No claim that support
+alone proves inner-field invariance is needed for the signed full-product result.
+
+Verification command actually run (2026-11-23T13:06:53Z to 13:07:07Z):
+  scp proofs/WilsonReplicaHaar.lean spark:/tmp/yang-haar-lean.VmYtPJ/
+  ssh spark 'export PATH=$HOME/.elan/bin:$PATH;
+    cd /home/drakestapleton/workspace/yang-lean-bridge;
+    lake env sh -ec '\''
+      export LEAN_PATH=/tmp/yang-haar-lean.VmYtPJ:/tmp/yang-vertex-lean.dmlPXk:/home/drakestapleton/workspace/yang-lean-bridge/replica.Co3b44:$LEAN_PATH
+      cd /tmp/yang-haar-lean.VmYtPJ
+      taskset -c 0,1 nice -n 10 lean -o WilsonReplicaHaar.olean WilsonReplicaHaar.lean
+    '\'''
+LEAN_EXIT=0. The entire new module was checked, not just one declaration.
+Fresh output scratch: /tmp/yang-haar-lean.VmYtPJ (created for this task).
+Reused dependency olean SHA256:
+8e68a551a40339c333bac7a31c0ea63fb3c93fddadd76be06d51d74899d91095  WilsonReplicaVertex.olean
+f84ca8af6335aab5ef7e4ee1e566896e662eeddfef88340891ff612ec2713f71  WilsonReplicaSlabs.olean
+8182391573527293a311985f5f6a5a3549fae40e0b1a092e9c08ab332ea1cfe9  WilsonReplicaFrame.olean
+c8775ebec8dd963a0058e674f1fdf14764b00c3e7507151f3982a633447a387c  WilsonReplicaShells.olean
+Output olean SHA256:
+b390477f65dd3199eb6cea42f2f80d6d534e60c3cca045c347bd2b0ceac49e35  WilsonReplicaHaar.olean
+
+Axiom audit: every following printed declaration depends only on
+[propext, Classical.choice, Quot.sound]:
+  YangMills.PeriodicWilson.vertexIntegral_integral
+  YangMills.PeriodicWilson.vertexIntegral_bound
+  YangMills.PeriodicWilson.plaquette_probability_slab_covariance
+  YangMills.PeriodicWilson.boundaryHaar_probability
+  YangMills.PeriodicWilson.boundaryField_off
+  YangMills.PeriodicWilson.boundaryField_continuous
+  YangMills.PeriodicWilson.mem_outerTopSheets_four
+  YangMills.PeriodicWilson.plaquette_boundaryHaar_slab_covariance
+No warnings or errors in the final positive check. Forbidden source scan for
+sorry, axiom, native_decide, implemented_by, unsafe, extern: PASS.
+
+Meaningful rejected control: remove probability normalization, but retain a finite
+measure, compact parameter space, continuous constant observables D=Q=1 and
+configuration-independent gauges. The zero law would force the signed identity
+0=1. This is an unsolved FALSE proposition, not a missing import or elaboration
+failure for the parameter space.
+Control source (portable, save as MissingProbability.lean after compiling Haar):
+import WilsonReplicaHaar
+namespace YangMills.PeriodicWilson
+open FundamentalSU2 WilsonPolymer MeasureTheory Real
+noncomputable section
+-- Dropping normalization permits the finite zero law on a compact parameter space.
+-- D=Q=1 are continuous and gauge invariant, so no other hypothesis is missing.
+-- The asserted extension would force 0=1 under the Wilson probability.
+theorem invalid_without_probability :
+    (∫ z, (1 : ℝ) * vertexIntegral (0 : Measure Unit)
+      (fun _ => (1 : VertexGauge (⟨4, by decide⟩ : ℕ+)))
+      (fun _ => 1) z ∂replicaLaw (⟨4, by decide⟩ : ℕ+) 0) =
+      ∫ _z, (1 : ℝ) * 1 ∂replicaLaw (⟨4, by decide⟩ : ℕ+) 0 := by
+  simp [vertexIntegral]
+end
+end YangMills.PeriodicWilson
+
+Control command: same lake env / LEAN_PATH, replacing the final compiler command
+with taskset -c 0,1 nice -n 10 lean -o MissingProbability.olean MissingProbability.lean.
+Observed 2026-11-23T13:07:07Z to 13:07:12Z:
+MissingProbability.lean:12:63: error: unsolved goals
+⊢ False
+LEAN_EXIT=1 (expected rejection).
+Control source SHA256: f0051f96b0221b0bd44269ec2b583cfd1eb65b6f136624cc1282cba4ecbac4e0
+
+Recipe integration and consistency:
+The sole existing openai_bridge transfer list now includes WilsonReplicaHaar.lean.
+The corresponding compile is immediately after WilsonReplicaVertex.olean.
+No other mode or build command changed. bash -n scripts/build_and_run_spark.sh
+exited zero on 2026-11-23T13:05:37Z. Searched both Vertex/Haar references to confirm
+both transfer and compile integration; the existing Vertex recipe is retained.
+The complete bridge recipe was NOT run in this worker assignment. Portable full
+source rebuild after provisioning the pinned bridge and Mathlib oleans:
+  sh scripts/build_and_run_spark.sh openai_bridge
+This rebuilds dependencies from repository sources and needs none of the temporary
+scratch paths above. For the rejected control, add the resulting output-olean
+directory to LEAN_PATH and run the exact standalone source recorded above.
+
+Raw local verification logs (SHA256, path):
+ae254148be814ddd19c5a6708c554be8bc036667c5e134cc792a61315bf9b0ce  /tmp/yang-haar.JaWMI9/haar-check-final.log
+e3183718b80e88083e0bf5d948b7dac163187176c0ba9dfb4f6182ea0651e115  /tmp/yang-haar.JaWMI9/haar-missing-probability.log
+13c1b54f4a2011e575f3bd63f580277fae70c90b2ad3ca112aadcf06c71f52b2  /tmp/yang-haar.JaWMI9/haar-recipe.log
+Additional dependency olean hashes and source-scan receipt:
+/tmp/yang-haar.JaWMI9/haar-artifacts.log
+Only proofs/WilsonReplicaHaar.lean, scripts/build_and_run_spark.sh, and this evidence
+file were edited for this assignment. No commits, keys, publication or hardware changes.

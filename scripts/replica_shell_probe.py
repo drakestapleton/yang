@@ -229,6 +229,7 @@ def run():
     mode.add_argument('--colors', action='store_true', help='Average signed endpoint factors over four relative color orientations.')
     mode.add_argument('--outer-spectrum', action='store_true', help='Emit one row per sample with the full rigid color-orbit extrema before tanh.')
     mode.add_argument('--vertex-shell', action='store_true', help='Test shared vertex gauges on the unframed outer slab (side 4).')
+    mode.add_argument('--haar-shell', action='store_true', help='Measure product Haar weight on the outer vertex sheets (side 4).')
     arg.add_argument('--group', choices=('SU2', 'U1'), default='SU2')
     arg.add_argument('--side', type=int, default=4)
     arg.add_argument('--warmup', type=int, default=128)
@@ -238,7 +239,7 @@ def run():
     opt = arg.parse_args()
     if not np.isfinite(opt.beta).all() or opt.side < 4 or opt.side % 2 or opt.samples < 16 or opt.samples % 8 or opt.stride < 1 or opt.warmup < 0 or min(opt.beta) < 0:
         arg.error('Use an even side >= 4, samples divisible by 8 and >= 16, positive stride and nonnegative beta and warmup.')
-    if opt.vertex_shell and opt.side != 4:
+    if (opt.vertex_shell or opt.haar_shell) and opt.side != 4:
         arg.error('The dense shared-vertex diagnostic is limited to side 4.')
     lat = Lattice(opt.side, opt.group)
     masks = ['slab', 'local', 'endpoints', 'tree_slab', 'tree_local', 'tree_endpoints', 'forest_endpoints']
@@ -255,6 +256,9 @@ def run():
     elif opt.vertex_shell:
         from vertex_shell_probe import COLUMNS, VertexProbe
         measure = VertexProbe(lat).measure
+    elif opt.haar_shell:
+        from haar_shell_probe import COLUMNS, HaarProbe
+        measure = HaarProbe().measure
     if measure is not None:
         columns = ('sample', *COLUMNS)
     else:
