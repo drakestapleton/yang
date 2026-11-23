@@ -395,17 +395,21 @@ theorem staple_perturbation {l : ℕ+} (hl : 1 < l.val) (U V : Configuration gau
 
 /-- The normalized Wilson action sampled along the link uses an actual SU(2) pole,
 including when the external field vanishes. -/
-theorem su2_field_pole {l : ℕ+} (β : ℝ) (U : Configuration gaugeGroup l) (e : Edge l) :
-    ∃ K : gaugeGroup.image, ∀ v : gaugeGroup.image,
+theorem su2_field_pole_with_matrix {l : ℕ+} (β : ℝ) (U : Configuration gaugeGroup l) (e : Edge l) :
+    ∃ K : gaugeGroup.image, β • stapleMatrix U e = fieldStrength β U e • suMat K ∧
+      ∀ v : gaugeGroup.image,
       β * fieldProjection U e v = fieldStrength β U e * (suMat (v*K) 0 0).re := by
   let A : M := stapleMatrix U e
   have ha : A ∈ quaternionAlgebra :=
     quaternionAlgebra.sum_mem fun p _ => (staple (Function.update U e 1) e p).prop
   obtain ⟨K,hK⟩ := polar ha
-  refine ⟨K, fun v => ?_⟩
   have hlen : ‖A‖ / Real.sqrt 2 = length A := by
     rw [frobenius_eq ha]
     field_simp
+  refine ⟨K,?_,fun v => ?_⟩
+  · change β • A = (β * (‖A‖ / Real.sqrt 2)) • suMat K
+    rw [hlen,← smul_smul]
+    exact congrArg (fun B : M => β • B) hK
   have hproj : (suMat (v*K)).trace.re / 2 = (suMat (v*K) 0 0).re := by
     have hq : suMat (v*K) ∈ quaternionAlgebra := (v*K).prop
     have hdiag : suMat (v*K) 1 1 = star (suMat (v*K) 0 0) := hq.1
@@ -420,6 +424,12 @@ theorem su2_field_pole {l : ℕ+} (β : ℝ) (U : Configuration gaugeGroup l) (e
   rw [ht, ← hproj]
   change β * (length A * (suMat (v*K)).trace.re / 2) = β * length A * ((suMat (v*K)).trace.re / 2)
   ring
+
+theorem su2_field_pole {l : ℕ+} (β : ℝ) (U : Configuration gaugeGroup l) (e : Edge l) :
+    ∃ K : gaugeGroup.image, ∀ v : gaugeGroup.image,
+      β * fieldProjection U e v = fieldStrength β U e * (suMat (v*K) 0 0).re := by
+  obtain ⟨k,_,hk⟩ := su2_field_pole_with_matrix β U e
+  exact ⟨k,hk⟩
 
 /-- Direct finite-volume SU(2) Wilson specialization. The first conclusion is the
 full Wilson law at the selected link. Its tilt is the scalar part of v*K times the

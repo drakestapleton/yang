@@ -21,7 +21,7 @@ def diagonalLink (t : ℝ) : G := unitPair (phase t) 0 (by
   change sqrt (‖phase t‖^2 + ‖(0:ℂ)‖^2) = 1
   simp [← Complex.normSq_eq_norm_sq, phase, Complex.normSq_apply, ← sq, cos_sq_add_sin_sq])
 
-@[fun_prop] private theorem continuous_diag : Continuous diagonalLink := by
+@[fun_prop] theorem continuous_diag : Continuous diagonalLink := by
   apply Continuous.subtype_mk
   apply Continuous.subtype_mk
   change Continuous (fun t => pair (phase t) 0)
@@ -114,7 +114,7 @@ theorem equal_angle_antipodes : ∃ u v : G, polarAngle u = polarAngle v ∧ lin
 /-- The full normalized Wilson one-link Haar tilt, in its pole representation. -/
 def poleLaw (r : ℝ) (k : G) : Measure G := su2Haar.tilted (fun u => r*(suMat (u*k) 0 0).re)
 
-private theorem continuous_scalar_link : Continuous (fun u : G => (suMat u 0 0).re) :=
+theorem continuous_scalar_link : Continuous (fun u : G => (suMat u 0 0).re) :=
   Complex.continuous_re.comp ((continuous_apply 0).comp ((continuous_apply 0).comp
     (continuous_subtype_val.comp continuous_subtype_val)))
 
@@ -126,11 +126,11 @@ instance poleLaw_probability (r : ℝ) (k : G) : IsProbabilityMeasure (poleLaw r
 private def rotateAt (k h u : G) := h*(u*k)*h⁻¹*k⁻¹
 private theorem continuous_rotate (k : G) : Continuous (fun z : G × G => rotateAt k z.2 z.1) := by
   unfold rotateAt; fun_prop
-private theorem continuous_orbit (k : G) : Continuous (Function.uncurry (orbitLink k)) := by
+theorem continuous_orbit (k : G) : Continuous (Function.uncurry (orbitLink k)) := by
   unfold Function.uncurry orbitLink
   exact (((continuous_snd.mul (continuous_diag.comp continuous_fst)).mul continuous_snd.inv).mul continuous_const)
 
-private theorem preserve_right (h : G) : MeasurePreserving (fun u : G => u*h) su2Haar su2Haar :=
+theorem preserve_right (h : G) : MeasurePreserving (fun u : G => u*h) su2Haar su2Haar :=
   ⟨(continuous_mul_const _).measurable, PhaseFour.gaugeImage_haar_map_mul_right su2Haar h⟩
 
 private theorem rotate_preserves (k h : G) (r : ℝ) :
@@ -188,17 +188,19 @@ theorem orbitLink_law (r : ℝ) (k : G) :
   simp_rw [hinner]
   simp
 
-/-- The four real coordinates of the unit quaternion in the fundamental representation. -/
-def linkCoordinates (u : G) : EuclideanSpace ℝ (Fin 4) :=
-  WithLp.toLp 2 ![(suMat u 0 0).re,(suMat u 0 0).im,(suMat u 0 1).re,(suMat u 0 1).im]
+/-- Read the four real quaternion coordinates from the first matrix row. -/
+def matrixCoordinates (A : M) : EuclideanSpace ℝ (Fin 4) :=
+  WithLp.toLp 2 ![(A 0 0).re,(A 0 0).im,(A 0 1).re,(A 0 1).im]
 
-private theorem relative_scalar (u v : G) :
+def linkCoordinates (u : G) := matrixCoordinates (suMat u)
+
+theorem relative_scalar (u v : G) :
     (suMat (u*v⁻¹) 0 0).re = inner ℝ (linkCoordinates u) (linkCoordinates v) := by
   simp [mat_mul,mat_inv,Matrix.mul_apply,Matrix.star_apply,Fin.sum_univ_two,Complex.mul_re,
-    linkCoordinates,PiLp.inner_apply,Fin.sum_univ_four]
+    linkCoordinates,matrixCoordinates,PiLp.inner_apply,Fin.sum_univ_four]
   ring
 
-private theorem coordinates_norm (u : G) : ‖linkCoordinates u‖ = 1 := by
+theorem coordinates_norm (u : G) : ‖linkCoordinates u‖ = 1 := by
   have h := relative_scalar u u
   rw [mul_inv_cancel,real_inner_self_eq_norm_sq] at h
   change (1:ℝ) = ‖linkCoordinates u‖^2 at h
@@ -210,7 +212,7 @@ theorem linkGeodesic_eq_angle (u v : G) :
     linkGeodesic u v = InnerProductGeometry.angle (linkCoordinates u) (linkCoordinates v) := by
   simp [linkGeodesic,polarAngle,InnerProductGeometry.angle,relative_scalar,coordinates_norm]
 
-private theorem continuous_geodesic : Continuous (Function.uncurry linkGeodesic) :=
+theorem continuous_geodesic : Continuous (Function.uncurry linkGeodesic) :=
   continuous_arccos.comp (continuous_scalar_link.comp (continuous_fst.mul continuous_snd.inv))
 
 private abbrev sampleSpace := unitInterval × G
@@ -296,7 +298,7 @@ private theorem rigid_distance (t : ℝ) (h k j : G) :
     unfold orbitLink q; group
   simp [linkGeodesic,he,polarAngle,scalar_conjugate]
 
-private theorem geo_triangle (u v w : G) :
+theorem geo_triangle (u v w : G) :
     linkGeodesic u w ≤ linkGeodesic u v + linkGeodesic v w := by
   simp only [linkGeodesic_eq_angle]
   exact InnerProductGeometry.angle_le_angle_add_angle _ _ _
@@ -406,6 +408,37 @@ theorem heatBath_beta_wasserstein {l : ℕ+} (hl : 1 < l.val) {β γ : ℝ} (hβ
   have hL2 := sq_le_sq' (by linarith [hL.1] : -(6:ℝ) ≤ L) hL.2
   rw [he,mul_pow]
   linarith only [mul_le_mul_of_nonneg_left hL2 (sq_nonneg (γ-β))]
+
+@[simp] theorem diagonalLink_zero : diagonalLink 0 = 1 := by
+  apply mat_injective
+  change pair (phase 0) 0 = (1:M)
+  ext i j; fin_cases i <;> fin_cases j <;> simp [pair,phase,Complex.ext_iff]
+
+theorem diagonalLink_add (s t : ℝ) : diagonalLink (s+t) = diagonalLink s * diagonalLink t := by
+  have hphase : phase (s+t) = phase s * phase t := by
+    rw [Complex.ext_iff]; simp [phase,cos_add,sin_add,Complex.mul_re,Complex.mul_im]; ring
+  apply mat_injective
+  rw [mat_mul,mat_diag,mat_diag,mat_diag,hphase]
+  ext i j; fin_cases i <;> fin_cases j <;> simp [pair,Matrix.mul_apply,Fin.sum_univ_two]
+
+theorem diagonalLink_periodic : Function.Periodic diagonalLink (2*π) := by
+  intro t
+  apply mat_injective
+  simp [mat_diag,phase,cos_add_two_pi,sin_add_two_pi]
+
+theorem linkGeodesic_mul_left (u v h : G) : linkGeodesic (h*u) (h*v) = linkGeodesic u v := by
+  have he : h*u*(h*v)⁻¹ = h*(u*v⁻¹)*h⁻¹ := by group
+  simp only [linkGeodesic,he,polarAngle,scalar_conjugate]
+
+theorem linkGeodesic_mul_right (u v h : G) : linkGeodesic (u*h) (v*h) = linkGeodesic u v := by
+  have he : u*h*(v*h)⁻¹ = u*v⁻¹ := by group
+  simp only [linkGeodesic,he]
+
+theorem diagonalLink_distance_le (a b : ℝ) : linkGeodesic (diagonalLink a) (diagonalLink b) ≤ |a-b| := by
+  rw [linkGeodesic,polarAngle,diagonal_scalar_relative,←cos_abs]
+  by_cases h : |a-b| ≤ π
+  · rw [arccos_cos (abs_nonneg _) h]
+  · exact (arccos_le_pi _).trans (le_of_not_ge h)
 
 #print axioms heatBath_fixed_pole
 #print axioms heatBath_beta_wasserstein

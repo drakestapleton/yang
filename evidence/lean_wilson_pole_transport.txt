@@ -1,0 +1,105 @@
+Changing staple direction and periodic geodesic Wasserstein influence
+2026-11-22 America/Chicago | Spark AArch64
+Command: sh scripts/build_and_run_spark.sh openai_bridge
+Lean (version 4.32.0, aarch64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)
+Mathlib commit: 81a5d257c8e410db227a6665ed08f64fea08e997
+SHA-256:
+94111ad258b4218a263fcc0a7136446d5a6eff0e090809b72036fb3a7aecfff8  PublicTheory.lean
+c1542c816cd42d23448b66b4cb021c7f3bdad64b64f1c643dde27147ce0c3233  PublicWilson.lean
+853e12b19668a815567c10173752e0b34b15be4ccb5203dd649900f4a810c1f7  proofs/WilsonPoleTransport.lean
+16949397a9b34513b220d66ee389175714f2d1bfed81f62b2c0e85ca2181990f  proofs/WilsonFieldResponse.lean
+aef6f3732a82877bb6e35473bc906eccbc306ed04054e99fd4ff007efb3b278b  proofs/WilsonLinkTransport.lean
+557a5e0bc357f1050bbcf8c41dc54836abdfb8e1a259fce930a1036277623fba  proofs/WilsonRadialTransport.lean
+077b88b835e2a5edf0f95375acd8d861d8067bb8dc843b3417884d547455e58e  proofs/PeriodicWilson.lean
+
+'YangMills.PeriodicWilson.pole_transport_map' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.linkWassersteinSq_symm' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.strength_weighted_pole_wasserstein' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.heatBath_strength_weighted_pole' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.normalized_chord_le_geodesic' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.single_neighbor_wasserstein' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.neighborInfluence_self' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.neighborInfluence_subunit_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.neighborInfluence_row' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.neighborInfluence_at_0034' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.cartesian_field_wasserstein' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.periodic_neighbor_wasserstein' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.periodic_neighbor_subunit' depends on axioms: [propext, Classical.choice, Quot.sound]
+LEAN_PHASE4_BRIDGES status=PASS
+
+At fixed strength r, rotate the pole centers through an angle D on a circle
+subgroup. Before that rotation, move backwards along the circle by the amount
+b that sweeps out the unnormalized tilted mass D/cosh(r). On an orbit with
+weight w(t), the backward shift S has derivative w(t)/w(S(t)). Changing
+variables over a whole period and averaging over Haar proves that the shift
+preserves the centered tilted law. The remaining displacement is bounded
+pointwise by |D-b| <= tanh(r) D. Thus the map has the correct full tilted
+marginal for any pole pair, including at zero strength and antipodal centers.
+
+Compose this move with the common-pole coupling and use Wasserstein symmetry
+to rotate at the smaller strength. The resulting root mean square cost is at
+most |s-r|/sqrt(12) + tanh(min(r,s)) D. The Cartesian bound uses tanh(m) <= m
+and the round arc-to-chord inequality. Its squared coefficient is 1/12 + pi²/4.
+
+For periodic 4D SU(2) Wilson heat baths on every side l >= 2, an explicit
+geodesic Wasserstein influence matrix has zero diagonal and row sum
+18 beta sqrt(1/12 + pi²/4). Neighbor appearances are counted with
+multiplicity. This matrix has row sum strictly below one at beta = 17/500.
+No common-pole assumption, gauge fixing, or quadrature enters this bound.
+The sharper transverse constant and the continuum shell comparison remain open.
+
+Concrete applications compiled against WilsonFieldResponse.olean:
+import WilsonFieldResponse
+open YangMills YangMills.FundamentalSU2 YangMills.PeriodicWilson Real
+open scoped ENNReal
+
+-- A zero field makes the pole direction irrelevant, even when the other field is nonzero.
+example {s : ℝ} (hs : 0 ≤ s) (k j : gaugeGroup.image) :
+    linkWassersteinSq (poleLaw 0 k) (poleLaw s j) ≤ ENNReal.ofReal (s^2/12) := by
+  simpa [min_eq_left hs,div_pow,Real.sq_sqrt,sq_abs] using
+    strength_weighted_pole_wasserstein (r := 0) le_rfl hs k j
+
+-- On the side-two torus, the parallel edge one step away in direction 1 occurs twice.
+set_option maxRecDepth 10000 in
+example : neighborIncidenceCount (l := 2) (0,0) (Pi.single (1 : Axis) 1,0) = 2 := by decide
+
+-- The proved row bound is subunit at 0.034 and exceeds one at 0.035.
+example {l : ℕ+} (hl : 1 < l.val) (e : Edge l) :
+    (∑ a : Edge l, neighborInfluence (17/500) e a) < 1 := neighborInfluence_at_0034 hl e
+
+example {l : ℕ+} (hl : 1 < l.val) (e : Edge l) :
+    1 < ∑ a : Edge l, neighborInfluence (7/200) e a := by
+  rw [neighborInfluence_row hl]
+  have hπ := sq_lt_sq' (by linarith [pi_pos] : -π < (3.14:ℝ)) pi_gt_d2
+  have hs := sq_sqrt (by positivity : (0:ℝ) ≤ 1/12+π^2/4)
+  have hp := sqrt_nonneg (1/12+π^2/4)
+  nlinarith only [hs,hπ,hp,sq_nonneg (sqrt (1/12+π^2/4)-100/63)]
+
+-- Arbitrary pole separation at fixed positive strength has the tanh-suppressed cost.
+example {r : ℝ} (hr : 0 ≤ r) (k j : gaugeGroup.image) :
+    linkWassersteinSq (poleLaw r k) (poleLaw r j) ≤
+      ENNReal.ofReal ((tanh r * linkGeodesic k⁻¹ j⁻¹)^2) := by
+  simpa using strength_weighted_pole_wasserstein hr hr k j
+strength-weighted transport examples PASS
+
+Four separate one-edit mutations were compiled in the same Lake environment:
+jacobian | WilsonPoleTransport: invert w(t)/w(S(t)) in the orbit change-of-variables integrand
+mass_step | WilsonPoleTransport: set the compensating mass to zero
+periodic_degree | WilsonFieldResponse: replace 18 by 12 in the matrix row conclusion
+coupling_window | WilsonFieldResponse: replace the subunit witness 17/500 by 7/200
+jacobian exit=1
+Negative.lean:146:88: error: unsolved goals
+mass_step exit=1
+Negative.lean:214:4: error: 'change' tactic failed, pattern
+periodic_degree exit=1
+Negative.lean:194:74: error: unsolved goals
+coupling_window exit=1
+Negative.lean:217:2: error: linarith failed to find a contradiction
+
+math-check | Wolfram Language
+{FullSimplify[1-Exp[-r]/Cosh[r],Element[r,Reals]],FullSimplify[Exp[r]/Cosh[r]-1,Element[r,Reals]],SeriesCoefficient[Tanh[z], {z,0,1}]}
+Output: {Tanh[r], Tanh[r], 1}
+{FullSimplify[(a/Sqrt[12]+Pi b/2)^2 + (Pi a/2-b/Sqrt[12])^2 == (1/12+Pi^2/4)(a^2+b^2)],N[1/(18 Sqrt[1/12+Pi^2/4]),12],Together[(18*17/500)^2*(1/12+(22/7)^2/4)], N[(18*17/500)^2*(1/12+Pi^2/4),12]}
+Output: {True, 0.0347852294520, 11712303/12250000, 0.955362277700}
+The Lean row checks use rational bounds for pi. The displayed decimal values
+are summaries and are unnecessary for reproducing the proofs.
