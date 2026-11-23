@@ -17,7 +17,7 @@ theorem plaquetteProduct_gauge {l : ℕ+} (ps : List (Face l)) (Ω : Site l → 
   | nil => rfl
   | cons p ps ih => rw [plaquetteProduct, plaquetteProduct, wilsonPlaquetteTrace_gauge_invariant, ih]
 
-private theorem product_abs {l : ℕ+} (ps : List (Face l)) (U : Config l) : |plaquetteProduct ps U| ≤ 1 := by
+theorem plaquetteProduct_abs_le_one {l : ℕ+} (ps : List (Face l)) (U : Config l) : |plaquetteProduct ps U| ≤ 1 := by
   induction ps with
   | nil => simp [plaquetteProduct]
   | cons p ps ih =>
@@ -26,7 +26,7 @@ private theorem product_abs {l : ℕ+} (ps : List (Face l)) (U : Config l) : |pl
     rw [plaquetteProduct, abs_mul, eq]
     exact (mul_le_mul (abs_le.mpr ⟨neg_one_le_cos _,cos_le_one _⟩) ih (abs_nonneg _) zero_le_one).trans_eq (one_mul 1)
 
-private theorem product_continuous {l : ℕ+} (ps : List (Face l)) : Continuous (plaquetteProduct ps) := by
+theorem plaquetteProduct_continuous {l : ℕ+} (ps : List (Face l)) : Continuous (plaquetteProduct ps) := by
   induction ps with
   | nil => exact continuous_const
   | cons p ps ih => exact (wilsonPlaquetteTrace_variation p).continuous.mul ih
@@ -63,8 +63,8 @@ private theorem product_variation (b : ℕ+) {l : ℕ+} (hl : 1 < l.val) (ps : L
     let y := wilsonPlaquetteTrace p v
     let s := plaquetteProduct ps u
     let t := plaquetteProduct ps v
-    have hy : |y| ≤ 1 := by simpa [y,plaquetteProduct] using product_abs [p] v
-    have hs : |s| ≤ 1 := product_abs ps u
+    have hy : |y| ≤ 1 := by simpa [y,plaquetteProduct] using plaquetteProduct_abs_le_one [p] v
+    have hs : |s| ≤ 1 := plaquetteProduct_abs_le_one ps u
     change |x*s-y*t| ≤ _
     calc
       _ = |(x-y)*s + y*(s-t)| := by congr 1; ring
@@ -109,7 +109,7 @@ theorem blockedProduct_clustering (b : ℕ+) {l : ℕ+} (hl : 1 < l.val) {β : �
     rw [periodicAxisDistance, blockedPlaquette_slice b t p hi hj e hpe, blockedPlaquette_slice b t q hi' hj' a hqa,
       blockCoordinate_distance b l]
     exact Nat.mul_le_mul_left _ hk
-  rw [blockedCovariance_eq b β (product_continuous ps) (product_continuous qs)]
+  rw [blockedCovariance_eq b β (plaquetteProduct_continuous ps) (plaquetteProduct_continuous qs)]
   have H := wilson_spatial_clustering hfine hβ hwindow (B := qs.length) (Nat.cast_nonneg _)
     (fun e => (productProfile_bounds b hl ps e).1) (fun e => (productProfile_bounds b hl qs e).1)
     (fun e => (productProfile_bounds b hl qs e).2) (product_variation b hl ps) (product_variation b hl qs) _ sep

@@ -1,0 +1,281 @@
+Effective correlations under the periodic SU(2) Wilson law
+2026-11-22 | Spark AArch64 | sh scripts/build_and_run_spark.sh openai_bridge
+Lean 4.32.0 | 8c9756b28d64dab099da31a4c09229a9e6a2ef35
+Mathlib 81a5d257c8e410db227a6665ed08f64fea08e997
+
+Source and data SHA-256
+20e65bfb71a19dd8226c72656696cbda2ef25c58c94c418024bf62026029af82  proofs/WilsonWordClustering.lean
+267a68c43a8eacf57deb182f7be55b53bc8730108ac7239773cc6650c874601a  proofs/WilsonReplicaExchange.lean
+61780cb05bfc47757f60c472cea01f4bc5ddc78d51d3697ef49047d41820f87f  proofs/WilsonReplicaShells.lean
+d8c4be226a6df7211289c507154578177c232d84ba728303098842cfbc51549f  proofs/WilsonReplicaFrame.lean
+be70168a0f70ec94632ea532b33537036256058212e9b4c23c32e15ec59f25cd  proofs/WilsonReplicaSlabs.lean
+97f69d63315719c93ee81e04b07303537070f57f2849193a8ec5a8bd5a60576d  proofs/WilsonReplicaLoss.lean
+853cd194c9f9824672cfd56e70fbe472afc692608c2637f777d2a9b5c463ebc7  proofs/WilsonReplicaEndpoint.lean
+ef536660058a88365d70992ddc71dae72332fb7ebfe78b050c5f58856c3be4fb  proofs/WilsonReplicaColor.lean
+b2f3831e4a6f8fbe11be0d4db256eaf2e3d6542024b05e073808f7daf983c737  scripts/replica_shell_probe.py
+cdef24bb1cbfb061cd79d569c7207acb2d759c2dd5e7ce346484a29ca7af25b8  evidence/wilson_replica_shell_probe.tsv
+
+Exact identity under the normalized Wilson law
+Sample two independent configurations U,V. For a mask i let S_i exchange
+the links in that mask between U and V. Write J_i = (log w - log w∘S_i)/2
+for the joint Boltzmann weight w. Only faces split by the mask contribute
+to J_i. If no plaquette is split by two masks and every mask flips
+D=(F(U)-F(V))(G(U)-G(V)), then 2 Cov(F,G) = E[D product_i tanh J_i].
+Product Haar invariance under link exchanges proves the identity at all
+finite beta. Shells need no probabilistic independence.
+
+On a fine periodic torus of side b*l, l >= 2, b >= 1, take F and G to be
+products of normalized straight-blocked spatial plaquette traces on slices
+s,u of the coarse torus. Exactly k=b*cyclicDistance(s,u) fine slab masks
+separate them. Hence |Cov| <= 2 E[product_{j<k}|tanh J_j|].
+The trace products can have arbitrary lengths and repeated plaquettes.
+
+Pinned frames and the endpoint formula
+A frame constructed from links it pins sends their product Haar prior to
+identities on those links and independent Haar coordinates on the rest.
+The proof conditions on the selected links and uses left and right Haar
+invariance on the complementary coordinates. It then transports the
+gauge-invariant Wilson weight to this pinned prior. Growing a rooted
+forest admits either edge orientation. Both the signed identity and the
+absolute slab bound hold in this field-dependent frame.
+
+For spatial plaquettes on distinct, nonadjacent periodic time slices,
+exchange the four links of each endpoint. No face crosses both masks.
+Pinning three sides of each plaquette leaves one fluctuating side e.
+In its own frame each replica has link matrix U_e and oriented staple
+matrix S_U (a sum of six staples). The endpoint factor uses
+  J_e = (beta/4) Re Tr[(U_e - V_e)(S_U - S_V)].
+Cauchy-Schwarz bounds |J_e| by |beta|/4 times the product of the two
+Frobenius differences. The geometric and energy identities are exact,
+including the sign and the fundamental trace normalization. The concrete
+4^4 test below builds the six-link forest used by the measurement.
+
+Physical decay criterion
+Let A_j=|tanh J_j|, W_j=product_{i<j} A_i, and M_j=E[W_j].
+Then M_0=1 and M_{j+1}=M_j-E[W_j(1-A_j)]. The event A_j <= q_j pays
+at least (1-q_j) E[W_j 1_{A_j<=q_j}] toward the next loss. If it pays
+(1-exp(-m R)) M_j at every intervening fine shell, |Cov| <= 2 exp(-m R k).
+Here R is the fine physical spacing. The more general loss theorem allows
+unequal per-shell exponent budgets. A continuum use requires a common
+positive m as spacing, volume, bare coupling and separation vary.
+
+CPU experiment
+Metropolis sweeps use symmetric quaternion proposals and the full periodic
+Wilson staples. Both independent replicas are updated in each run.
+Measurements use elementary spatial 0-1 plaquettes at t=0,2, with all
+three spatial coordinates zero. Slab masks include every link based at
+cyclic distance at most 0 or 1. Local masks contain the source plaquette
+and then all links on faces meeting it. Endpoint masks contain just the
+source or target plaquette. The rooted spanning tree and the pair of
+three-edge trees are fixed before sampling. The per-field frame uses
+parallel transport on the selected edges.
+
+Each row records eight contiguous batch means and their standard error.
+Hot and cold starts are separate Markov runs. Errors quantify variation
+among these batches and omit possible thermalization bias. The diagnostic
+uses binary64. Stable losses evaluate 2 exp(-2|J|)/(1+exp(-2|J|)) and
+can still underflow. A displayed unit factor is rounded. None of the
+sample means or errors enter a Lean proof.
+
+group  side  beta  start   raw slab   framed slab   forest endpoints (batch SE)   norm-test masses j=0,1
+  SU2     4   2.3    hot    1.00000       1.00000    0.75617 (0.02980)   0.11328, 0.07329
+  SU2     4   2.3   cold    1.00000       1.00000    0.74867 (0.01514)   0.09375, 0.11090
+  SU2     4     4    hot    1.00000       1.00000    0.80111 (0.02971)   0.08594, 0.07119
+  SU2     4     4   cold    1.00000       1.00000    0.76790 (0.01695)   0.14062, 0.09133
+  SU2     6   2.3    hot    1.00000       1.00000    0.76471 (0.02094)   0.09375, 0.07284
+  SU2     6   2.3   cold    1.00000       1.00000    0.80281 (0.02255)   0.10156, 0.07388
+   U1     4   2.3    hot    1.00000       1.00000    0.34937 (0.02186)   0.57812, 0.36445
+   U1     4   2.3   cold    1.00000       1.00000    0.33457 (0.02272)   0.62500, 0.39682
+   U1     4     4    hot    1.00000       1.00000    0.41293 (0.04050)   0.53125, 0.36245
+   U1     4     4   cold    1.00000       1.00000    0.37872 (0.01902)   0.55078, 0.39778
+
+The norm-test columns measure the event that the Frobenius upper bound
+on |J| is <= atanh(0.9). The second event carries the first shell weight.
+The TSV also reports the event tested against the actual |tanh J|, stable
+losses, signed estimates, and E[|D| product A]/2 for each mask choice.
+The compact U(1) control uses unit quaternions in the fixed real-i plane
+and symmetric proposals in that same plane. Endpoint attenuation occurs
+in that Abelian control as well. The numerical comparison at matched bare
+beta does not match the physical scales of the two theories. The Lean
+statements above concern SU(2).
+All runs use separation two. The endpoint improvement supplies only two
+factors whatever the separation. Interior slab factors saturate on these
+tests. Establishing weighted overlap or signed cancellations at increasing
+physical separations, and constructing the continuum spectral comparison,
+remain open.
+
+Relative color averaging
+The joint Wilson law is invariant under global conjugation in the second
+replica. Lean proves that one may average a signed shell estimator over
+any nonempty finite family of such conjugations before taking its absolute
+value. The endpoint theorem applies directly to the two pinned staples.
+For SU(2), the CPU probe uses conjugation by the quaternion units 1,i,j,k.
+These flip pairs of imaginary coordinates. For U(1), all internal color
+orientations fix every link. The estimator checks the color action against
+the frame and plaquette traces. Both absolute comparisons in the table
+use exactly the same orientations and paired configurations.
+
+group  beta  start   mean of absolutes   absolute signed mean   endpoint cancellation (batch SE)   outer slab cancellation
+  SU2   2.3    hot            0.764930               0.700858   0.064071 (0.005487)   0
+  SU2   2.3   cold            0.755808               0.658349   0.097459 (0.009347)   0
+  SU2     4    hot            0.788743               0.713920   0.074824 (0.011908)   0
+  SU2     4   cold            0.804698               0.737599   0.067098 (0.014157)   0
+   U1   2.3    hot            0.349371               0.349371   0.000000 (0.000000)   0
+   U1   2.3   cold            0.334568               0.334568   0.000000 (0.000000)   0
+   U1     4    hot            0.412925               0.412925   0.000000 (0.000000)   0
+   U1     4   cold            0.378721               0.378721   0.000000 (0.000000)   0
+
+Color columns are populated on the eight paired 256-sample 4^4 runs.
+NA denotes a measurement omitted in that run.
+The outer-slab columns repeat the color test on the single separating
+shell of radius one in a spanning-tree frame. Its measured absolute factor
+rounds to one and its cancellation rounds to zero in these runs.
+
+Reproduction (Python with NumPy 2.5.3)
+python3 scripts/replica_shell_probe.py
+python3 scripts/replica_shell_probe.py --beta 2.3 4 --warmup 256 --samples 256
+python3 scripts/replica_shell_probe.py --side 6 --beta 2.3 --warmup 256 --samples 256
+python3 scripts/replica_shell_probe.py --group U1 --beta 2.3 4 --warmup 256 --samples 256
+python3 scripts/replica_shell_probe.py --colors --group SU2 --beta 2.3 4 --warmup 256 --samples 256
+python3 scripts/replica_shell_probe.py --colors --group U1 --beta 2.3 4 --warmup 256 --samples 256
+The seed and sweep stride are in each row. Checks compare the local action
+increment with the complete action, confirm each pinned tree link is the
+identity, compare every plaquette trace before and after framing, enumerate
+the four-point exchange orbit and compare the one-link formula with the
+full action difference. The repeated SU(2) runs reproduced every shared column.
+
+Exact controls
+The Wolfram kernel simplified the normalized two-flip sum with weights
+exp(-2(i x+j y)) and signs (-1)^(i+j) to tanh(x)tanh(y) for real x,y.
+For two identical random factors taking 1/4 and 3/4 with equal probability,
+the exact product mean is 5/16 while the product of their means is 1/4.
+
+Axiom audit
+YangMills.PeriodicWilson.replica_exchange_identity [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.twice_wilsonCovariance [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.exchangeField_stable [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.replica_shell_identity [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.replica_covariance_bound [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.PinnedFrame.map_prior [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.PinnedFrame.framed_shell_identity [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.framed_blockedProduct_replica_bound [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.slab_boundaries_disjoint [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockedProduct_replica_bound [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.slabMoment_succ [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.moderateShellMass_le_loss [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.blockedProduct_physical_bound_of_overlap [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.framed_blockedProduct_physical_bound_of_overlap [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.singleLink_exchange [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.stapleExchange_abs_le [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.endpoint_covariance_identity [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.rotateReplica_eq_of_commute [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.colorAverage_integral [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.colorAverage_bound [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.endpoint_color_bound [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.colorAverage_abs_le [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.colorAverage_eq_of_commute [propext, Classical.choice, Quot.sound]
+
+Concrete Lean applications
+import WilsonReplicaColor
+import WilsonReplicaLoss
+open YangMills YangMills.PeriodicWilson YangMills.FundamentalSU2
+open MeasureTheory Real
+noncomputable section
+private def face (s : ZMod 4) : Face 4 := (fun t => if t=3 then s else 0, ⟨(0,1),by decide⟩)
+private def bottom (s : ZMod 4) := (corners (face s)).1
+private def left (s : ZMod 4) := (corners (face s)).2.2.2
+private def right (s : ZMod 4) := (corners (face s)).2.1
+private def top (s : ZMod 4) := (corners (face s)).2.2.1
+private def P0 : PinnedFrame 4 := PinnedFrame.empty 4
+private def P1 : PinnedFrame 4 := P0.attach (bottom 0) false (by decide) (by
+  intro f hf
+  exact False.elim (Finset.notMem_empty _ hf))
+private def P2 : PinnedFrame 4 := P1.attach (left 0) false (by decide) (by
+  intro f hf
+  change f ∈ {bottom 0} at hf
+  simp only [Finset.mem_singleton] at hf
+  rcases hf with rfl; decide)
+private def P3 : PinnedFrame 4 := P2.attach (right 0) false (by decide) (by
+  intro f hf
+  change f ∈ {left 0, bottom 0} at hf
+  simp only [Finset.mem_insert,Finset.mem_singleton] at hf
+  rcases hf with rfl | rfl <;> decide)
+private def P4 : PinnedFrame 4 := P3.attach (bottom 2) false (by decide) (by
+  intro f hf
+  change f ∈ {right 0, left 0, bottom 0} at hf
+  simp only [Finset.mem_insert,Finset.mem_singleton] at hf
+  rcases hf with rfl | rfl | rfl <;> decide)
+private def P5 : PinnedFrame 4 := P4.attach (left 2) false (by decide) (by
+  intro f hf
+  change f ∈ {bottom 2, right 0, left 0, bottom 0} at hf
+  simp only [Finset.mem_insert,Finset.mem_singleton] at hf
+  rcases hf with rfl | rfl | rfl | rfl <;> decide)
+private def P6 : PinnedFrame 4 := P5.attach (right 2) false (by decide) (by
+  intro f hf
+  change f ∈ {left 2, bottom 2, right 0, left 0, bottom 0} at hf
+  simp only [Finset.mem_insert,Finset.mem_singleton] at hf
+  rcases hf with rfl | rfl | rfl | rfl | rfl <;> decide)
+
+-- Same six forward tree links and remaining oriented sides as the CPU probe.
+example (β : ℝ) : 2*wilsonCovariance β (wilsonPlaquetteTrace (face 0)) (wilsonPlaquetteTrace (face 2)) =
+    ∫ z, replicaDifference (wilsonPlaquetteTrace (face 0)) (wilsonPlaquetteTrace (face 2)) z *
+      (tanh (stapleExchange β (top 0) (P6.pair z)) * tanh (stapleExchange β (top 2) (P6.pair z))) ∂replicaLaw 4 β := by
+  obtain ⟨hpq,hcut⟩ := separated_endpoint_cuts (face 0) (face 2) 3 (by decide) (by decide)
+    (by decide) (by decide) (by decide) (by decide) (by decide)
+  apply endpoint_covariance_identity P6 (by decide) β _ _ _ _ (by decide) (by decide) _ _ hpq hcut
+  all_goals
+    intro f hf hne
+    simp only [faceEdges,Finset.mem_insert,Finset.mem_singleton] at hf
+    rcases hf with rfl | rfl | rfl | rfl <;> first | exact False.elim (hne rfl) | decide
+
+-- A reverse edge is also pinned.
+example (U : WilsonConfig 4) :
+    (P0.attach (bottom 0) true (by decide) (fun _ h => False.elim (Finset.notMem_empty _ h))).project U (bottom 0) = 1 :=
+  PinnedFrame.pins _ U ⟨_, Finset.mem_insert_self ..⟩
+
+example : cyclicDistance (l := 4) 0 3 = 1 := by decide
+example : slabMask (l := 4) 3 0 1 (bottom 2) = false := by decide
+example {l : ℕ+} (t : Axis) (s : ZMod l.val) (k : ℕ) : slabMoment 0 t s (k+1) = 0 := by
+  simp [slabMoment,exchangeField,logWeight,tanh_zero]
+example : (1/2 : ℝ)*((1/4)^2+(3/4)^2) = 5/16 ∧ ((1/2 : ℝ)*(1/4+3/4))^2 = 1/4 := by norm_num
+-- A side-two blocked lattice at beta four uses two fine shells on side four.
+private def smallFace (s : ZMod 2) : Face 2 := (fun t => if t=3 then s else 0, ⟨(0,1),by decide⟩)
+private theorem spatialSmall (s : ZMod 2) : spatialSlice 3 s [smallFace s] := by
+  intro p hp; simp only [List.mem_singleton] at hp; subst p; simp [smallFace]
+example (m R : ℝ) (P : PinnedFrame (2*2)) (q : ℕ → ℝ)
+    (h : ∀ j < 2, (1-exp (-(m*R)))*slabMoment 4 3 (blockCoordinate 2 2 0) j (P.framedLaw 4) ≤
+      (1-q j)*moderateShellMass 4 3 (blockCoordinate 2 2 0) j (q j) (P.framedLaw 4)) :
+    |blockedCovariance 2 4 (plaquetteProduct [smallFace 0]) (plaquetteProduct [smallFace 1])| ≤
+      2*exp (-2*(m*R)) := by
+  have hd : (2:ℕ)*cyclicDistance (l := 2) 0 1 = 2 := by decide
+  have H := framed_blockedProduct_physical_bound_of_overlap (l := 2) (by decide) 2 4 m R P 3 0 1 _ _
+    (spatialSmall 0) (spatialSmall 1) q (fun j hj => h j (hd ▸ hj))
+  change _ ≤ 2*exp (-((2*cyclicDistance (l := 2) 0 1 : ℕ) : ℝ)*(m*R)) at H
+  rw [hd] at H
+  simpa only [Nat.cast_ofNat] using H
+
+-- Every internal orientation equal to the identity fixes arbitrary replicas.
+example {l : ℕ+} (Q : WilsonReplicas l → ℝ) (z : WilsonReplicas l) :
+    colorAverage (fun _ : Fin 4 => (1 : gaugeGroup.image)) Q z = Q z :=
+  colorAverage_eq_of_commute _ _ _ (fun _ _ => Commute.one_left _)
+
+end
+End of Lean applications
+
+Rejected source mutations
+LogSign rejected exit=1
+MutantLogSign.lean:38:101: error: unsolved goals
+StapleNormalization rejected exit=1
+MutantStapleNormalization.lean:66:2: error: ring failed, ring expressions not equal
+ForestOrientation rejected exit=1
+MutantForestOrientation.lean:51:54: error: Application type mismatch: The argument
+WeightLoss rejected exit=1
+MutantWeightLoss.lean:27:2: error: 'change' tactic failed, pattern
+CutGeometry rejected exit=1
+MutantCutGeometry.lean:58:48: error: Tactic `decide` proved that the proposition
+Independence rejected exit=1
+MutantIndependence.lean:62:79: error: unsolved goals
+WrongFreeEdge rejected exit=1
+MutantWrongFreeEdge.lean:51:82: error: Tactic `decide` proved that the proposition
+AbsoluteAfterAverage rejected exit=1
+MutantAbsoluteAfterAverage.lean:48:35: error: Application type mismatch: The argument
