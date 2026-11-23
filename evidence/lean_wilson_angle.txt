@@ -1,0 +1,54 @@
+SU(2) Haar polar angle and the finite-volume Wilson angular law
+2026-11-22 America/Chicago | Spark AArch64
+
+Command: sh scripts/build_and_run_spark.sh openai_bridge
+Lean (version 4.32.0, aarch64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)
+Mathlib commit: 81a5d257c8e410db227a6665ed08f64fea08e997
+SHA-256:
+94111ad258b4218a263fcc0a7136446d5a6eff0e090809b72036fb3a7aecfff8  PublicTheory.lean
+c1542c816cd42d23448b66b4cb021c7f3bdad64b64f1c643dde27147ce0c3233  PublicWilson.lean
+49a2ae01f05c09b6674b84bd943915a1b2255ed54883005d263e34d774a57531  proofs/WilsonAngle.lean
+0a101ea3b87427ea7b0864158800277561786712e070a86c426db77ed0936b7b  proofs/OneLinkTransport.lean
+3be17b663eceaf7d14bedbcaea2f17aa30078f609341959e339949459d4f6839  proofs/WilsonConditional.lean
+
+'YangMills.PeriodicWilson.haar_polarAngle_density' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.haar_polarAngle' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.angleLaw_probability' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.tilted_polarAngle' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.heatBath_polarAngle' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.heatBath_radial_integral' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.heatBath_trial_cost_caps' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.condKernel_polarAngle' depends on axioms: [propext, Classical.choice, Quot.sound]
+LEAN_PHASE4_BRIDGES status=PASS
+
+On separate copies of WilsonAngle.lean, make each single replacement
+below, leave the rest of the file intact, then recompile in the same
+Lake environment with the four repository dependencies on LEAN_PATH.
+Each altered copy must fail at the indicated theorem.
+
+normalization | haar_polarAngle_density
+ENNReal.ofReal ((2/π)*sin t^2)  ->  ENNReal.ofReal ((1/π)*sin t^2)
+pole_sign | tilted_polarAngle
+fun u => r*(suMat (u*k) 0 0).re  ->  fun u => -r*(suMat (u*k) 0 0).re
+rotation | rotate_pair, source of rotB
+Complex.mk 0 (-sin t)  ->  Complex.mk 0 (sin t)
+normalization exit=1
+Negative.lean:292:51: error: unsolved goals
+pole_sign exit=1
+Negative.lean:326:2: error: 'change' tactic failed, pattern
+rotation exit=1
+Negative.lean:45:72: error: unsolved goals
+
+math-check | Wolfram Language | normalization and angular moment recurrence
+{Integrate[(2/Pi) Sin[t]^2,{t,0,Pi}], FullSimplify[D[Sin[t]^3 Cos[t]^(n+1),t] - ((n+4) Cos[t]^(n+2)-(n+1)Cos[t]^n) Sin[t]^2,Assumptions->{n>=0,Element[n,Integers],0<t<Pi/2}]}
+Out[1]= {1, 0}
+The Lean integration-by-parts proof checks the recurrence on the whole interval.
+
+Right invariance of normalized Haar under three explicit SU(2) rotations
+determines all moments of the scalar quaternion coordinate. The proposed
+sin-squared angular density has the same moments. Uniform polynomial
+approximation on [-1,1] yields equality of the pushforward measures.
+The tilted probability density uses the actual normalized radial weight.
+Both radial trial costs have heat-bath means at most 1/12 for sides l >= 2
+and 0 <= beta <= 7/25. A metric W2 comparison between different backgrounds
+still requires a transport argument.

@@ -275,23 +275,37 @@ private theorem normalizer_pos {r : ℝ} (hr : 0 ≤ r) : 0 < ∫ t in 0..π, we
   rw [intervalIntegral.integral_mul_const] at hh
   exact (mul_pos (integral_sin_pow_pos (n := 2)) (exp_pos _)).trans_le hh
 
-theorem parallel_energy_cap {r : ℝ} (hr : 0 ≤ r) : parallelEnergy r ≤ 1/12 := by
-  have hZ := normalizer_pos hr
+private theorem polarFlux_hasDerivAt (r t : ℝ) :
+    HasDerivAt (polarFlux r) (weight r t * (cos t - meanCos r)) t := by
   have hw : Continuous (weight r) := by unfold weight; fun_prop
   have hc : Continuous (fun x => weight r x * (cos x - meanCos r)) := by fun_prop
-  have hd (t : ℝ) : HasDerivAt (polarFlux r) (weight r t * (cos t - meanCos r)) t :=
-    intervalIntegral.integral_hasDerivAt_right (hc.intervalIntegrable _ _)
-      hc.aestronglyMeasurable.stronglyMeasurableAtFilter hc.continuousAt
-  have hz : polarFlux r π = 0 := by
-    simp only [polarFlux, mul_sub]
-    have ha : Continuous (fun x => weight r x * cos x) := hw.mul continuous_cos
-    have hb : Continuous (fun x => weight r x * meanCos r) := hw.mul continuous_const
-    rw [intervalIntegral.integral_sub (ha.intervalIntegrable _ _) (hb.intervalIntegrable _ _),
-      intervalIntegral.integral_mul_const]
-    unfold meanCos
-    field_simp
-    simp
-  have hh := flux_integral_cap hr hd (by simp [polarFlux]) hz
+  exact intervalIntegral.integral_hasDerivAt_right (hc.intervalIntegrable _ _)
+    hc.aestronglyMeasurable.stronglyMeasurableAtFilter hc.continuousAt
+
+private theorem polarFlux_pi {r : ℝ} (hr : 0 ≤ r) : polarFlux r π = 0 := by
+  have hZ := normalizer_pos hr
+  have hw : Continuous (weight r) := by unfold weight; fun_prop
+  simp only [polarFlux, mul_sub]
+  have ha : Continuous (fun x => weight r x * cos x) := hw.mul continuous_cos
+  have hb : Continuous (fun x => weight r x * meanCos r) := hw.mul continuous_const
+  rw [intervalIntegral.integral_sub (ha.intervalIntegrable _ _) (hb.intervalIntegrable _ _),
+    intervalIntegral.integral_mul_const]
+  unfold meanCos
+  field_simp
+  simp
+
+/-- The radial trial speed extends continuously to both poles. -/
+theorem polarSpeed_continuousOn {r : ℝ} (hr : 0 ≤ r) :
+    ContinuousOn (fun t => polarFlux r t / weight r t) (Icc 0 π) := by
+  have h := (reduced_continuous (polarFlux_hasDerivAt r) (by simp [polarFlux]) (polarFlux_pi hr)).div
+    (continuous_exp.comp (continuous_const.mul continuous_cos)).continuousOn
+    (fun t _ => (exp_pos (r*cos t)).ne')
+  change ContinuousOn (fun t => (polarFlux r t / sin t^2) / exp (r*cos t)) _ at h
+  simpa only [weight,div_div] using h
+
+theorem parallel_energy_cap {r : ℝ} (hr : 0 ≤ r) : parallelEnergy r ≤ 1/12 := by
+  have hZ := normalizer_pos hr
+  have hh := flux_integral_cap hr (polarFlux_hasDerivAt r) (by simp [polarFlux]) (polarFlux_pi hr)
   have he : (fun t => energyIntegrand (reduced (polarFlux r)) r t) =
       fun t => polarFlux r t ^ 2 / weight r t := by
     funext t

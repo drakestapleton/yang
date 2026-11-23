@@ -38,3 +38,6 @@ normalized link kernel. The kernel equals Mathlib’s regular conditional
 law almost everywhere under that marginal. For sides at least two the
 kernel has the previously proved six-staple Haar tilt. The angular
 pushforward of Haar and the transport comparison for W2 remain open.
+
+The subsequent angular-law proof identifies the Haar and Wilson angle densities.
+See proofs/WilsonAngle.lean and evidence/lean_wilson_angle.txt.
