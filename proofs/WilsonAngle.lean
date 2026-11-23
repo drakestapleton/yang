@@ -142,6 +142,21 @@ private theorem haar_first : haarMoment 1 = 0 := by
   simp_rw [fun u => (hk u).1, cos_pi, sin_pi, mul_zero, add_zero, mul_neg_one, integral_neg] at h
   simp [haarMoment]; linarith
 
+/-- Low Haar moments of the normalized fundamental trace. -/
+theorem haar_trace_moments :
+    (∫ u, (suMat u 0 0).re ∂su2Haar) = 0 ∧
+    (∫ u, (suMat u 0 0).re^2 ∂su2Haar) = 1/4 ∧
+    (∫ u, (suMat u 0 0).re^3 ∂su2Haar) = 0 ∧
+    (∫ u, (suMat u 0 0).re^4 ∂su2Haar) = 1/8 := by
+  have hz : haarMoment 0 = 1 := by simp [haarMoment]
+  have h1 : haarMoment 1 = 0 := haar_first
+  have h2 := haar_recurrence 0
+  have h3 := haar_recurrence 1
+  have h4 := haar_recurrence 2
+  norm_num at h2 h3 h4
+  change (∫ u, scalarPart u ∂su2Haar) = 0 ∧ haarMoment 2 = _ ∧ haarMoment 3 = _ ∧ haarMoment 4 = _
+  refine ⟨by simpa [haarMoment] using h1, ?_, ?_, ?_⟩ <;> linarith
+
 private def angleMoment (n : ℕ) := (2/π) * ∫ t in 0..π, sin t^2 * cos t^n
 
 private theorem angle_recurrence (n : ℕ) :

@@ -1,0 +1,102 @@
+Periodic Wilson winding correlations and response to the bare coupling
+2026-11-22 | Spark AArch64 | sh scripts/build_and_run_spark.sh openai_bridge
+Lean 4.32.0 | 8c9756b28d64dab099da31a4c09229a9e6a2ef35
+Mathlib 81a5d257c8e410db227a6665ed08f64fea08e997
+
+Source SHA-256
+68ca70cd8285237ef529c3c3d89968e42aacf3a43b4e73bbb518a96971d81b76  proofs/WilsonWinding.lean
+02309a940ed8a4b0277c6df9693c8ac124c16f4ad040abf4159f3ec5ea6f2015  proofs/WilsonAngle.lean
+dbf9058d93fb761bb5fea56bed82e7d6cd74451dd355a13e30e84c346616f081  proofs/WilsonPlaquetteClustering.lean
+a8b4874832dd0f57780dab3017b014eb5a3e9881a9ebfa71ae759fbf4ca7cc2a  proofs/WilsonHeatBathDynamics.lean
+a13993d567922e2664434dbc2bfda51252b71218625b5da58c1b9a9e8a06429e  proofs/PeriodicWilson.lean
+
+At beta zero, one of the four distinct links of any plaquette can be
+resampled from normalized SU(2) Haar. Holding the other three fixed
+right-translates this link, so the entire plaquette also has Haar law.
+This applies to every side l >= 2, including wrapped plaquettes.
+
+Write X = Re Tr(H)/2 for plaquette holonomy H. The normalized trace of H^3
+is 4 X^3 - 3 X by diagonal conjugacy. The Haar moments of X at degrees
+one through four are 0, 1/4, 0, 1/8. Hence the two traces have covariance
+-1/4. For normalized Haar on the circle the real parts of Fourier characters
+1 and 3 have zero covariance. The abelian result uses Fourier orthogonality
+at Haar and makes no claim about the interacting U(1) model at nonzero beta.
+
+The SU(2) coupling derivative varies every plaquette simultaneously in the
+four-dimensional Wilson action. If a face differs from the observed face,
+one of its base links is outside the observed face. Haar averaging that link
+kills its contribution. Differentiating the normalized measure and centering
+the observable yield, for any continuous real f on the fundamental group,
+the exact derivative at zero equal to the Haar integral of X f(H).
+
+The primitive trace therefore has first derivative +1/4 and the triply wound
+trace has first derivative -1/4. For every b > 0, the latter expectation
+fails to be nondecreasing on [0,b]. A continuous increasing function of X
+has nonnegative first derivative at zero, by X (f(X)-f(0)) >= 0. Extending
+that conclusion to nonzero couplings or to blocked observables requires
+new estimates. These results test a proposed monotonicity of loop observables.
+The vacuum spectral gap and the asymptotic Wilson string tension are distinct
+quantities, and their monotonicity is not decided by this test.
+
+Lean axiom audit
+YangMills.PeriodicWilson.haar_trace_moments [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.windingTrace_gauge_invariant [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilson_plaquette_haar_integral [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.u1_winding_covariance [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilson_winding_covariance_zero [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilson_plaquette_response_zero [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilson_increasing_trace_response_nonneg [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilson_primitive_derivative_zero [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilson_winding_derivative_zero [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilson_winding_not_monotone [propext, Classical.choice, Quot.sound]
+
+Concrete Lean applications
+import WilsonWinding
+open YangMills YangMills.PeriodicWilson YangMills.FundamentalSU2 MeasureTheory Set
+
+-- The smallest qualified torus includes repeated neighbors across the seam.
+private def face : Face 2 := (fun _ => 1, ⟨(0,3),by decide⟩)
+example : deriv (fun β : ℝ => ∫ U, wilsonPlaquetteTrace face U ∂wilsonLaw gaugeGroup 2 β su2Haar) 0 = 1/4 :=
+  (wilson_primitive_derivative_zero (by decide) face).deriv
+example : deriv (fun β : ℝ => ∫ U, windingTrace face 3 U ∂wilsonLaw gaugeGroup 2 β su2Haar) 0 = -(1/4:ℝ) :=
+  (wilson_winding_derivative_zero (by decide) face).deriv
+example : ¬ MonotoneOn (fun β : ℝ => ∫ U, windingTrace face 3 U ∂wilsonLaw gaugeGroup 2 β su2Haar)
+    (Icc 0 (1/1000000)) := wilson_winding_not_monotone (by decide) face (by norm_num)
+
+-- Differentiating the normalized expectation removes additive constants.
+example : HasDerivAt (fun β : ℝ => ∫ _U : Configuration gaugeGroup 2, (7:ℝ) ∂wilsonLaw gaugeGroup 2 β su2Haar) 0 0 := by
+  have hd := wilson_plaquette_response_zero (by decide) face (fun _ => (7:ℝ)) continuous_const
+  simpa only [integral_mul_const,haar_trace_moments.1,zero_mul] using hd
+
+-- Compare the same real windings on U(1) with probability Haar.
+example :
+    (∫ u : AddCircle (1:ℝ), (fourier 1 u).re*(fourier 3 u).re ∂AddCircle.haarAddCircle) -
+    (∫ u : AddCircle (1:ℝ), (fourier 1 u).re ∂AddCircle.haarAddCircle) *
+    (∫ u : AddCircle (1:ℝ), (fourier 3 u).re ∂AddCircle.haarAddCircle) = 0 := u1_winding_covariance
+
+example : 0 ≤ deriv (fun β : ℝ => ∫ U, Real.exp (wilsonPlaquetteTrace face U) ∂wilsonLaw gaugeGroup 2 β su2Haar) 0 :=
+  wilson_increasing_trace_response_nonneg (by decide) face Real.exp Real.continuous_exp
+    (fun _ _ _ _ h => Real.exp_le_exp.mpr h)
+Wilson winding controls PASS
+
+Negative controls, elaborated separately against the pinned dependencies
+Action | reverse the sign of the Wilson score in the linear response derivation.
+Winding | give the once-traversed loop the triply wound derivative in the side-two test.
+Circle | replace the third Fourier character in the mixed U(1) moment by the first.
+Sign | reverse the sign of the triply wound derivative in the side-two test.
+Face | assume the two faces coincide in the step averaging a link outside the observed face.
+Action rejected exit=1
+MutantAction.lean:233:6: error: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+Winding rejected exit=1
+MutantWinding.lean:9:2: error: Type mismatch
+Circle rejected exit=1
+MutantCircle.lean:139:11: error: `simp` made no progress
+Sign rejected exit=1
+MutantSign.lean:9:2: error: Type mismatch
+Face rejected exit=1
+MutantFace.lean:199:25: error: Function expected at
+
+math-check | Wolfram Language
+{Integrate[{Cos[t],Cos[3 t],Cos[t] Cos[3 t]} 2 Sin[t]^2/Pi,{t,0,Pi}],Integrate[{Cos[t],Cos[3 t],Cos[t] Cos[3 t]}/(2 Pi),{t,0,2 Pi}],TrigExpand[Cos[3 t]]}
+Out[1]= {{0, 0, -1/4}, {0, 0, 0}, Cos[t]^3 - 3*Cos[t]*Sin[t]^2}
+The Lean proofs use real Haar integrals and exact arithmetic.
