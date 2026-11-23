@@ -1,0 +1,11 @@
+Wolfram Language evaluator: exact symbolic cross-checks for the shared-vertex diagnostic.
+
+Input:
+Clear[prod,bar];prod[a_,b_]:=Prepend[a[[1]] Rest[b]+b[[1]] Rest[a]+Cross[Rest[a],Rest[b]],a[[1]] b[[1]]-Rest[a].Rest[b]];bar[a_]:=Prepend[-Rest[a],a[[1]]];With[{p=Array[p,4],b=Array[b,4],x=Array[x,4],y=Array[y,4],e=IdentityMatrix[4]},Expand[p.prod[prod[x,b],bar[y]] - x.Table[p.prod[prod[e[[i]],b],bar[e[[j]]]],{i,4},{j,4}].y]]
+Output: 0
+Interpretation: the crossed quaternion dot product is bilinear in its two endpoint gauges. For unit y, bar[y] is its inverse. Does not check an array indexing convention or the eigensolver.
+
+Input:
+With[{v={p1,p2,-n1,-n2}},FullSimplify[1-Abs[Mean[v]]==(1-Mean[Abs[v]])+2 Min[(p1+p2)/4,(n1+n2)/4],Assumptions->And@@Thread[{p1,p2,n1,n2}>=0]]]
+Output: True
+Interpretation: mixed-sign example of the positive/negative mass decomposition. Generally, for nonnegative P=mean(max(t,0)), N=mean(max(-t,0)), P+N-|P-N|=2 min(P,N); no equality of positive/negative counts is required.

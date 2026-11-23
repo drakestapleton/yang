@@ -1,0 +1,30 @@
+2026-11-23T12:50:48Z
+1242aac1396ab9b854a5e1e9eedaa8344f59a89193526aa6654c3abde17417fd  proofs/WilsonReplicaVertex.lean
+15023aabb45be366f9e907112512edded8135749bf08395a40f0a34e6b36d95e  scripts/build_and_run_spark.sh
+Lean (version 4.32.0, aarch64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)
+81a5d257c8e410db227a6665ed08f64fea08e997
+'YangMills.PeriodicWilson.vertexReplica_preserving' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.vertexAverage_abs_le' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.vertexAverage_integral' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.vertexAverage_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.plaquette_vertex_slab_covariance' depends on axioms: [propext, Classical.choice, Quot.sound]
+LEAN_CHECK_EXIT=0
+2026-11-23T12:50:56Z
+
+Empty-list negative control (Lean source and observed diagnostic):
+import WilsonReplicaVertex
+namespace YangMills.PeriodicWilson
+open FundamentalSU2 WilsonPolymer MeasureTheory Real
+noncomputable section
+-- An actual false extension: allow the empty family in the signed identity.
+-- Continuous, gauge-invariant D=1 and continuous Q=1 under a probability law.
+theorem invalid_empty_vertex_extension :
+    (∫ z, (1 : ℝ) * vertexAverage ([] : List (VertexGauge (⟨2, by decide⟩ : ℕ+)))
+      (fun _ => 1) z ∂replicaLaw (⟨2, by decide⟩ : ℕ+) 0) =
+      ∫ _z, (1 : ℝ) * 1 ∂replicaLaw (⟨2, by decide⟩ : ℕ+) 0 := by
+  simp [vertexAverage]
+end
+end YangMills.PeriodicWilson
+InvalidEmptyVertex.lean:10:63: error: unsolved goals
+⊢ False
++ negative=1

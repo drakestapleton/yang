@@ -228,6 +228,7 @@ def run():
     mode = arg.add_mutually_exclusive_group()
     mode.add_argument('--colors', action='store_true', help='Average signed endpoint factors over four relative color orientations.')
     mode.add_argument('--outer-spectrum', action='store_true', help='Emit one row per sample with the full rigid color-orbit extrema before tanh.')
+    mode.add_argument('--vertex-shell', action='store_true', help='Test shared vertex gauges on the unframed outer slab (side 4).')
     arg.add_argument('--group', choices=('SU2', 'U1'), default='SU2')
     arg.add_argument('--side', type=int, default=4)
     arg.add_argument('--warmup', type=int, default=128)
@@ -237,6 +238,8 @@ def run():
     opt = arg.parse_args()
     if not np.isfinite(opt.beta).all() or opt.side < 4 or opt.side % 2 or opt.samples < 16 or opt.samples % 8 or opt.stride < 1 or opt.warmup < 0 or min(opt.beta) < 0:
         arg.error('Use an even side >= 4, samples divisible by 8 and >= 16, positive stride and nonnegative beta and warmup.')
+    if opt.vertex_shell and opt.side != 4:
+        arg.error('The dense shared-vertex diagnostic is limited to side 4.')
     lat = Lattice(opt.side, opt.group)
     masks = ['slab', 'local', 'endpoints', 'tree_slab', 'tree_local', 'tree_endpoints', 'forest_endpoints']
     keys = ['trace', 'raw_cov'] + [mask+'_'+stat for mask in masks for stat in
@@ -246,8 +249,13 @@ def run():
     if opt.colors:
         keys += ['color_mean_abs', 'color_abs_mean', 'color_cancellation', 'color_abs_bound', 'color_outer_slab_mean_abs',
                  'color_outer_slab_abs_mean', 'color_outer_slab_cancellation']
+    measure = None
     if opt.outer_spectrum:
         from outer_slab_spectrum import COLUMNS, measure
+    elif opt.vertex_shell:
+        from vertex_shell_probe import COLUMNS, VertexProbe
+        measure = VertexProbe(lat).measure
+    if measure is not None:
         columns = ('sample', *COLUMNS)
     else:
         columns = tuple(part for k in keys for part in (k, k+'_batch_se'))
@@ -278,12 +286,12 @@ def run():
             for j in range(opt.samples):
                 for _ in range(opt.stride):
                     lat.sweep(u, beta, rng)
-                if opt.outer_spectrum:
+                if measure is not None:
                     row = measure(lat, u, beta, j % 32 == 0, mul, inv)
                     print(prefix+str(j)+'\t'+'\t'.join(f'{v:.12g}' for v in row))
                     continue
                 samples.append(lat.observe(u, beta, verify=(j % 32 == 0), colors=opt.colors))
-            if opt.outer_spectrum:
+            if measure is not None:
                 continue
             batch = np.array(samples).reshape(8, -1, len(keys)).mean(axis=1)
             values = np.stack((batch.mean(axis=0), batch.std(axis=0, ddof=1)/sqrt(8)), axis=1).ravel()
