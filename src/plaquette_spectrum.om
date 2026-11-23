@@ -1,0 +1,320 @@
+note SPDX-License-Identifier: Apache-2.0
+note Spatial shape 8^3, time (last coordinate) 8 or 16, beta=2.3.
+note With no arguments, exercise both geometries on the host without opening NVRM.
+global outerP f64 16
+global sumP f64 16
+global sumP2 f64 16
+global outerLinks long 1
+global innerLinks long 1
+global outerRng long 1
+global innerRng long 1
+global outerFlags long 1
+global innerFlags long 1
+text tabSpec "\t"
+text nlSpec "\n"
+text specBegin "SLAB4\t"
+text specEnd "END\n"
+text specCheck "geometry-and-plaquette PASS\n"
+
+fn specArg idx ulong to ulong
+b = new uchar 9 0
+n = argread idx b 0 9
+if le n 0
+exit 64
+end
+r = ulong 0
+for i ulong ulong n bound 9
+c = get b i
+if or lt c 48 gt c 57
+exit 64
+end
+r = add mul r 10 ulong sub c 48
+end
+ret r
+end
+
+fn periodicStep s ulong stride ulong extent ulong rev ulong to ulong
+c = rem div s stride extent
+if eq rev 0
+if eq add c 1 extent
+ret sub s mul sub extent 1 stride
+end
+ret add s stride
+end
+if eq c 0
+ret add s mul sub extent 1 stride
+end
+ret sub s stride
+end
+
+fn specGeometry T ulong to void
+for s ulong mul 512 T bound 8192
+stride = mul 64 T
+for mu ulong 4
+extent = ulong 8
+if eq mu 3
+extent = T
+stride = ulong 1
+end
+base = add mul s 8 mul mu 2
+next = periodicStep s stride extent 0
+prev = periodicStep s stride extent 1
+put hNb base uint next
+put hNb add base 1 uint prev
+stride = div stride 8
+end
+end
+end
+
+fn specFlag k ulong T ulong phase ulong to uint
+s = div k 4
+x = div s T
+t = rem s T
+if eq rem t 4 phase
+if lt rem k 4 3
+ret uint 2
+end
+end
+r = add t x
+r = add r div x 8
+r = add r div x 64
+ret uint and r 1
+end
+
+fn specTables T ulong flags bool phase ulong to void
+N = mul 512 T
+W = mul N 8
+if flags
+W = mul N 4
+end
+off = ulong 0
+while lt off W bound 4
+cnt = sub W off
+if gt cnt 16384
+cnt = ulong 16384
+end
+for j ulong cnt bound 16384
+k = add off j
+if flags
+stageU32 j specFlag k T phase
+else
+stageU32 j get hNb k
+end
+end
+dest = get dNbSite 0
+if flags
+dest = get dFlags 0
+end
+if not flushStage dest mul off 4 cnt
+exit 12
+end
+off = add off cnt
+end
+end
+
+fn sliceP T ulong t ulong to f64
+v = 0.0f64
+for x ulong 512
+v = add v hPlaq add mul x T t 0 1
+end
+ret div v 512.0f64
+end
+
+fn specStart N ulong hot bool seed ulong to void
+uRngSeed seed
+for edgeId ulong mul N 4 bound 32768
+b = mul edgeId 4
+for c ulong 4
+v = 0.0f32
+if eq c 0
+v = 1.0f32
+end
+if hot
+v = f32 uRngNorm64
+end
+put hLinks add b c v
+end
+if hot
+qNormHost b
+end
+end
+end
+
+fn geometryControl T ulong to void
+specGeometry T
+specStart mul 512 T false 1
+note Flip one direction-0 link at the periodic corner at t=T-1.
+note Two distinct oriented 01 faces see the center sign, on exactly one slice.
+put hLinks mul sub mul T 512 1 16 neg 1.0f32
+for t ulong T bound 16
+expected = 1.0f64
+if eq add t 1 T
+expected = 0.9921875f64
+end
+if ne sliceP T t expected
+exit 61
+end
+end
+for s ulong mul 512 T bound 8192
+for mu ulong 4
+if ne getNb getNb s mu 0 mu 1 s
+exit 62
+end
+end
+end
+end
+
+fn specAlloc n ulong to long
+m = nvalloc n true
+if le m 0
+exit 14
+end
+ret m
+end
+
+fn selectLevel inner bool to void
+if inner
+put dLinks 0 get innerLinks 0
+put dFlags 0 get innerFlags 0
+put dRng 0 get innerRng 0
+else
+put dLinks 0 get outerLinks 0
+put dFlags 0 get outerFlags 0
+put dRng 0 get outerRng 0
+end
+end
+
+fn specSweep N ulong to void
+if not gpuSweep N 2.3f32 0
+exit 15
+end
+end
+
+fn verifyBoundary N ulong T ulong phase ulong to void
+for s ulong N bound 8192
+if eq rem rem s T 4 phase
+for k ulong 12
+i = add mul s 16 k
+if ne uint mapget get outerLinks 0 mul i 4 4 bitcast uint get hLinks i
+exit 16
+end
+end
+end
+end
+end
+
+fn specUInt v ulong to void
+uPrintU v
+uPrint tabSpec
+end
+
+fn specSample T ulong chain ulong obs ulong innerCount ulong to void
+N = mul 512 T
+phase = rem obs 4
+selectLevel false
+for skip ulong 2
+specSweep N
+end
+downloadLinks N
+for t ulong T bound 16
+put outerP t sliceP T t
+put sumP t 0.0f64
+put sumP2 t 0.0f64
+end
+selectLevel true
+specTables T true phase
+if not uploadLinks N
+exit 17
+end
+for rep ulong innerCount
+specSweep N
+downloadLinks N
+if eq rep 0
+verifyBoundary N T phase
+end
+for t ulong T bound 16
+p = sliceP T t
+put sumP t add get sumP t p
+put sumP2 t add get sumP2 t mul p p
+end
+end
+for t ulong T bound 16
+specUInt T
+specUInt chain
+specUInt obs
+specUInt t
+specUInt bitcast ulong get outerP t
+specUInt bitcast ulong div get sumP t f64 innerCount
+uPrintU bitcast ulong div get sumP2 t f64 innerCount
+uPrint nlSpec
+end
+end
+
+fn main to int
+if eq argcnt 1
+geometryControl 8
+geometryControl 16
+uPrint specCheck
+ret 0
+end
+if ne argcnt 6
+ret 64
+end
+T = specArg 1
+chain = specArg 2
+burn = specArg 3
+count = specArg 4
+innerCount = specArg 5
+if or and ne T 8 ne T 16 or eq innerCount 0 or eq burn 0 eq count 0
+ret 64
+end
+N = mul 512 T
+put uStrictRejection 0 1
+rc = openWilsonKernels
+if ne rc 0
+ret rc
+end
+put outerLinks 0 specAlloc mul N 64
+put innerLinks 0 specAlloc mul N 64
+put dStaples 0 specAlloc mul N 64
+put outerFlags 0 specAlloc mul N 16
+put innerFlags 0 specAlloc mul N 16
+put dNbSite 0 specAlloc mul N 32
+put outerRng 0 specAlloc mul N 4
+put innerRng 0 specAlloc mul N 4
+uRngSeed add mul chain 32 T
+seedOuter = uRngNext
+seedInner = uRngNext
+seedStart = uRngNext
+selectLevel true
+if not seedGpuRng N seedInner
+ret 18
+end
+selectLevel false
+specGeometry T
+specTables T false 4
+specTables T true 4
+if not seedGpuRng N seedOuter
+ret 19
+end
+specStart N eq and chain 1 1 seedStart
+if not uploadLinks N
+ret 20
+end
+uPrint specBegin
+specUInt T
+specUInt chain
+specUInt burn
+specUInt count
+uPrintU innerCount
+uPrint nlSpec
+for k ulong burn
+specSweep N
+end
+for k ulong count
+specSample T chain k innerCount
+end
+uPrint specEnd
+rcClose = nvmclose
+ret 0
+end

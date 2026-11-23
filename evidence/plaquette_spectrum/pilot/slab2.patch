@@ -1,0 +1,19 @@
+--- a/src/plaquette_spectrum.om
++++ b/src/plaquette_spectrum.om
+@@ -15 +15 @@
+-text specBegin "SLAB4\t"
++text specBegin "BEGIN\t"
+@@ -73 +73 @@
+-if eq rem t 4 phase
++if eq and t 1 phase
+@@ -195 +195 @@
+-if eq rem rem s T 4 phase
++if eq and rem s T 1 phase
+@@ -213 +213 @@
+-phase = rem obs 4
++phase = and obs 1
+@@ -295,2 +295,2 @@
+-specTables T false 4
+-specTables T true 4
++specTables T false 2
++specTables T true 2

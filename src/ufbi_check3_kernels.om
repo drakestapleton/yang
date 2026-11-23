@@ -465,6 +465,10 @@ uic 38 rOut rTmp UZ 0 uAlu4
 uic4 33 rOut rOut rScale rEps uAlu4
 end
 
+note The plaquette measurement retries rejected proposals until accepted.
+note Older calibration binaries retain their original bounded sampler by default.
+global uStrictRejection uint 1
+
 fn uEmitHbDisk to void
 uLit 48 0
 uLit 49 16
@@ -490,7 +494,11 @@ uPatch bR1 1
 uPatch bR2 1
 uic 14 48 48 58 0 uAlu4
 uic 28 UZ 48 49 0 uCmp
+if ne get uStrictRejection 0 0
+uBraBack lblDisk 0
+else
 uBraBack lblDisk 2
+end
 uPatch bDone 0
 end
 
@@ -515,7 +523,11 @@ uic 34 0 38 40 0 uCmp
 bKpOk = uBraFwd 1
 uic 14 47 47 58 0 uAlu4
 uic 28 UZ 47 59 0 uCmp
+if ne get uStrictRejection 0 0
+uBraBack lblKp 0
+else
 uBraBack lblKp 2
+end
 uNum 36 0.0f32
 uPatch bKpOk 1
 end
@@ -554,7 +566,11 @@ uPatch bR1 1
 uPatch bR2 1
 uic 14 47 47 58 0 uAlu4
 uic 28 UZ 47 59 0 uCmp
+if ne get uStrictRejection 0 0
+uBraBack lblSph 0
+else
 uBraBack lblSph 2
+end
 uPatch bDone 0
 end
 
