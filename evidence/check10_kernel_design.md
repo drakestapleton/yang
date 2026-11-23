@@ -1,0 +1,7 @@
+# Blocking-kernel test at β = 2.30
+
+On the original periodic 32⁴ lattice, use the same weight at all three blocking steps. Each candidate projects a weighted sum of the straight two-link path and the average of its six four-link staples onto the unit quaternions. The endpoints of all seven paths are identical. Use the straight path if the squared norm drops below the original projection tolerance. Record the minimum squared norm and fallback count. A zero pivot in a candidate's five-operator fit invalidates its score.
+
+Train with staple fractions 0, 1/4, 1/2 and 3/4 and seeds 101, 102 and 103. Minimize the arithmetic mean of the original five-term score at step three. Break an exact tie in favor of the smaller staple fraction. Compare the winner with the original half-staple kernel on independent seeds 201 through 206. Seeds match across kernels within a phase. Report the paired change and its independent-seed standard error, and the range of held-out scores. If the baseline wins, report that result once per seed. Keep the warmup, number of outer updates, and local tomography box of the archived Check 10. Use strict heat-bath rejection for every candidate.
+
+This screens a fitted five-operator action. A useful blocking action must also reproduce long-distance observables after scale matching. The residual action, the effect of the periodic holonomy and a continuum trajectory remain inputs to any contraction proof.
