@@ -19,7 +19,7 @@ def value(bits):
     return x
 
 
-def read_chain(path):
+def read_chain(path, anchor=ANCHOR, phase_differences=None):
     opener = gzip.open if path.suffix == ".gz" else open
     with opener(path, "rt") as f:
         tag, T, chain, burn, observations, inner = f.readline().split()
@@ -39,9 +39,14 @@ def read_chain(path):
                     raise ValueError(f"{path}: invalid plaquette or second moment")
                 if t % width == k % width and abs(p-m) > 2e-14:
                     raise ValueError(f"{path}: frozen slice changed")
-                direct.append(p - ANCHOR)
-                sub.append(m - ANCHOR)
-                sub2.append(m2 - 2 * ANCHOR * m + ANCHOR**2)
+                direct.append(p - anchor)
+                sub.append(m - anchor)
+                sub2.append(m2 - 2 * anchor * m + anchor**2)
+            if phase_differences is not None:
+                phase_differences.append([
+                    statistics.fmean(sub[t]-direct[t] for t in range(T) if (t-k) % width == phase)
+                    for phase in range(width)
+                ])
             products = []
             for d in range(T//2+1):
                 products.append(statistics.fmean(x*direct[(t+d) % T] for t,x in enumerate(direct)))
@@ -70,13 +75,13 @@ def means(rows):
     return [statistics.fmean(col) for col in zip(*rows, strict=True)]
 
 
-def estimate(chains):
+def estimate(chains, anchor=ANCHOR):
     mean, *p = means(chains)
     # Ordered cross-chain U statistic for the squared one-point expectation.
     n = len(chains)
     disc = math.fsum(a[0]*b[0] for i,a in enumerate(chains)
                      for j,b in enumerate(chains) if i != j) / (n*(n-1))
-    return [mean + ANCHOR, *(v-disc for v in p)]
+    return [mean + anchor, *(v-disc for v in p)]
 
 
 def jk_error(values):
@@ -84,14 +89,14 @@ def jk_error(values):
     return (n-1) / math.sqrt(n) * statistics.stdev(values)
 
 
-def jackknife(chains):
-    full = estimate(chains)
-    leave = [estimate(chains[:i]+chains[i+1:]) for i in range(len(chains))]
+def jackknife(chains, anchor=ANCHOR):
+    full = estimate(chains, anchor)
+    leave = [estimate(chains[:i]+chains[i+1:], anchor) for i in range(len(chains))]
     return full, leave
 
 
-def summary(chains, T):
-    full, leave = jackknife(chains)
+def summary(chains, T, anchor=ANCHOR):
+    full, leave = jackknife(chains, anchor)
     nlag = T//2+1
     print(f"# T={T} chains={len(chains)} one_point={full[0]:.9g} SE={jk_error([r[0] for r in leave]):.3g}")
     print("T\td\tdirect\tdirect_SE\ttwo_level\ttwo_level_SE\tdifference\tpaired_SE\tagreement")
@@ -142,10 +147,10 @@ def summary(chains, T):
             last = e
 
 
-def compare(label, left, right):
+def compare(label, left, right, anchor=ANCHOR):
     """Contrast independent groups, including their separate one-point estimates."""
-    l, lj = jackknife(left)
-    r, rj = jackknife(right)
+    l, lj = jackknife(left, anchor)
+    r, rj = jackknife(right, anchor)
     print(f"# comparison={label} independent groups, two_level, difference and SE")
     print("one_point_contrast", label, f"{l[0]-r[0]:.9g}",
           f"{math.hypot(jk_error([v[0] for v in lj]), jk_error([v[0] for v in rj])):.9g}", sep="\t")
@@ -164,18 +169,34 @@ def label_indices(left, right):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("files", type=Path, nargs="+")
-    p.add_argument("--production", action="store_true", help="require the full recorded design")
+    design = p.add_mutually_exclusive_group()
+    design.add_argument("--production", action="store_true", help="require the original recorded design")
+    design.add_argument("--confirmation", action="store_true", help="require the independent T=16 design")
+    p.add_argument("--anchor", type=float, help="fixed offset for the confirmation or an exploratory analysis")
+    p.add_argument("--marginals", action="store_true", help="report paired interior and outer one-point checks")
     args = p.parse_args()
+    anchor = args.anchor if args.anchor is not None else (0.6022 if args.confirmation else ANCHOR)
+    if not math.isfinite(anchor) or (args.production and anchor != ANCHOR):
+        p.error("the offset must be finite and production requires 0.6")
+    marginals = defaultdict(dict)
     groups = defaultdict(dict)
     specs = {}
     for path in args.files:
-        (T,c,b,n,m,w), rows = read_chain(path)
+        phases = [] if args.marginals or args.confirmation else None
+        (T,c,b,n,m,w), rows = read_chain(path, anchor, phases)
+        if phases is not None:
+            marginals[T][c] = means(phases)
         if c in groups[T] or specs.setdefault(T,(b,n,m,w)) != (b,n,m,w):
             raise ValueError(f"{path}: duplicate chain or inconsistent run design")
         groups[T][c] = rows
     if args.production and (set(groups) != {8,16} or any(
             set(g) != set(range(10,26)) or specs[T] != (256,512,24,4) for T,g in groups.items())):
         raise ValueError("incomplete production design")
+    if args.confirmation and (set(groups) != {16} or set(groups[16]) != set(range(40,56))
+                              or specs[16] != (1024,768,48,4)):
+        raise ValueError("incomplete confirmation design")
+    if args.confirmation or args.anchor is not None:
+        print(f"# fixed_offset={anchor:.9g}")
     all_chains = {}
     for T, group in sorted(groups.items()):
         ids = sorted(group)
@@ -186,20 +207,24 @@ def main():
             rows = group[c]
             mid = len(rows)//2
             if mid:
-                print(f"# chain {c} {'hot' if c%2 else 'cold'} first_half_P={ANCHOR+means(rows[:mid])[0]:.7f}"
-                      f" second_half_P={ANCHOR+means(rows[mid:])[0]:.7f}")
+                print(f"# chain {c} {'hot' if c%2 else 'cold'} first_half_P={anchor+means(rows[:mid])[0]:.7f}"
+                      f" second_half_P={anchor+means(rows[mid:])[0]:.7f}")
         chains = [means(group[c]) for c in ids]
         all_chains[T] = chains
-        summary(chains, T)
+        summary(chains, T, anchor)
+        if marginals[T]:
+            for phase, col in enumerate(zip(*(marginals[T][c] for c in ids), strict=True)):
+                print("inner_minus_outer", T, phase, f"{statistics.fmean(col):.9g}",
+                      f"{statistics.stdev(col)/math.sqrt(len(col)):.9g}", sep="\t")
         mid = len(chains)//2
         if mid >= 3:
-            compare(f"T{T}_first-minus-last", chains[:mid], chains[mid:])
+            compare(f"T{T}_first-minus-last", chains[:mid], chains[mid:], anchor)
         hot = [row for c,row in zip(ids,chains) if c%2]
         cold = [row for c,row in zip(ids,chains) if not c%2]
         if min(len(hot),len(cold)) >= 3:
-            compare(f"T{T}_hot-minus-cold",hot,cold)
+            compare(f"T{T}_hot-minus-cold",hot,cold,anchor)
     if set(all_chains) == {8,16}:
-        compare("T8-minus-T16",all_chains[8],all_chains[16])
+        compare("T8-minus-T16",all_chains[8],all_chains[16],anchor)
 
 
 if __name__ == "__main__":

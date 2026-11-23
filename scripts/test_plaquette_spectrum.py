@@ -36,6 +36,19 @@ class PlaquetteSpectrumTest(unittest.TestCase):
             self.assertAlmostEqual(row[7], (y[0]*y[1]+y[3]*y[4]+y[4]*y[5]+y[7]*y[0])/4)
             self.assertAlmostEqual(row[8], (y[3]*y[5]+y[7]*y[1])/2)
             self.assertAlmostEqual(row[10], (y[1]*y[5]+y[2]*y[6]+y[3]*y[7])/3)
+            # With the same ensemble one-point subtraction the offset cancels
+            # for direct products. For a selected pair it couples to the sum
+            # of its two marginal means, which can differ in a finite sample.
+            phases = []
+            _, (shifted,) = read_chain(p, 0.625, phases)
+            base = estimate([row]*3)
+            other = estimate([shifted]*3, 0.625)
+            for lag in range(5):
+                self.assertAlmostEqual(base[1+lag], other[1+lag])
+            endpoint_mean = (sub[3]+sub[5]+sub[7]+sub[1])/2
+            self.assertAlmostEqual(other[8]-base[8],
+                                   (0.625-ANCHOR)*(2*sum(ordinary)/8-endpoint_mean))
+            self.assertEqual(phases, [[0, 0.125, 0, -0.125]])
             p.write_text("\n".join(lines))
             with self.assertRaisesRegex(ValueError, "incomplete"):
                 read_chain(p)

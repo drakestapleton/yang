@@ -1,0 +1,72 @@
+Finite-volume SU(2) plaquette verification, 2026-11-23 UTC
+Physical DGX Spark spark-b87b, AArch64, native GB10 SM121
+Seeded Omega source 3f2c70dc5dca7009b496d261c893ed0dc74c7a89
+Compiler SHA-256 708fdc0f81866594ed6df2f492b7a8a6bc7456f2d733a838b7f840549ebba6c3
+Production composed OM SHA-256 4fe2b190ce62adbf2e0c57e6b31879d47d4ffe70b4c26f0cad459fe4b9c7482b
+Production AArch64 ELF SHA-256 cbc9892d5a99854b9a46a233e55b42960f6613e0f93d9be6840428e189ad9be9
+Pilot composed OM SHA-256 7f743b5754619bbd209e29f221bbef3f2d990fdbf81f66f43bd9a5b36a478210
+Pilot AArch64 ELF SHA-256 82e9394af59dfc27d7774eff80ad31cea63c685ee43ca2a10633ac7bb2533eca
+
+A one-link center sign on the last periodic time slice gives slice 01 plaquette
+127/128, with one on all other slices. Both tested time extents also pass
+neighbor and inverse-neighbor composition on all links. The build compiled
+the shared legacy Check 3 caller. The production binary was reproduced in
+a clean Spark source checkout.
+
+Raw-run determinism check, run twice and counted once
+T=8 chain=10 burn=256 outer=512 inner=24 slab=4
+First exclusive window 20261123T145852Z-a3000f
+Replay exclusive window 20261123T151501Z-cce159
+Both complete, byte-identical SHA-256
+b1d774b9c2b1ed05514330fdb361a984672aa8cdfa14a7c17a1cbedda0039926
+
+Mathlib bridge workspace Lean 4.32.0, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35
+Mathlib commit 81a5d257c8e410db227a6665ed08f64fea08e997
+Proof source SHA-256
+520732a2193cec88a5f34eaad7b93601345d942d1bef051c137efff352ebfa81  proofs/PlaquetteKernelCycle.lean
+b5ece3729d8044b598d2740e9eadb2aac5c3f36e9c935ebbffdf84be342f1fb3  proofs/PlaquetteKernelTrace.lean
+4721cead2a583dc75974b1acaa7d10e9b6a1cc1b4cb85910521bdc49aed52993  proofs/PlaquettePositiveKernel.lean
+3590e084eba299d63a5345ca332222c01d7af996fe13ee3388ecd5d45f74e615  proofs/WilsonPlaquetteHilbert.lean
+3e51d03d241bde7408d777cd3ef704bbb38bef67de7bd27fb6961724839aba52  proofs/WilsonPlaquettePositivity.lean
+a59429b2800d638d57986b33fb3a98ddf8c238a75b01874d76c9aa2ee6ac84ea  proofs/WilsonPlaquetteTransfer.lean
+d4f8c596897283aae332b342cd4f04e688861d41007bbd716c4a9323c3e48981  proofs/WilsonPlaquetteVacuum.lean
+
+Axiom audits from a fresh source build
+YangMills.KernelCycle.cycle_integral [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.operator_symmetric [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.kernel_symmetric [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.operator_physical [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.plaquette_space_shift [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.normalizedTrace_scalar [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.observable_preserves_physical [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.positive_partition [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.wilson_time_shift [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.wilson_plaquette_periodic_trace [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.connected_eq_ring [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.swap_wrap_excess [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.steps_operator [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.markedRing_trace [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.ringConnected_thermal [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.periodic_weight [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.integrate_temporal [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.finite_periodic_trace [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.swap_regression [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.exp_gram_series [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.exp_gram_pos [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.exp_gram_nonneg [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.wilson_quadratic_nonneg [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.wilson_quadratic_pos [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.vacuum_exists [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.top_no_node [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.wilson_top_eigenvalue [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.hilbertTransfer_compact [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.hilbertTransfer_symmetric [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.wilson_eigenspaces_total [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.wilson_plaquette_spectral_measure [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.lattice_energy_moments [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.wilson_cut_limit [propext, Classical.choice, Quot.sound]
+YangMills.PlaquetteTransfer.powers_to_vacuum [propext, Classical.choice, Quot.sound]
+
+All seven modules passed with no warnings or proof placeholders. The exact
+2-by-2 test computes both the periodic result and the vacuum result. Lean
+rejected their proposed equality at q=1/2, d=3, N=8.

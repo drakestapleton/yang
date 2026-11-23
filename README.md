@@ -4,6 +4,10 @@ Connected repo of [`omega-mv`](https://interplane.io/drakestapleton/omega-mv) (p
 
 Zero C, zero Python, zero Rust, zero `libcuda.so.1` on the execution path: every host driver and native SM121 GPU SASS kernel is compiled directly by `seed/out/omc` into static AArch64 ELF binaries running over `/dev/nvidia*` on DGX Spark GB10.
 
+## Finite-volume plaquette spectrum
+
+At β = 2.3, native GB10 measurements on periodic $8^3$ spatial boxes resolve the connected spatial 01 plaquette through two time steps with both estimators at temporal extents 8 and 16. The effective energy falls over the first two separations. Lean proves the finite Wilson trace and constructs the positive energy measure of this same centered observable in the long-time limit at fixed volume. [Data and uncertainties](evidence/plaquette_spectrum/README.md) · [Transfer-matrix identity](evidence/plaquette_spectrum/transfer.md)
+
 ## Engines, Audits & Formal Bridges
 
 1. **Check #1 (`src/ufbi_check1_gb10.om` + `src/ufbi_check1_kernels.om`)**: 4D massive free scalar UV-divergence test ($L \in \{8, 16, 32, 64\}$, fixed physical $m_{\text{phys}}\ell$), cross-checked against an exact 4D DST-I spectral oracle on $L=8$. Confirms unrestricted all-site Schur-complement TV diverges as $O(L)$ (`TV_raw = 1.0`), whereas smeared `CentralObs` contracts. Evidence: `evidence/check1_gb10_run.tsv`.
