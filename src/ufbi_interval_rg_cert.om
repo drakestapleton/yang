@@ -1,22 +1,8 @@
 note SPDX-License-Identifier: Apache-2.0
 note src/ufbi_interval_rg_cert.om: Pure Seeded-OM-2 Zero-Monte-Carlo Deterministic
-note Outward-Rounded Interval-Arithmetic Contraction Verifier for 4D SU(2) Lattice Gauge Theory.
-note
-note Zero randomness, zero Monte Carlo, zero C/Python/Rust/libcuda:
-note   1. Uses rigorous outward-rounded IEEE-754 interval arithmetic [lo, hi] with explicit
-note      outward safety inflation (rel = 1e-12, abs = 1e-13) at interval endpoints.
-note   2. Encloses S^3 Haar/vMF integrals (Z(r), m(r), Var_par(r), Var_perp(r), L1-MAD(r),
-note      Geodesic W1 L_par(r) & L_perp(r), and exact SU(2) character ratios u_{1/2}(beta), u_1(beta))
-note      over ALL theta in [0, pi] AND ALL staple fields r in [0, 6*beta] via monotone interval
-note      enclosures (ZERO quadrature-approximation gap, ZERO field-sampling gap!).
-note   3. Computes rigorous certified upper bounds [lo, hi] for four zero-MC contraction criteria:
-note        - Tier 1: 1-link TV oscillation (18 * tanh(beta))
-note        - Tier 2: 1-link S^3 exact L1-MAD TV (18 * sup_{r in [0,6b]} MAD(r) * beta)
-note        - Tier 3: 1-link S^3 Geodesic W1 path coupling (18 * sup_r sqrt(L_par^2 + L_perp^2) * beta)
-note        - Tier 4: 4D SU(2) Kotecky-Preiss closed-surface character cluster sum
-note                  (6-plaquette 3-cube minimum surface, exact interval enclosure on u_{1/2}(beta))
-note                  AND 2x2 block-decimation character contraction u_{1/2}(beta)^4!
-note
+note Binary64 box estimates for the TV, W1, and character-expansion criteria.
+note The scan uses padded endpoints over angle and staple-field boxes.
+note End-to-end roundoff analysis remains open.
 note Composed after: src/ufbi_math.om and src/ufbi_ivmath.om
 
 note Interval scratch registers (each interval = 2 f64: [lo, hi])
@@ -34,14 +20,14 @@ global ivU1 f64 2
 global ivAcc f64 10
 global ivStep f64 8
 
-note Global certified maxima across r in [0, 6*beta]
+note Global estimated maxima across r in [0, 6*beta]
 global maxMadHi f64 1
 global maxW1Hi f64 1
 global maxVparHi f64 1
 global maxVperpHi f64 1
 
 text tIvHdr "=== PHASE III-A ZERO-MONTE-CARLO INTERVAL-ARITHMETIC 4D SU(2) CONTRACTION VERIFIER (PURE OM-2) ===\n"
-text tIvNote "# Outward-rounded [lo, hi] enclosures (rel=1e-12, abs=1e-13), 2048 theta-boxes x 32 r-boxes covering ALL r in [0, 6*beta]\n"
+text tIvNote "# Padded binary64 [lo, hi] estimates (rel=1e-12, abs=1e-13), 2048 theta-boxes x 32 r-boxes covering ALL r in [0, 6*beta]\n"
 text tIvCols "beta\tTV_osc_hi\tTV_S3L1_hi\tW1_geod_hi\tTG14_W1_hi\tu12_lo\tu12_hi\tu1_hi\tKP_surf_hi\tdecim_u12_4_hi\tcert_tier\n"
 text tIvT0 "NONE"
 text tIvT1 "T1_TV_OSC"
@@ -51,7 +37,6 @@ text tIvT3B "T3B_TG14_W1"
 text tIvT4 "T4_KP_CHAR"
 text tTab "\t"
 text tNl "\n"
-text tIvSum "=== CERTIFIED ZERO-MC CEILINGS (RIGOROUS UPPER BOUND < 1.0) ===\n"
 text tIvDone "INTERVAL_RG_CERT_DONE status=PASS\n"
 
 fn min2 a f64 b f64 to f64
@@ -84,7 +69,7 @@ p4 = mul ahi bhi
 ret ivHi max2 max2 p1 p2 max2 p3 p4
 end
 
-note Rigorous enclosure of sin(t) on [t0, t1] subset [0, pi]
+note Box estimate of sin(t) on [t0, t1] subset [0, pi]
 fn sinBoxLo t0 f64 t1 f64 to f64
 ret max2 0.0f64 ivLo min2 ivSin64 t0 ivSin64 t1
 end
@@ -97,7 +82,7 @@ end
 ret ivHi min2 1.0f64 max2 ivSin64 t0 ivSin64 t1
 end
 
-note Rigorous enclosure of cos(t) on [t0, t1] subset [0, pi] (strictly decreasing!)
+note Box estimate of cos(t) on [t0, t1] subset [0, pi] (strictly decreasing!)
 fn cosBoxLo t0 f64 t1 f64 to f64
 ret ivLo ivCos64 t1
 end
@@ -243,7 +228,7 @@ put maxW1Hi 0 w1Hi
 end
 end
 
-note Scan ALL staple fields r in [0, 6*beta] in 32 rigorous interval boxes and emit certified bounds!
+note Scan ALL staple fields r in [0, 6*beta] in 32 interval boxes and report the coefficients.
 fn certifyBeta beta f64 to void
 dr = div mul 6.0f64 beta 32.0f64
 put maxMadHi 0 0.0f64

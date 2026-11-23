@@ -1,5 +1,5 @@
 === PHASE III-A ZERO-MONTE-CARLO INTERVAL-ARITHMETIC 4D SU(2) CONTRACTION VERIFIER (PURE OM-2) ===
-# Outward-rounded [lo, hi] enclosures (rel=1e-12, abs=1e-13), 2048 theta-boxes x 32 r-boxes covering ALL r in [0, 6*beta]
+# Padded binary64 [lo, hi] estimates (rel=1e-12, abs=1e-13), 2048 theta-boxes x 32 r-boxes covering ALL r in [0, 6*beta]
 beta	TV_osc_hi	TV_S3L1_hi	W1_geod_hi	TG14_W1_hi	u12_lo	u12_hi	u1_hi	KP_surf_hi	decim_u12_4_hi	cert_tier
 0.050000	0.899251	0.387599	0.373861	0.290781	0.011173	0.013827	0.001755	0.000217	0.000000	T1_TV_OSC
 0.080000	1.436936	0.622958	0.601119	0.467537	0.018653	0.021339	0.001930	0.003353	0.000000	T2_TV_S3L1

@@ -4,42 +4,10 @@
 -- `OpenAI-YM-20261028` (`PublicWilson.lean`, `ChallengeSpec.lean`), `OpenAiYmBridge.lean`,
 -- `DobrushinShlosman.lean`, and `WilsonPolymerBridge.lean`.
 --
--- Machine-checks (ZERO `sorry`, axioms strictly `[propext, Classical.choice, Quot.sound]`; see SCOPE below):
---   1. Theorem 14 (Exact Local Gauge Invariance of `PublicWilson.wilsonLaw` + Period-2 Balanced
---      Acyclic Spanning-Tree Gauge `k_P = 1` on 96/96 plaquettes, `deg = 12` on 48/48 dyn links):
---      - `wilsonLaw_map_gaugeAct`: Pushforward of `OpenAI-YM-20261028`'s `wilsonLaw` by ANY local
---        gauge transformation `gaugeAct Ω` is IDENTICALLY `wilsonLaw` for EVERY compact `GaugeGroup`.
---      - `balanced_tree_p2_strictly_acyclic`, `balanced_tree_p2_all_plaquettes_one_fixed`,
---        `balanced_tree_p2_all_dyn_deg_twelve`, `balanced_tree_cauchy_schwarz_minimum`:
---        Explicit 16-site period-2 acyclic spanning forest on `ℤ⁴` attaining the exact Cauchy-Schwarz
---        topological minimum `deg = 12` uniformly on every dynamical link!
---      - `balanced_tree_su2_4d_tv_dobrushin_window` (`β < 1/6`),
---        `balanced_tree_su2_4d_w1_dobrushin_window` (`β ≤ 0.200`),
---        `balanced_tree_su2_4d_w2_dobrushin_window` (`β < √3/6 = 1/(2√3) ≈ 0.28868`, 5.20× over `1/18`),
---        `balanced_tree_multiloop_w2_open_ball`.
---      SCOPE: 14F-1..14F-4 are arithmetic on the contraction constants. The W₂ constant `1/(2√3)`
---      comes from `s3_w2_orthogonality_bound`, which TAKES `L_par² ≤ 1/12`, `L_perp² ≤ 1/12` AS
---      HYPOTHESES; they are not proved anywhere in this repository, and the Phase IV interval
---      certificate's own upper enclosure `W2_par_hi ≈ 0.2929..0.2950 > 1/√12 ≈ 0.28868` does not
---      confirm them. The W₂ windows are therefore CONDITIONAL. Nothing here formalizes that a
---      W₁/W₂ Dobrushin contraction implies uniqueness or decay for `wilsonLaw`, and the
---      height-increment identity 14B is stated on `ℤ⁴`, not on the periodic torus `Site l`.
---   2. Theorem 15 (Quaternion Landau-Gauge 4D Star-Cell Theory `K_{2,2,2,2}`):
---      - `quaternion_chordal_exact_splitting`: Positive strictly-damping quartic `Δ_quat ≥ 0` (ZERO `e^{+y}`!).
---      - `quaternion_landau_faddeev_popov_exact`: Exact all-orders Faddeev-Popov identity on `∑ q_a = 0`.
---      - `bernoulli_finset_prod_one_sub`: `1 - ∑ s_a ≤ ∏ (1 - s_a)` for `s_a ∈ [0, 1]`.
---      - `star_4d_quaternion_quartic_expectation`: Exact `36 β (v² - c²) = 77 / (128 β)`.
---      - `star_4d_k1222_spectral_gap`: Exact deleted-star `K_{1,2,2,2}` spectrum `5 ≤ λ ≤ 7`.
---      - `star_4d_global_1far_action_floor` (`S_star ≥ 6 β` at `π/2`) &
---        `star_4d_global_2far_action_floor` (`S_star ≥ 48/5 β = 9.6 β` at `π/2`).
---      - `density_ratio_sharp_tv_and_partition_bounds`: Exact sharp `|Z - 1| ≤ max A_+ A_-` and
---        `d_TV ≤ max A_+ (A_- / (1 - A_-))` for any density ratio `R ≥ 0`.
---      - `star_4d_nontrivial_boundary_holonomy_bound`: Exact chordal Young inequality for
---        non-trivial boundary holonomies `B_{ab} ∈ SU(2)`.
---   3. Theorem 16 (`wilson_converges_preserves_exponential_decay`):
---      Direct continuum-limit transfer on `OpenAI-YM-20261028`'s `WilsonFamily.Converges`:
---      uniform finite-volume exponential decay bounds on `C.finiteMoment` transfer unconditionally
---      across both `N → ∞` and `p → ∞` to the continuum correlation `unselected`.
+-- Section 14 proves gauge invariance of the Wilson law, finite incidence counts, and
+-- coefficient inequalities. The one-link W₂ speed bounds and their lattice application are open.
+-- Section 15 proves star-cell algebraic identities and density-ratio estimates.
+-- Section 16 transfers an assumed uniform moment bound through WilsonFamily.Converges.
 
 import WilsonPolymerBridge
 import OpenAiYmBridge
@@ -54,7 +22,7 @@ open MeasureTheory Set Filter Function BigOperators
 open scoped Topology
 open YangMills YangMills.WilsonPolymer
 
-/-! ## Theorem 14: Exact Gauge Invariance of `PublicWilson.wilsonLaw` + Period-2 Balanced Acyclic Spanning-Tree Gauge (`deg = 12`, `β < √3/6 ≈ 0.28868`) -/
+/-! ## Theorem 14: Exact Gauge Invariance of `PublicWilson.wilsonLaw` + Period-2 Link Incidences (`deg = 12`, `β < √3/6 ≈ 0.28868`) -/
 
 /-- `Matrix` carries the product topology; record its second countability (Mathlib does not
 transfer it through the `Matrix` definition), so continuous maps on `Configuration g l` are
@@ -156,8 +124,7 @@ theorem wilsonLaw_map_gaugeAct {g : GaugeGroup} {l : ℕ+} (β : ℝ)
   refine setLIntegral_congr_fun (hPrior.measurable hs) fun U _ => ?_
   exact (hw_inv U).symm
 
-/-- Explicit 16-site Period-2 Balanced Acyclic Spanning-Tree direction map on `(ℤ/2ℤ)⁴`:
-at every site `x ∈ ℤ⁴`, fixes the single positive outgoing link `(x, balancedTreeDir (x mod 2))`. -/
+/-- Period-two assignment of one outgoing coordinate direction per site. -/
 def balancedTreeDir : Fin 2 × Fin 2 × Fin 2 × Fin 2 → Fin 4
   | (0, 0, 0, 0) => 3
   | (0, 0, 0, 1) => 3
@@ -201,11 +168,8 @@ def dynLinkDegP2 (x : Fin 2 × Fin 2 × Fin 2 × Fin 2) (μ : Fin 4) : ℕ :=
   ∑ ν : Fin 4, if ν = μ then 0 else
     (3 - plaqFixedCountP2 x μ ν) + (3 - plaqFixedCountP2 (stepP2 x ν) μ ν)
 
-/-- **Theorem 14B (Strict Acyclicity on ALL of `ℤ⁴`):**
-Every fixed directed step `x ↦ x + Pi.single d 1` (for ANY `d : Fin 4`) strictly increases the
-coordinate sum `∑ i : Fin 4, x i` by `+1`. This identity rules out a directed cycle on the
-infinite lattice. A finite periodic assignment with one successor per site has a directed cycle. -/
-theorem balanced_tree_p2_strictly_acyclic (x : Fin 4 → ℤ) (d : Fin 4) :
+/-- Theorem 14B. A forward coordinate step on ℤ⁴ increases the coordinate sum by one. -/
+theorem lattice_forward_step_height (x : Fin 4 → ℤ) (d : Fin 4) :
     (∑ i : Fin 4, (x + (Pi.single d (1 : ℤ) : Fin 4 → ℤ)) i) = (∑ i : Fin 4, x i) + 1 := by
   simp [Pi.add_apply, Finset.sum_add_distrib]
 
@@ -225,10 +189,7 @@ theorem balanced_tree_p2_all_dyn_deg_twelve :
       balancedTreeDir x ≠ μ → dynLinkDegP2 x μ = 12 := by
   decide
 
-/-- **Theorem 14E (Cauchy-Schwarz Topological Optimality of `deg = 12`):**
-For ANY 4D spanning-tree gauge fixing `1` link per site (`∑_{p=1}^6 k_p = 6`), the mean dynamical
-neighbor count `10 + (1/3) ∑_{p=1}^6 k_p²` is ALWAYS `≥ 12` (attained iff `k_p = 1` on every
-plaquette, as achieved by `balancedTreeDir`)! -/
+/-- Theorem 14E. For six real numbers with sum six, the expression 10 + ∑ k² / 3 is at least twelve. -/
 theorem balanced_tree_cauchy_schwarz_minimum (k : Fin 6 → ℝ) (hSum : ∑ p : Fin 6, k p = 6) :
     12 ≤ 10 + (1 / 3 : ℝ) * ∑ p : Fin 6, (k p) ^ 2 := by
   have hsq : 0 ≤ ∑ p : Fin 6, (k p - 1) ^ 2 := Finset.sum_nonneg fun p _ => sq_nonneg _
@@ -239,14 +200,14 @@ theorem balanced_tree_cauchy_schwarz_minimum (k : Fin 6 → ℝ) (hSum : ∑ p :
     ring
   linarith
 
-/-- **Theorem 14F-1 (Balanced-Tree 4D SU(2) TV-S³ Dobrushin Basin: `β < 1 / 6 ≈ 0.16667`):** -/
+/-- Theorem 14F-1. The TV coefficient expression is below one for 0 ≤ β < 1/6. -/
 theorem balanced_tree_su2_4d_tv_dobrushin_window {β : ℝ} (hβ0 : 0 ≤ β) (hβ : β < 1 / 6) :
     (12 : ℝ) * ((1 / 2 : ℝ) * Real.sqrt ((1 / 4 : ℝ) * (2 * β) ^ 2)) < 1 := by
   have hsq : (1 / 4 : ℝ) * (2 * β) ^ 2 = β ^ 2 := by ring
   rw [hsq, Real.sqrt_sq hβ0]
   linarith
 
-/-- **Theorem 14F-2 (Balanced-Tree 4D SU(2) Geodesic W₁ Dobrushin Basin: `β ≤ 20 / 100 = 0.200`):** -/
+/-- Theorem 14F-2. The W₁ coefficient expression is below one for 0 ≤ β ≤ 0.2. -/
 theorem balanced_tree_su2_4d_w1_dobrushin_window {β : ℝ} (_hβ0 : 0 ≤ β) (hβ : β ≤ 20 / 100) :
     (12 : ℝ) * s3W1GeodesicLip * β < 1 := by
   have hpi_lo : (3.14 : ℝ) < Real.pi := Real.pi_gt_d2
@@ -274,12 +235,7 @@ theorem balanced_tree_su2_4d_w1_dobrushin_window {β : ℝ} (_hβ0 : 0 ≤ β) (
     _ < (12 : ℝ) * (411 / 1000) * (20 / 100) := by linarith
     _ < 1 := by norm_num
 
-/-- **Theorem 14F-3 (Balanced-Tree 12-Neighbor 4D SU(2) Orthogonal S³ W₂ Basin: `β < √3 / 6 ≈ 0.28868`):**
-Arithmetic step: IF the W₂ 1-link constant satisfies `L_{W₂} ≤ 1/(2√3)` (the hypotheses of
-`s3_w2_orthogonality_bound`, not proved here) and the 12-neighbor count of
-`balanced_tree_p2_all_dyn_deg_twelve` applies, the contraction coefficient is `< 1` for
-**`β < √3 / 6 ≈ 0.28868`** (`5.20×` wider than `1/18`, `+16.7%` over temporal gauge
-`√3/7`, and `2.27×` beyond Check #9's `32⁴` `β = 2.30, k = 3` value `0.1272`)! -/
+/-- Theorem 14F-3. The 12-neighbor coefficient computed with the proposed one-link W₂ constant is below one for β < √3/6. -/
 theorem balanced_tree_su2_4d_w2_dobrushin_window {β : ℝ} (hβ : β < Real.sqrt 3 / 6) :
     (12 : ℝ) * (1 / (2 * Real.sqrt 3)) * β < 1 := by
   have hs3_pos : 0 < Real.sqrt 3 := Real.sqrt_pos.mpr (by norm_num)
@@ -324,11 +280,7 @@ theorem quaternion_chordal_exact_splitting
     nlinarith
   exact ⟨heq, by nlinarith [sq_nonneg (wa - wb)]⟩
 
-/-- **Theorem 15B (Exact All-Orders Quaternion Landau-Gauge Faddeev-Popov Identity):**
-Whenever `∑_{a=0}^7 q_a = 0` in `ℝ³`, left-multiplying all 8 quaternions `(w_a, q_a)` by ANY
-`g(v) = (w_v, v) ∈ S³` satisfies `∑_a Im(g(v) · q_a) = (∑_a w_a) • v` IDENTICALLY to ALL orders
-in `v` (all cross-product terms cancel identically!), proving the exact Faddeev-Popov determinant
-is `(∑_a w_a)³` with ZERO Gribov copies on the northern hemisphere `(S³₊)⁸`! -/
+/-- Theorem 15B. When each imaginary-coordinate sum is zero, the three imaginary sums after left multiplication each equal the corresponding multiplier coordinate times ∑ w. -/
 theorem quaternion_landau_faddeev_popov_exact
     (w : Fin 8 → ℝ) (qx qy qz : Fin 8 → ℝ)
     (hLx : ∑ a : Fin 8, qx a = 0)
@@ -369,9 +321,7 @@ theorem bernoulli_finset_prod_one_sub {ι : Type*} [DecidableEq ι]
       mul_le_mul_of_nonneg_left hih (by linarith)
     nlinarith
 
-/-- **Theorem 15C-2 (Exact Quaternion Quartic Expectation `77 / (128 β) ≈ 0.6016 / β`):**
-Under the 21D Landau-gauge Gaussian (`v = 25/(192β)`, `c = -3/(192β)`), the exact expectation of
-the quaternion quartic bound `(β / 8) ∑_E (s_a - s_b)²` equals `36 β (v² - c²) = 77 / (128 β)`! -/
+/-- Theorem 15C-2. Substituting the stated v and c gives 36 β (v² − c²) = 77/(128 β). -/
 theorem star_4d_quaternion_quartic_expectation {β : ℝ} (hβ : β ≠ 0) :
     let v : ℝ := 25 / (192 * β)
     let c : ℝ := -(3 / (192 * β))
@@ -696,15 +646,10 @@ theorem star_4d_nontrivial_boundary_holonomy_bound
     simp only [Finset.sum_add_distrib, ← Finset.mul_sum] at hs
     exact hs
 
-/-! ## Theorem 16: Direct Continuum-Limit Exponential-Decay Transfer on `OpenAI-YM-20261028`'s `WilsonFamily.Converges` -/
+/-! ## Theorem 16: Uniform bound under convergence on `OpenAI-YM-20261028`'s `WilsonFamily.Converges` -/
 
-/-- **Theorem 16 (`wilson_converges_preserves_exponential_decay`):**
-Directly on `OpenAI-YM-20261028`'s `PublicWilson.WilsonFamily.Converges`, if the finite-volume
-lattice moments `C.finiteMoment N p v x` satisfy a uniform exponential decay bound
-`‖C.finiteMoment N p v x‖ ≤ M * exp(-m * D)` across the support of a separated test function `t`
-(whose Riemann sum converges to `I_t`), then the continuum correlation `unselected` unconditionally
-inherits the exact same exponential decay bound `‖∫ x, t x * unselected v x‖ ≤ M * exp(-m * D) * I_t`! -/
-theorem wilson_converges_preserves_exponential_decay
+/-- Theorem 16. An assumed uniform bound on finite moments passes to the smeared limit under the stated convergence and Riemann-sum hypotheses. D is a fixed parameter. A geometric decay application must relate D to separation. -/
+theorem wilson_converges_preserves_uniform_bound
     {g : GaugeGroup} (C : WilsonFamily g) (volumeOrder : ℕ → ℕ)
     (unselected : {n : ℕ} → (Fin n → C.Token) → Points n → ℂ)
     (hConv : C.Converges volumeOrder unselected)
@@ -764,7 +709,7 @@ theorem wilson_converges_preserves_exponential_decay
   exact le_of_tendsto hVolNorm (hSuit.mono fun k hk => hRowBound (volumeOrder k) hk)
 
 #print axioms wilsonLaw_map_gaugeAct
-#print axioms balanced_tree_p2_strictly_acyclic
+#print axioms lattice_forward_step_height
 #print axioms balanced_tree_p2_all_plaquettes_one_fixed
 #print axioms balanced_tree_p2_all_dyn_deg_twelve
 #print axioms balanced_tree_cauchy_schwarz_minimum
@@ -781,6 +726,6 @@ theorem wilson_converges_preserves_exponential_decay
 #print axioms star_4d_global_2far_action_floor
 #print axioms density_ratio_sharp_tv_and_partition_bounds
 #print axioms star_4d_nontrivial_boundary_holonomy_bound
-#print axioms wilson_converges_preserves_exponential_decay
+#print axioms wilson_converges_preserves_uniform_bound
 
 end YangMills.PhaseFour

@@ -1,35 +1,10 @@
 note SPDX-License-Identifier: Apache-2.0
 note src/ufbi_phase3b_cert.om: Pure Seeded-OM-2 Zero-Monte-Carlo Dual-Cliff Verifier (Phase III-B)
 note
-note Zero randomness, zero Monte Carlo, zero C/Python/Rust/libcuda:
-note   PART A (Right Cliff — Exact S^3 W_2 Orthogonal Continuity-Field Interval Enclosure):
-note     Uses outward-rounded interval arithmetic (rel=1e-12, abs=1e-13, 2048 theta-boxes x 128 r-boxes
-note     covering ALL staple fields r in [0, 6*beta]) to enclose:
-note       1. Exact Benamou-Brenier parallel speed W2_par(r) via cumulative flux F(theta)^2 / p(theta)
-note          with rigorous analytic endpoint boxes on [0, delta] and [pi - delta, pi] (ZERO 0/0!).
-note       2. Exact closed-form transverse continuity-field energy W2_perp(r):
-note            E_perp(r) = (1/27) E_r[cos^2 t] + (2/3) E_r[(1/3 - (r/6) sin^2 t cos t)^2].
-note       3. Orthogonal combined speed L_W2(r) = max(W2_par_hi, W2_perp_hi) (ZERO sqrt(2) penalty!),
-note          certifying:
-note            - Unfixed 18-neighbor W2 Dobrushin (18 * L_W2 * beta < 1) up to beta ~ 0.190
-note            - Temporal-Gauge 14-neighbor W2 Dobrushin (14 * L_W2 * beta < 1) up to beta ~ 0.245!
-note
-note   PART B (Left Cliff — Exact 4D Single-Site Star Cell K_{2,2,2,2} Theorem 13 Saddle + Remainder):
-note     Uses the Lean-verified Theorem 11 + Theorem 13 identities (ZERO O(r^6) tail, 100% sound!):
-note       - Exact global plaquette bound (Theorem 13A/B):
-note           -(1/24)||X_a - X_b||^4 - (1/6)||X_a x X_b||^2 <= Delta(X_a, X_b) <= 0
-note       - Exact 21D Landau-gauge Gaussian expectation (Theorem 13C):
-note           E_gamma[Q(X)] = 161 / (96 * beta)  (v = 25/(192*beta), c = -3/(192*beta))
-note       - Exact Gaussian energy-ball ceiling on E_u = {2*S_quad(X) <= u} (Theorem 13D):
-note           y_max(u) = u^2 / (64 * beta), max_a ||X_a|| <= sqrt(u / (6 * beta)) < pi
-note       - Exact positive-exponent bound (Theorem 13E, since Delta <= 0 => e^{+y} - 1):
-note           E_gamma[1_{E_u} (e^{+y} - 1)] <= e^{y_max(u)} * (161 / (96 * beta))
-note       - Exact S^3 Haar Jacobian defect: E_gamma[1 - prod (sin r_a / r_a)^2] <= 25 / (24 * beta)
-note       - Exact chi_21^2 Chernoff large-field tail: P(chi_21^2 > u) <= (u/21)^{10.5} * exp(-(u-21)/2)
-note     Scans optimal energy-ball cutoff u in [22.0, 120.0] to report BOTH:
-note       - tot_int_hi  = rem_exp_hi + tail_LF_hi (non-Gaussian interaction + LF tail)
-note       - tot_full_hi = rem_exp_hi + rem_haar_hi + tail_LF_hi (full L^1 density distance)
-note
+note Part A computes numerical box estimates for the parallel and transverse one-link speeds.
+note Part B evaluates the star-cell remainder formulas on the sampled beta and cutoff grid.
+note Both use padded binary64 arithmetic. End-to-end enclosure correctness remains open.
+
 note Composed after: src/ufbi_math.om and src/ufbi_ivmath.om
 
 global pZ f64 2
@@ -45,7 +20,7 @@ global bRes f64 8
 global bTmp f64 8
 
 text tP3Hdr "=== PHASE III-B ZERO-MONTE-CARLO DUAL-CLIFF VERIFIER (PURE SEEDED OM-2) ===\n"
-text tP3AHdr "=== PART A: RIGHT CLIFF — EXACT S^3 W_2 ORTHOGONAL CONTINUITY-FIELD ENCLOSURE (2048 x 128 BOXES) ===\n"
+text tP3AHdr "=== PART A: RIGHT CLIFF — S^3 W_2 CONTINUITY-FIELD ESTIMATES (2048 x 128 BOXES) ===\n"
 text tP3ACols "beta\tW2_par_hi\tW2_perp_hi\tL_W2_hi\tUnfix18_W2_hi\tTG14_W2_hi\tcert\n"
 text tP3BHdr "=== PART B: LEFT CLIFF — 4D STAR K_{2,2,2,2} THEOREM 13 (161/96b, y_max=u^2/64b, e^{+y}-1, chi_21^2) ===\n"
 text tP3BCols "beta\topt_u\trMax_hi\tyMax_hi\trem_exp_hi\trem_haar_hi\ttail_LF_hi\ttot_int_hi\ttot_full_hi\tstatus\n"

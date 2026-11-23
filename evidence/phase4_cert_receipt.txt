@@ -10,8 +10,8 @@ Failure controls (each mutation applied separately to a temporary source):
 2. Change the expected 0.283 row from OPEN (0) to BT12 (12). Compile exit 0; run exit 1, PHASE4_CERT_DONE status=FAIL.
 
 Sibling modes interval_cert and phase3b_cert compiled and ran with exit 0.
-Their ELF SHA-256 values are cf75a2f0b5b4044787cbd26e1fda3c036c203cd293b5682ae5420c8d7cd48801
-and 12ffd0a85989aefbeb3b87ed7bfe94f841349f78c1eb0c590d71efc3a57216d4.
+Their ELF SHA-256 values are 6bf191925b059bf6007edde7a7d803e893d027dd3f1db898df98b6deb77d482b
+and 66900f52f279989d2312aa3aa30a69e3db66af4f34ce71955b1b32323c024796.
 
 math-check: FullSimplify[(1-s/2-Sqrt[1-s])/s^2==1/(2(1+Sqrt[1-s])^2),0<s<1] -> True.
 The FP core evaluates this rational form to avoid subtracting nearly equal quantities.
