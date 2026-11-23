@@ -225,7 +225,9 @@ class Lattice:
 
 def run():
     arg = argparse.ArgumentParser(description=__doc__)
-    arg.add_argument('--colors', action='store_true', help='Average signed endpoint factors over four relative color orientations.')
+    mode = arg.add_mutually_exclusive_group()
+    mode.add_argument('--colors', action='store_true', help='Average signed endpoint factors over four relative color orientations.')
+    mode.add_argument('--outer-spectrum', action='store_true', help='Emit one row per sample with the full rigid color-orbit extrema before tanh.')
     arg.add_argument('--group', choices=('SU2', 'U1'), default='SU2')
     arg.add_argument('--side', type=int, default=4)
     arg.add_argument('--warmup', type=int, default=128)
@@ -244,7 +246,12 @@ def run():
     if opt.colors:
         keys += ['color_mean_abs', 'color_abs_mean', 'color_cancellation', 'color_abs_bound', 'color_outer_slab_mean_abs',
                  'color_outer_slab_abs_mean', 'color_outer_slab_cancellation']
-    print('group\tside\twarmup\tsamples\tstride\tbeta\tstart\tseed\t'+'\t'.join(part for k in keys for part in (k, k+'_batch_se')), flush=True)
+    if opt.outer_spectrum:
+        from outer_slab_spectrum import COLUMNS, measure
+        columns = ('sample', *COLUMNS)
+    else:
+        columns = tuple(part for k in keys for part in (k, k+'_batch_se'))
+    print('group\tside\twarmup\tsamples\tstride\tbeta\tstart\tseed\t'+'\t'.join(columns), flush=True)
     for ib, beta in enumerate(opt.beta):
         for start in ('hot', 'cold'):
             seed = 41123+2*ib+(start == 'cold')
@@ -267,13 +274,20 @@ def run():
             for _ in range(opt.warmup):
                 lat.sweep(u, beta, rng)
             samples = []
+            prefix = f'{opt.group}\t{opt.side}\t{opt.warmup}\t{opt.samples}\t{opt.stride}\t{beta:g}\t{start}\t{seed}\t'
             for j in range(opt.samples):
                 for _ in range(opt.stride):
                     lat.sweep(u, beta, rng)
+                if opt.outer_spectrum:
+                    row = measure(lat, u, beta, j % 32 == 0, mul, inv)
+                    print(prefix+str(j)+'\t'+'\t'.join(f'{v:.12g}' for v in row))
+                    continue
                 samples.append(lat.observe(u, beta, verify=(j % 32 == 0), colors=opt.colors))
+            if opt.outer_spectrum:
+                continue
             batch = np.array(samples).reshape(8, -1, len(keys)).mean(axis=1)
             values = np.stack((batch.mean(axis=0), batch.std(axis=0, ddof=1)/sqrt(8)), axis=1).ravel()
-            print(f'{opt.group}\t{opt.side}\t{opt.warmup}\t{opt.samples}\t{opt.stride}\t{beta:g}\t{start}\t{seed}\t'+'\t'.join(f'{v:.8g}' for v in values), flush=True)
+            print(prefix+'\t'.join(f'{v:.8g}' for v in values), flush=True)
 
 
 if __name__ == '__main__':
