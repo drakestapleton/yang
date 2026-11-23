@@ -448,14 +448,21 @@ elif [ "$MODE" = "proofs" ]; then
     echo 'LEAN_PROOF_CHECK status=PASS file=proofs/UfbiMassGap.lean'
   "
 elif [ "$MODE" = "openai_bridge" ]; then
-  echo "=== Checking Mathlib-linked OpenAiYmBridge, DobrushinShlosman, WilsonPolymerBridge & PhaseFourBridge on Spark ==="
-  scp "$ROOT/proofs/OpenAiYmBridge.lean" "$ROOT/proofs/DobrushinShlosman.lean" "$ROOT/proofs/WilsonPolymerBridge.lean" "$ROOT/proofs/PhaseFourBridge.lean" "$ROOT/proofs/OneLinkTransport.lean" spark:~/workspace/yang-lean-bridge/
+  echo "=== Checking the Mathlib bridges and periodic SU(2) Wilson specialization on Spark ==="
+  scp "$ROOT/proofs/OpenAiYmBridge.lean" "$ROOT/proofs/DobrushinShlosman.lean" "$ROOT/proofs/WilsonPolymerBridge.lean" "$ROOT/proofs/PhaseFourBridge.lean" "$ROOT/proofs/OneLinkTransport.lean" "$ROOT/proofs/FundamentalSU2.lean" "$ROOT/proofs/PeriodicWilson.lean" spark:~/workspace/yang-lean-bridge/
   ssh spark "set -eu
     export PATH=\"\$HOME/.elan/bin:\$PATH\"
     cd ~/workspace/yang-lean-bridge
     lean --version
     lake build OpenAiYmBridge DobrushinShlosman WilsonPolymerBridge PhaseFourBridge
-    lake env lean OneLinkTransport.lean
+    bridge_out=\$(mktemp -d)
+    trap 'rm -rf \"\$bridge_out\"' EXIT
+    lake env sh -ec '
+      export LEAN_PATH=\"\$1:\$LEAN_PATH\"
+      lean -o \"\$1/OneLinkTransport.olean\" OneLinkTransport.lean
+      lean -o \"\$1/FundamentalSU2.olean\" FundamentalSU2.lean
+      lean PeriodicWilson.lean
+    ' sh \"\$bridge_out\"
     echo 'LEAN_PHASE4_BRIDGES status=PASS'
   "
 else

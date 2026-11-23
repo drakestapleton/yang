@@ -1,0 +1,51 @@
+Periodic four-dimensional fundamental SU(2) Wilson verification
+2026-11-22  |  Spark AArch64
+
+Command: sh scripts/build_and_run_spark.sh openai_bridge
+Lean (version 4.32.0, aarch64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)
+Mathlib commit: 81a5d257c8e410db227a6665ed08f64fea08e997
+Prepared Lake project source digests (SHA-256):
+94111ad258b4218a263fcc0a7136446d5a6eff0e090809b72036fb3a7aecfff8  PublicTheory.lean
+c1542c816cd42d23448b66b4cb021c7f3bdad64b64f1c643dde27147ce0c3233  PublicWilson.lean
+Repository source digests (SHA-256):
+09c2a56c99992efb063d3b8adce3fc5420082b40428e6d83515552c37d988d42  proofs/FundamentalSU2.lean
+7c1e30c7c6cb946aa7b096e38564207cbfaecf6a94073b1727c9fa0e9a22bd2f  proofs/PeriodicWilson.lean
+202d33c8d2c969478b01086cad2346510174e37a213e2f7b51fb07cb6a6317a4  proofs/OneLinkTransport.lean
+
+'YangMills.OneLinkTransport.s3_w2_orthogonality_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.FundamentalSU2.polar' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.FundamentalSU2.mem_iff_det_one' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.FundamentalSU2.gaugeGroup' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.staple_perturbation' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.neighbor_ne_self' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.heatBath_probability' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.heatBath_eq_tilt' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.su2_wilson_at_0192' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.period_one_plaquette' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.incidence_count' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.su2_field_pole' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.su2_wilson_degree18' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.one_link_energy_difference' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.wilsonLaw_one_link_factorization' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.periodic_trial_row_lt_one' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.strict_witness' depends on axioms: [propext, Classical.choice, Quot.sound]
+LEAN_PHASE4_BRIDGES status=PASS
+
+Negative controls (temporary source copies, same Lean and dependencies):
+1. Replace 24/125 by 193/1000. Lean rejects strict_witness.
+2. Remove the inverse of (U c) in the first oriented staple. Lean rejects
+   the single-plaquette update identity.
+witness exit=1
+Witness.lean:319:4: error: linarith failed to find a contradiction
+orientation exit=1
+Witness.lean:178:67: error: unsolved goals
+
+Exact arithmetic cross-check (Wolfram Language):
+FullSimplify[{19/100 < 24/125 < Sqrt[3]/9, (18 (24/125)/Sqrt[12])^2, Sqrt[3]/9 < 7/25}]
+{True, 15552/15625, True}
+
+For every torus side l >= 2 the Wilson one-link resampling law is a
+normalized Haar tilt and the sum of its 18 analytic trial-speed bounds is
+subunit for 0 <= beta < sqrt(3)/9. The proof uses real integrals directly.
+A metric W2 heat-bath contraction would require an additional transport
+comparison. The l = 1 plaquette has repeated links and is a commutator.
