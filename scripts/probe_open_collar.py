@@ -68,17 +68,41 @@ class Box:
         return mul(mul(u[:,0,x],u[:,1,self.plus[0,x]]),
                    inv(mul(u[:,1,x],u[:,0,self.plus[1,x]])))[...,0].mean(axis=1)
 
-    def pair(self, beta, seed, burn, keep, identical):
+    def initial_collar(self, name):
+        # Only tangential links on a boundary hyperplane belong to the collar.
+        # The unused periodic wrap entries stay at the identity.
+        shape = (self.side,)*4
+        coords = np.indices(shape).reshape(4, -1)
+        u = np.zeros((4, self.side**4, 4))
+        u[..., 0] = 1
+        if name == "identity":
+            return u
+        if name == "sheet":
+            mid = self.side // 2
+            cut = (coords[0] == mid-1) & (coords[1] >= mid) & (coords[3] == 0)
+            u[0, cut, 0] = -1
+        elif name == "rough":
+            rng = np.random.default_rng([self.side, 230, 314159])
+            for axis in range(4):
+                tangential = np.delete(coords, axis, axis=0)
+                mask = (coords[axis] < self.side-1) & ((tangential == 0) | (tangential == self.side-1)).any(axis=0)
+                values = rng.normal(size=(mask.sum(), 4))
+                u[axis, mask] = values / np.linalg.norm(values, axis=1, keepdims=True)
+        else:
+            raise ValueError(f"unknown collar {name}")
+        return u
+
+    def pair(self, beta, seed, burn, keep, identical, collar="identity"):
         rng=np.random.default_rng([self.side,round(100*beta),seed,261123])
-        u=np.zeros((2,4,self.side**4,4))
-        u[...,0]=1
+        u = np.repeat(self.initial_collar(collar)[None], 2, axis=0)
         if seed%2:
             hot=rng.normal(size=(4,self.side**4,4))
             hot/=np.linalg.norm(hot,axis=-1,keepdims=True)
             for i,x in self.classes:
                 u[:,i,x]=hot[i,x]
         if not identical:
-            u[1,0,self.changed,0]=-1
+            u[1,0,self.changed] *= -1
+        pinned = u[:,0,self.changed].copy()
         for _ in range(burn):
             self.sweep(u,beta,rng)
         rows=[]
@@ -87,7 +111,7 @@ class Box:
             rows.append(self.observe(u))
         if identical and not np.array_equal(u[0],u[1]):
             raise ValueError("identical collars diverged")
-        if abs(u[1,0,self.changed,0] - (1 if identical else -1)) > 1e-14:
+        if not np.array_equal(u[:,0,self.changed], pinned):
             raise ValueError("fixed collar moved")
         sample=np.array(rows)
         diff=sample[:,1]-sample[:,0]

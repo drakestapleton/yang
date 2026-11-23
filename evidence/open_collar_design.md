@@ -1,0 +1,5 @@
+# Finite search for a boundary influence
+
+On the open $4^4$ box at β = 2.30, always flip the same 0-link at coordinates (1,1,1,0). Search three background collars. The identity sets all tangent boundary links to one. The sheet sets 0-links with $x_0=1$, $x_1\ge2$ and $x_3=0$ to minus one. The rough background assigns fixed independent Haar links on the tangential boundary using a separate, reproducible seed. Within each pair every other exterior link is identical. The center operator and conditional heat baths are the ones used in the original open-box test.
+
+Choose the largest absolute mean signed center change on seeds 70–73, breaking ties in the order identity, sheet, rough. Report the signed change on eight new seeds 80–87 with a full-pair standard error. Alternate hot and cold starts and keep the original 64 warmup and 128 measured sweeps. The tested backgrounds supply candidate boundary influences. A supremum over exterior fields, block contraction and equilibrium mixing time require additional bounds.

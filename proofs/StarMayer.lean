@@ -1,3 +1,4 @@
+import WilsonPolymerBridge
 import Mathlib.MeasureTheory.Integral.Prod
 import Mathlib.Analysis.SpecialFunctions.Exp
 import Mathlib.Tactic
@@ -59,6 +60,45 @@ theorem finite_expansion {X ι : Type*} [MeasurableSpace X] [DecidableEq ι]
   rw [← Finset.prod_one_add]
   simp [bond]
 
+open YangMills.WilsonPolymer
+
+/-- The two-cell problem has one hard-core polymer, its crossing bond. -/
+def oneBond (z : ℝ) : PolymerModel Unit where
+  incompat := fun _ _ => True
+  decIncompat := fun _ _ => isTrue trivial
+  refl := fun _ => trivial
+  symm := fun _ _ _ => trivial
+  w := fun _ => z
+  a := fun _ => 1
+  a_nonneg := fun _ => zero_le_one
+
+theorem oneBond_partition (z : ℝ) : (oneBond z).Z {()} = 1+(z:ℂ) := by
+  rw [(oneBond z).Z_recursion {()} (γ:=()) (by simp)]
+  simp [PolymerModel.nbhd,oneBond,PolymerModel.Z_empty]
+
+/-- The same integrated bridge activity feeds the repository's KP ratio theorem. -/
+theorem two_cell_KP {X Y : Type*} [MeasurableSpace X] [MeasurableSpace Y]
+    (μ : Measure X) (ν : Measure Y) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν]
+    (V : X × Y → ℝ) (hv : Integrable (fun x => Real.exp (-V x)) (μ.prod ν))
+    (h : |∫ x, bond (V x) ∂μ.prod ν| * Real.exp 1 ≤ 1) :
+    let z := ∫ x, bond (V x) ∂μ.prod ν
+    let Z := ∫ x, Real.exp (-V x) ∂μ.prod ν
+    (oneBond z).Z {()} = (Z:ℂ) ∧ Z ≠ 0 ∧
+      ‖1 / (Z:ℂ)‖ ≤ Real.exp (|z| *Real.exp 1) := by
+  let z := ∫ x, bond (V x) ∂μ.prod ν
+  let Z := ∫ x, Real.exp (-V x) ∂μ.prod ν
+  have eq : (oneBond z).Z {()} = (Z:ℂ) := by
+    rw [oneBond_partition]; simp [Z,two_cell μ ν V hv,z]
+  have kp : (oneBond z).KoteckyPreissCond {()} := by
+    intro γ _
+    simpa [PolymerModel.nbhd,oneBond,Complex.norm_real,Real.norm_eq_abs,z] using h
+  have result := (oneBond z).kotecky_preiss_partition_nonvanishing_and_ratio kp {()} (by rfl)
+  have ratio := result.2 () (by simp)
+  rw [eq] at result ratio
+  refine ⟨eq,fun hz => result.1 (by simp [Z,hz]),?_⟩
+  simpa [PolymerModel.Z_empty,oneBond,Complex.norm_real,Real.norm_eq_abs] using ratio
+
+#print axioms two_cell_KP
 #print axioms two_cell
 #print axioms two_cell_bound
 #print axioms finite_expansion
