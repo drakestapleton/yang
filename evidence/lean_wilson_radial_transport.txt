@@ -1,0 +1,63 @@
+Squared Wasserstein cost of Wilson polar-angle laws
+2026-11-22 America/Chicago | Spark AArch64
+
+Command: sh scripts/build_and_run_spark.sh openai_bridge
+Lean (version 4.32.0, aarch64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)
+Mathlib commit: 81a5d257c8e410db227a6665ed08f64fea08e997
+SHA-256:
+94111ad258b4218a263fcc0a7136446d5a6eff0e090809b72036fb3a7aecfff8  PublicTheory.lean
+c1542c816cd42d23448b66b4cb021c7f3bdad64b64f1c643dde27147ce0c3233  PublicWilson.lean
+4220a4fa480c21ba641c5da8fa8965f9ba5633c5eef0ba337197c3e68f78d9f0  proofs/WilsonRadialTransport.lean
+185e2c717a55281b6d414a2cfd03f23b988b47db3884c2dd8c19291339ce54e9  proofs/WilsonAngle.lean
+0a101ea3b87427ea7b0864158800277561786712e070a86c426db77ed0936b7b  proofs/OneLinkTransport.lean
+3be17b663eceaf7d14bedbcaea2f17aa30078f609341959e339949459d4f6839  proofs/WilsonConditional.lean
+
+'YangMills.PeriodicWilson.quantile_field_deriv' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.quantile_pushforward' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.radialCoupling_marginals' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.quantile_mean_square_speed' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.radialCoupling_cost' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.radial_wasserstein_sq_le' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.heatBath_radial_wasserstein' depends on axioms: [propext, Classical.choice, Quot.sound]
+LEAN_PHASE4_BRIDGES status=PASS
+
+The joint measure maps one uniform rank p to (Q_r(p), Q_s(p)). Its marginals
+are the normalized angle laws. At interior ranks the quantile derivative
+in field strength is minus the polar flux divided by the weight. Its mean
+square equals parallelEnergy. Integrating the squared displacement along
+the strength interval uses the analytic bound parallelEnergy <= 1/12.
+The squared Wasserstein cost is the infimum in ENNReal of the angular
+squared cost over all joint measures with the prescribed marginals.
+The witness has integrable cost. Each periodic heat bath is projected
+onto the polar angle about its own staple pole. A lift to a coupling
+of SU(2) links and control of changes in pole direction remain open.
+
+Endpoint checks compiled against WilsonRadialTransport.olean:
+-- Equal strength, including the degenerate staple field, gives zero squared cost.
+example {r : ℝ} (hr : 0 ≤ r) : angleWassersteinSq (angleLaw r) (angleLaw r) = 0 := by
+  apply le_antisymm _ zero_le
+  simpa using radial_wasserstein_sq_le hr hr
+-- Compare a zero field with the largest strength allowed at beta = 7/25 in both orders.
+example : angleWassersteinSq (angleLaw 0) (angleLaw (42/25)) ≤ ENNReal.ofReal (147/625) := by
+  convert radial_wasserstein_sq_le (r := 0) (s := 42/25) (by norm_num) (by norm_num) using 1; norm_num
+example : angleWassersteinSq (angleLaw (42/25)) (angleLaw 0) ≤ ENNReal.ofReal (147/625) := by
+  convert radial_wasserstein_sq_le (r := 42/25) (s := 0) (by norm_num) (by norm_num) using 1; norm_num
+radial endpoint applications PASS
+
+Mutations on three separate copies of WilsonRadialTransport.lean. Rebuild
+each altered copy in the same pinned Lake environment with dependencies
+on LEAN_PATH. Entries give the edit and the first rejected declaration.
+
+velocity_sign | radialVelocity: remove the leading minus | quantile_field_deriv
+second_marginal | radialCoupling: replace the second quantile Q_s by Q_r | radialCoupling_marginals
+cost_constant | radialCoupling_cost: change only its conclusion from /12 to /13 | radialCoupling_cost
+velocity_sign exit=1
+Negative.lean:183:2: error: 'change' tactic failed, pattern
+second_marginal exit=1
+Negative.lean:236:24: error: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+cost_constant exit=1
+Negative.lean:343:4: error: Type mismatch
+
+Wolfram Language cross-check at zero field:
+{Integrate[Sin[x]^2 Cos[x],{x,0,Pi}], FullSimplify[-Integrate[Sin[x]^2 Cos[x],{x,0,t}]/Sin[t]^2,Assumptions->0<t<Pi], FullSimplify[Integrate[Sin[t]^2 (Sin[t]/3)^2,{t,0,Pi}]/Integrate[Sin[t]^2,{t,0,Pi}]]}
+Out[1]= {0, -Sin[t]/3, 1/12}

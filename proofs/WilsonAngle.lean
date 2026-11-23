@@ -232,7 +232,8 @@ instance angleLaw_probability (r : ℝ) : IsProbabilityMeasure (angleLaw r) := b
   change ENNReal.ofReal (angleNormalizer r / angleNormalizer r) = 1
   simp [(angleNormalizer_pos r).ne']
 
-private theorem integral_angleLaw (r : ℝ) (f : ℝ → ℝ) :
+/-- Real integration against the normalized radial density. -/
+theorem integral_angleLaw (r : ℝ) (f : ℝ → ℝ) :
     (∫ t, f t ∂angleLaw r) = (∫ t in 0..π, OneLinkTransport.weight r t * f t) / angleNormalizer r := by
   have hm : Measurable (fun t => ENNReal.ofReal (OneLinkTransport.weight r t / angleNormalizer r)) :=
     ((continuous_w r).div_const _).measurable.ennreal_ofReal
