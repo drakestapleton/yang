@@ -23,7 +23,7 @@ def splitLink (e : Edge l) :
 @[simp] theorem splitLink_apply (e : Edge l) (U : Configuration gaugeGroup l) :
     splitLink e U = (fun i => U i.val, U e) := rfl
 
-private theorem fill_update (e : Edge l) (b : Background e) (u v : gaugeGroup.image) :
+theorem fill_update (e : Edge l) (b : Background e) (u v : gaugeGroup.image) :
     Function.update ((splitLink e).symm (b,u)) e v = (splitLink e).symm (b,v) := by
   apply (splitLink e).injective
   rw [MeasurableEquiv.apply_symm_apply, splitLink_apply]
@@ -113,9 +113,13 @@ private theorem measurable_backgroundDensity (β : ℝ) (e : Edge l) :
 def splitLaw (β : ℝ) (e : Edge l) :=
   (wilsonLaw gaugeGroup l β su2Haar).map (splitLink e)
 
+theorem wilson_probability (l : ℕ+) (β : ℝ) :
+    IsProbabilityMeasure (wilsonLaw gaugeGroup l β su2Haar) :=
+  isProbabilityMeasure_tilted (global_integrable β)
+
 instance splitLaw_probability (β : ℝ) (e : Edge l) : IsProbabilityMeasure (splitLaw β e) := by
   haveI : IsProbabilityMeasure (wilsonLaw gaugeGroup l β su2Haar) :=
-    isProbabilityMeasure_tilted (global_integrable β)
+    wilson_probability l β
   exact Measure.isProbabilityMeasure_map (splitLink e).measurable.aemeasurable
 
 instance heatBathKernel_markov (β : ℝ) (e : Edge l) : IsMarkovKernel (heatBathKernel β e) where

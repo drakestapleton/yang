@@ -47,7 +47,7 @@ private theorem shifted_ne {l : ℕ+} (hl : 1 < l.val) (x : Site l) (i : Axis) :
   have h' := congrFun h i
   simp [shift] at h'
 
-private def corners {l : ℕ+} (p : Face l) : Edge l × Edge l × Edge l × Edge l :=
+def corners {l : ℕ+} (p : Face l) : Edge l × Edge l × Edge l × Edge l :=
   let i := p.2.val.1
   let j := p.2.val.2
   ((p.1,i), (p.1+shift i,j), (p.1+shift j,i), (p.1,j))
@@ -135,7 +135,7 @@ theorem period_one_plaquette {g : GaugeGroup} (U : Configuration g 1) (x : Site 
   have hj : x + Pi.single j 1 = x := Subsingleton.elim _ _
   rw [hi,hj]
 
-private theorem corners_distinct {l : ℕ+} (hl : 1 < l.val) (p : Face l) :
+theorem corners_distinct {l : ℕ+} (hl : 1 < l.val) (p : Face l) :
     let (a,b,c,d) := corners p
     a ≠ b ∧ a ≠ c ∧ a ≠ d ∧ b ≠ c ∧ b ≠ d ∧ c ≠ d := by
   let a := (corners p).1
@@ -169,6 +169,36 @@ theorem neighbor_ne_self {l : ℕ+} (hl : 1 < l.val) {e : Edge l} {p : Face l}
   obtain ⟨a,b,c,d⟩ := Q
   obtain ⟨ab,ac,ad,bc,bd,cd⟩ := h
   rcases hh with rfl | rfl | rfl | rfl <;> fin_cases j <;> simp_all [ne_comm]
+
+/-- The base sites of links on one Wilson plaquette differ by zero or one
+periodic step along each coordinate axis. -/
+theorem neighbor_axis_step {l : ℕ+} (e : Edge l) {p : Face l} (hp : p ∈ incidentFaces e)
+    (j : Fin 3) (t : Axis) :
+    let d := (neighbor e p j).1.1 t - e.1 t
+    d = 0 ∨ d = 1 ∨ d = -1 := by
+  let inFace := fun a : Edge l => (corners p).1 = a ∨ (corners p).2.1 = a ∨
+    (corners p).2.2.1 = a ∨ (corners p).2.2.2 = a
+  have hasNeighbor : inFace (neighbor e p j).1 := by
+    unfold inFace neighbor
+    generalize corners p = Q
+    rcases Q with ⟨a,b,c,d⟩
+    dsimp only
+    split
+    · fin_cases j <;> simp
+    split
+    · fin_cases j <;> simp
+    split <;> fin_cases j <;> simp
+  have displaced (i : Axis) :
+      (p.1 + shift (l := l) i : Site l) t = p.1 t ∨ (p.1 + shift (l := l) i : Site l) t = p.1 t + 1 := by
+    by_cases h : t=i <;> simp [h,shift]
+  have site (a : Edge l) (ha : inFace a) : a.1 t = p.1 t ∨ a.1 t = p.1 t+1 := by
+    rcases ha with rfl | rfl | rfl | rfl
+    · exact Or.inl rfl
+    · exact displaced _
+    · exact displaced _
+    · exact Or.inl rfl
+  rcases site e ((incident_iff p e).mp hp) with h | h <;>
+    rcases site _ hasNeighbor with h' | h' <;> simp [h,h']
 
 private def traverse {g : GaugeGroup} {l : ℕ+} (U : Configuration g l) (k : Edge l × Bool) :=
   if k.2 then (U k.1)⁻¹ else U k.1
@@ -540,6 +570,7 @@ theorem su2_wilson_at_0192 {l : ℕ+} (hl : 1 < l.val)
   exact h U
 
 #print axioms staple_perturbation
+#print axioms neighbor_axis_step
 #print axioms neighbor_ne_self
 #print axioms heatBath_probability
 #print axioms heatBath_eq_tilt

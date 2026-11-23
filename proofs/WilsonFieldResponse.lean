@@ -9,7 +9,7 @@ open scoped Matrix.Norms.Frobenius ENNReal
 noncomputable section
 private abbrev G := gaugeGroup.image
 
-private theorem inverse_distance (k j : G) : linkGeodesic k⁻¹ j⁻¹ = linkGeodesic k j := calc
+theorem pole_inverse_distance (k j : G) : linkGeodesic k⁻¹ j⁻¹ = linkGeodesic k j := calc
   _ = linkGeodesic (k*k⁻¹*j) (k*j⁻¹*j) := by rw [linkGeodesic_mul_right,linkGeodesic_mul_left]
   _ = linkGeodesic j k := by simp [mul_assoc]
   _ = _ := by simp only [linkGeodesic_eq_angle]; exact InnerProductGeometry.angle_comm ..
@@ -20,7 +20,7 @@ theorem cartesian_field_mean_square {r s : ℝ} (hr : 0 ≤ r) (hs : 0 ≤ s) (k
     linkWassersteinSq (poleLaw r k) (poleLaw s j) ≤ ENNReal.ofReal
       ((1/12 + π^2/16) * ‖r • linkCoordinates k - s • linkCoordinates j‖^2) := by
   apply (mean_square_pole_wasserstein hr hs k j).trans (ENNReal.ofReal_le_ofReal ?_)
-  rw [inverse_distance]
+  rw [pole_inverse_distance]
   let D := linkGeodesic k j
   let m := min r s
   let a := |s-r|
@@ -82,10 +82,13 @@ private theorem matrixCoordinates_norm {A : M} (ha : A ∈ quaternionAlgebra) :
 
 /-- The full-link response to all changed neighboring links, counted with their
 periodic plaquette multiplicities. The bound covers every background and zero staples. -/
-theorem periodic_neighbor_mean_square {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ : 0 ≤ β)
+theorem periodic_neighbors_of_field_bound {C : ℝ} (hC : 0 ≤ C)
+    (hField : ∀ {r s : ℝ}, 0 ≤ r → 0 ≤ s → ∀ k j : G,
+      linkWassersteinSq (poleLaw r k) (poleLaw s j) ≤ ENNReal.ofReal
+        (C * ‖r • linkCoordinates k - s • linkCoordinates j‖^2)) {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ : 0 ≤ β)
     (U V : Configuration gaugeGroup l) (e : Edge l) :
     linkWassersteinSq (heatBath β U e) (heatBath β V e) ≤ ENNReal.ofReal
-      ((1/12+π^2/16)*(β * ∑ i ∈ incidences e,
+      (C*(β * ∑ i ∈ incidences e,
         linkChord (U (neighbor e i.1 i.2).1) (V (neighbor e i.1 i.2).1) / sqrt 2)^2) := by
   let r := fieldStrength β U e
   let s := fieldStrength β V e
@@ -93,9 +96,9 @@ theorem periodic_neighbor_mean_square {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (h�
   obtain ⟨j,hj,hproj'⟩ := su2_field_pole_with_matrix β V e
   rw [heatBath_eq_tilt_of_projection hl β U e k hproj,heatBath_eq_tilt_of_projection hl β V e j hproj']
   change linkWassersteinSq (poleLaw r k) (poleLaw s j) ≤ _
-  apply (cartesian_field_mean_square (fieldStrength_mem hβ U e).1 (fieldStrength_mem hβ V e).1 k j).trans
+  apply (hField (fieldStrength_mem hβ U e).1 (fieldStrength_mem hβ V e).1 k j).trans
   apply ENNReal.ofReal_le_ofReal
-  apply mul_le_mul_of_nonneg_left _ (by positivity)
+  apply mul_le_mul_of_nonneg_left _ hC
   apply pow_le_pow_left₀ (norm_nonneg _) _ 2
   let AU : M := stapleMatrix U e
   let AV : M := stapleMatrix V e
@@ -111,6 +114,13 @@ theorem periodic_neighbor_mean_square {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (h�
   rw [he,matrixCoordinates_norm ha,norm_smul,Real.norm_eq_abs,abs_of_nonneg hβ,
     mul_div_assoc, ← Finset.sum_div]
   exact mul_le_mul_of_nonneg_left (div_le_div_of_nonneg_right (staple_perturbation hl U V e) (sqrt_nonneg _)) hβ
+
+theorem periodic_neighbor_mean_square {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ : 0 ≤ β)
+    (U V : Configuration gaugeGroup l) (e : Edge l) :
+    linkWassersteinSq (heatBath β U e) (heatBath β V e) ≤ ENNReal.ofReal
+      ((1/12+π^2/16)*(β * ∑ i ∈ incidences e,
+        linkChord (U (neighbor e i.1 i.2).1) (V (neighbor e i.1 i.2).1) / sqrt 2)^2) :=
+  periodic_neighbors_of_field_bound (by positivity) cartesian_field_mean_square hl hβ U V e
 
 theorem periodic_neighbor_wasserstein {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ : 0 ≤ β)
     (U V : Configuration gaugeGroup l) (e : Edge l) :
@@ -211,13 +221,13 @@ theorem single_neighbor_wasserstein {l : ℕ+} (hl : 1 < l.val) {β : ℝ} (hβ 
   exact pow_le_pow_left₀ (mul_nonneg (mul_nonneg (mul_nonneg (sqrt_nonneg _) hβ) hm) (arccos_nonneg _))
     (mul_le_mul_of_nonneg_right hc (arccos_nonneg _)) 2
 
-private theorem incidence_row {l : ℕ+} (hl : 1 < l.val) (e : Edge l) :
+theorem incidence_row {l : ℕ+} (hl : 1 < l.val) (e : Edge l) :
     (∑ a : Edge l, (neighborIncidenceCount e a : ℝ)) = 18 := by
   simp only [neighborIncidenceCount,Nat.cast_sum,Nat.cast_ite,Nat.cast_one,Nat.cast_zero]
   rw [Finset.sum_comm]
   simp [incidence_count hl]
 
-private theorem incidence_self {l : ℕ+} (hl : 1 < l.val) (e : Edge l) :
+theorem incidence_self {l : ℕ+} (hl : 1 < l.val) (e : Edge l) :
     neighborIncidenceCount e e = 0 := Finset.sum_eq_zero fun i hi =>
       if_neg (neighbor_ne_self hl (Finset.mem_product.mp hi).1 i.2)
 

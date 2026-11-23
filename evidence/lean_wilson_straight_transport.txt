@@ -1,0 +1,205 @@
+Periodic Wilson transport, spatial clustering, and spectral shell limits
+2026-11-22 | Spark AArch64 | sh scripts/build_and_run_spark.sh openai_bridge
+Lean 4.32.0 | Lean commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35
+Mathlib commit 81a5d257c8e410db227a6665ed08f64fea08e997
+
+Source SHA-256
+f98ed8b5bb4d18a235e1054680e5fbb8cbc1e94c9da5e0183c082c6f3e3b8832  proofs/WilsonCouplingTriangle.lean
+ff7d72e3982bda65dc9607ec018b29a2699bd67594f4517e0320d53bbf138ac4  proofs/WilsonCartesianTransport.lean
+a8b4874832dd0f57780dab3017b014eb5a3e9881a9ebfa71ae759fbf4ca7cc2a  proofs/WilsonHeatBathDynamics.lean
+00d83874b8d3863c3f00e9db76b7b83e320ce5cd9569c24c581bc963ae8e660b  proofs/WilsonSpatialClustering.lean
+dbf9058d93fb761bb5fea56bed82e7d6cd74451dd355a13e30e84c346616f081  proofs/WilsonPlaquetteClustering.lean
+41ac269cdb8d2d18e6a9e95dd6c49ff846e0149b79341bef1c7a3165716e5ed0  proofs/PeriodicWilsonDS.lean
+a13993d567922e2664434dbc2bfda51252b71218625b5da58c1b9a9e8a06429e  proofs/PeriodicWilson.lean
+69b9ac79929825f08f45558bf8c0e46b4ea2d40417669ade8bf4b959d9b663ae  proofs/WilsonConditional.lean
+8e6f377d7e361a1eeed5a12f998b4479fdc789f654f4fa3e242a5691cd519929  proofs/WilsonLinkTransport.lean
+dbe1b692b62f8c431d04561af1bb6f1c60e60c5df770c931195f0b120493c1d6  proofs/WilsonPoleTransport.lean
+31ea8eec1fd8bd425a47b610820590f6d87a187a8a05040d75e2d06982d100bb  proofs/WilsonFieldResponse.lean
+4fad4da26f08d902e9cc3716c2713f78e5140879d3e4e68595bcb3d753f58d7d  proofs/DobrushinShlosman.lean
+aec9a0753028b9dba6e3c8216061f9bbb6f00f1e554ec5f2d114d96340298cbb  proofs/OpenAiYmBridge.lean
+
+The geodesic cost is the squared great-circle distance on the unit 3-sphere.
+Conditioning the second coupling on its first coordinate and composing it
+with the first coupling recovers both original pair marginals. Integrating
+the geodesic triangle inequality controls the cost of the outer coupling.
+An epsilon limit allows couplings arbitrarily close to the infimum.
+
+At a nonzero Cartesian staple field, the short angular arc divided by its
+chord tends to one. The radial coefficient is 1/sqrt(12) and the transverse
+coefficient is 1/2. Cauchy–Schwarz bounds their combined squared coefficient
+by 1/12 + 1/4 = 1/3. At zero field there is only a radial cost. Closed-interval
+induction along the straight segment, followed by the limit of the local
+slack, proves the global squared Wasserstein bound for every pair of fields.
+
+For actual periodic Wilson links the row is alpha = 18 beta / sqrt(3).
+The random-scan updating operator uniformly chooses one of N links. The
+Wilson disintegration proves that every site update preserves the Wilson
+mean. The sum of the coordinate Lipschitz weights contracts at each update
+by q = (N-1+alpha)/N. Uniform convergence of the sampler expectations to
+the full Wilson expectation follows below sqrt(3)/18.
+
+For spatial correlations, the factor of 1/N from averaging the site updates
+cancels when the changes in a weighted observable are summed along the
+sampler trajectory. Centering the second observable at a fixed value of the
+updated link cancels its background term by stationarity. A nonnegative
+profile p satisfying p >= w + A p therefore gives |Cov(F,G)| <= pi² sum v p.
+Iterating from the constant profile B/(1-alpha) bounds p at the first support
+by B alpha^k/(1-alpha) when the second support is k neighbor steps away.
+
+A plaquette incidence changes the base-site coordinate by at most one in
+each periodic direction. The shortest displacement is the absolute value of
+the centered residue. Thus cyclic coordinate separation by k implies the
+same separation in the incidence graph. The normalized real trace of a
+Wilson plaquette is gauge invariant. It has weight one at each of its four
+distinct links, each lying in the same slice for a spatial plaquette. Hence
+for two such traces |Cov| <= 4 pi² alpha^k/(1-alpha), uniformly in side.
+The Euclidean lattice separation k and the number of sampler updates are
+different quantities in these proofs.
+
+The continuum corollary takes a W0/W1/W2 theory, a positive physical shell
+spacing R, and a representation of the spectral Laplace transforms of every
+vacuum-orthogonal state by limits of separated periodic Wilson covariances
+with a uniform Lipschitz prefactor for that state. It proves the covariance
+inequality and passes it to the limit inside Lean. Constructing the spectral
+representation along a continuum trajectory remains open. The all-direction
+metric coefficient at beta = 0.192 also remains open.
+
+Lean axiom audit
+YangMills.PeriodicWilson.glue_link_couplings [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.linkWassersteinSq_triangle_bound [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.integral_difference_of_link_bound [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.straight_field_wasserstein [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.heatBath_straight_influence [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.straightInfluence_row [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.straightInfluence_self [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.straightRow_subunit [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.straightRow_at_0096 [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.straight_shell_limits_mass_gap [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.heatBathUpdate_variation [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.heatBathUpdate_stationary [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.randomScanRate_subunit [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.randomScan_oscillation [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.randomScan_wilson_mean_bound [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.randomScan_tendsto_wilson_mean [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.neighbor_axis_step [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.incidencePath_axis_distance [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.supportsSeparated_of_axis [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilson_link_angle_clustering [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilson_covariance_comparison [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilson_spatial_clustering [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilson_gap_of_covariance_limits [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilsonPlaquetteTrace_gauge_invariant [propext, Classical.choice, Quot.sound]
+YangMills.PeriodicWilson.wilson_plaquette_slice_clustering [propext, Classical.choice, Quot.sound]
+
+Concrete Lean applications
+import WilsonPlaquetteClustering
+open YangMills YangMills.PeriodicWilson YangMills.FundamentalSU2
+open Real MeasureTheory Filter
+open scoped ENNReal Topology
+
+-- The strict endpoint and exact squares on either side.
+example : straightRow (sqrt 3/18) = 1 := by
+  unfold straightRow
+  field_simp
+
+example : straightRow (12/125)^2 = 15552/15625 ∧
+    straightRow (97/1000)^2 = 254043/250000 := by
+  simp only [straightRow,div_pow,sq_sqrt (by norm_num : (0:ℝ) ≤ 3)]
+  constructor <;> norm_num
+
+example {l : ℕ+} (hl : 1 < l.val) (e : Edge l) : 1 < ∑ a, straightInfluence (97/1000) e a := by
+  rw [straightInfluence_row hl,straightRow,lt_div_iff₀ (by positivity : 0 < sqrt (3:ℝ))]
+  nlinarith only [sq_sqrt (by norm_num : (0:ℝ) ≤ 3),sq_nonneg (sqrt 3 - 873/500)]
+
+-- Opposite poles and a segment through the zero field.
+example {r : ℝ} (hr : 0 ≤ r) :
+    linkWassersteinSq (poleLaw r (diagonalLink 0)) (poleLaw r (diagonalLink π)) ≤
+      ENNReal.ofReal (‖r • linkCoordinates (diagonalLink 0)-r • linkCoordinates (diagonalLink π)‖^2/3) :=
+  straight_field_wasserstein hr hr _ _
+
+-- A nonconstant observable on real periodic configurations.
+example {l : ℕ+} (hl : 1 < l.val) (e : Edge l) (g : gaugeGroup.image)
+    (U : Configuration gaugeGroup l) :
+    Tendsto (fun k : ℕ => ((randomScan (12/125))^[k] (fun W => linkGeodesic (W e) g)) U)
+      atTop (𝓝 (∫ W, linkGeodesic (W e) g ∂wilsonLaw gaugeGroup l (12/125) su2Haar)) := by
+  apply randomScan_tendsto_wilson_mean hl (by norm_num) (straightRow_subunit.1 straightRow_at_0096)
+    (v := fun a => if a=e then 1 else 0) (fun a => by split <;> norm_num)
+  intro V W
+  simp only [ite_mul,one_mul,zero_mul,Finset.sum_ite_eq',Finset.mem_univ,if_true]
+  rw [abs_le]
+  have h1 := geo_triangle (V e) (W e) g
+  have h2 := geo_triangle (W e) (V e) g
+  have hs : linkGeodesic (W e) (V e) = linkGeodesic (V e) (W e) := by
+    simp only [linkGeodesic_eq_angle]; exact InnerProductGeometry.angle_comm ..
+  constructor <;> linarith
+
+-- Uniform random scan retains N-1 untouched links even at beta zero.
+example (l : ℕ+) : randomScanRate l 0 = (edgeCount l-1)/edgeCount l := by
+  simp [randomScanRate,straightRow]
+
+-- The separation uses the shortest offset across the periodic seam.
+example : periodicAxisDistance (l := 8) 0 (fun _ => 7,0) (fun _ => 0,0) = 1 := by decide
+example : periodicAxisDistance (l := 8) 0 (fun _ => 0,0) (fun _ => 3,0) = 3 := by decide
+
+-- Three Euclidean lattice steps give the cube of the row in an actual covariance.
+example (g h : gaugeGroup.image) :
+    |wilsonCovariance (l := 8) (12/125)
+      (fun U => linkGeodesic (U (fun _ => 0,0)) g) (fun U => linkGeodesic (U (fun _ => 3,0)) h)| ≤
+      (π^2/(1-straightRow (12/125)))*(straightRow (12/125))^3 := by
+  have hd : periodicAxisDistance (l := 8) 0 (fun _ => 0,0) (fun _ => 3,0) = 3 := by decide
+  simpa only [hd] using wilson_link_angle_clustering (l := 8) (by decide) (by norm_num : (0:ℝ) ≤ 12/125)
+    (straightRow_subunit.1 straightRow_at_0096) 0 (fun _ => 0,0) (fun _ => 3,0) g h
+
+-- With beta zero, two angles based on distinct time slices have zero connected correlation.
+example (g h : gaugeGroup.image) : wilsonCovariance (l := 8) 0
+      (fun U => linkGeodesic (U (fun _ => 7,0)) g) (fun U => linkGeodesic (U (fun _ => 0,0)) h) = 0 := by
+  have hd : periodicAxisDistance (l := 8) 0 (fun _ => 7,0) (fun _ => 0,0) = 1 := by decide
+  have hcov := wilson_link_angle_clustering (l := 8) (by decide) (β := 0) le_rfl
+    (by positivity) 0 (fun _ => 7,0) (fun _ => 0,0) g h
+  simpa [hd,straightRow] using hcov
+
+-- Gauge-invariant spatial plaquette traces at time slices 0 and 3 on the eight-torus.
+private def slicePlaquette (n : ZMod 8) : Face 8 := (fun _ => n, ⟨(1,2),by decide⟩)
+example : |wilsonCovariance (12/125) (wilsonPlaquetteTrace (slicePlaquette 0))
+    (wilsonPlaquetteTrace (slicePlaquette 3))| ≤
+    (4*π^2/(1-straightRow (12/125)))*(straightRow (12/125))^3 := by
+  have hd : (((slicePlaquette 3).1 0 - (slicePlaquette 0).1 0).valMinAbs).natAbs = 3 := by decide
+  simpa only [hd] using wilson_plaquette_slice_clustering (l := 8) (by decide) (by norm_num : (0:ℝ) ≤ 12/125)
+    (straightRow_subunit.1 straightRow_at_0096) 0 (slicePlaquette 0) (slicePlaquette 3)
+    (by decide) (by decide) (by decide) (by decide)
+Wilson transport, sampler, and spatial controls PASS
+
+Eight independent source mutations. Each replacement was elaborated in its
+own module against the same pinned dependencies and rejected by Lean.
+Coupling | glue_link_couplings | project the first and third links for the second pair marginal.
+Cartesian | straight_field_wasserstein | replace the final squared coefficient 1/3 by 1/4.
+Window | straightRow_at_0096 | assert a strict subunit row at 97/1000.
+Scan | randomScanRate | count N-2 untouched links in place of N-1.
+Shell | straight_shell_limits_mass_gap | reverse the domination inequality for the shell observable.
+Clustering | wilson_link_angle_clustering | increase the distance exponent by one.
+Geometry | periodicAxisDistance | substitute the unsigned residue for the shortest cyclic displacement.
+Plaquette | wilson_plaquette_slice_clustering | decrease the four-link prefactor from 4 to 3.
+Coupling rejected exit=1
+MutantCoupling.lean:36:6: error: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+Cartesian rejected exit=1
+MutantCartesian.lean:231:2: error: Type mismatch: After simplification, term
+Window rejected exit=1
+MutantWindow.lean:143:2: error: linarith failed to find a contradiction
+Scan rejected exit=1
+MutantScan.lean:100:61: error: unsolved goals
+Shell rejected exit=1
+MutantShell.lean:163:90: error: Application type mismatch: The argument
+Clustering rejected exit=1
+MutantClustering.lean:321:2: error: Type mismatch: After simplification, term
+Geometry rejected exit=1
+MutantGeometry.lean:265:101: error: unsolved goals
+Plaquette rejected exit=1
+MutantPlaquette.lean:98:2: error: Type mismatch: After simplification, term
+
+Wolfram Language arithmetic cross-check
+{FullSimplify[1/(18 Sqrt[1/12+1/4])],FullSimplify[(1/12+1/4)(a^2+b^2)-(a/Sqrt[12]+b/2)^2==(a/2-b/Sqrt[12])^2],(18*(12/125))^2/3,(18*(97/1000))^2/3}
+Output: {1/(6*Sqrt[3]), True, 15552/15625, 254043/250000}
+N[Sqrt[3]/18,12]
+Output (12 significant digits): 0.0962250448649
+The exact Lean proofs and rational test cases above establish the cutoff
+independently of the decimal evaluation and of numerical quadrature.

@@ -32,11 +32,11 @@ private theorem mat_injective : Function.Injective suMat := fun _ _ h => Subtype
 private theorem mat_mul (u v : G) : suMat (u*v) = suMat u * suMat v := rfl
 private theorem mat_inv (u : G) : suMat u⁻¹ = star (suMat u) := rfl
 
-private theorem scalar_trace (u : G) : (suMat u).trace.re = 2*(suMat u 0 0).re := by
+theorem scalar_trace (u : G) : (suMat u).trace.re = 2*(suMat u 0 0).re := by
   have hh : suMat u 1 1 = conj (suMat u 0 0) := u.prop.1
   simp [Matrix.trace,Fin.sum_univ_two,hh]; ring
 
-private theorem scalar_conjugate (h u : G) : (suMat (h*u*h⁻¹) 0 0).re = (suMat u 0 0).re := by
+theorem scalar_conjugate (h u : G) : (suMat (h*u*h⁻¹) 0 0).re = (suMat u 0 0).re := by
   have he : (suMat (h*u*h⁻¹)).trace = (suMat u).trace := calc
     _ = (suMat (h⁻¹*(h*u))).trace := by rw [mat_mul h⁻¹, mat_mul (h*u), Matrix.trace_mul_comm]
     _ = _ := by simp

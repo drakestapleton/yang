@@ -439,7 +439,7 @@ theorem linkWassersteinSq_symm (μ ν : Measure G) : linkWassersteinSq μ ν = l
   rw [lintegral_map hc measurable_swap]
   exact lintegral_congr fun z => congrArg (fun a => ENNReal.ofReal (a^2)) (geodesic_comm z.2 z.1)
 
-private theorem rms_triangle {X : Type*} [TopologicalSpace X] [CompactSpace X]
+theorem rms_triangle {X : Type*} [TopologicalSpace X] [CompactSpace X]
     [MeasurableSpace X] [OpensMeasurableSpace X] (P : Measure X) [IsFiniteMeasure P]
     {f g h : X → ℝ} (cf : Continuous f) (cg : Continuous g) (ch : Continuous h)
     (hf0 : ∀ z, 0 ≤ f z) (hg0 : 0 ≤ᵐ[P] g) (hh0 : 0 ≤ᵐ[P] h) (htri : ∀ z, f z ≤ g z+h z)
