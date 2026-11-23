@@ -1,4 +1,4 @@
-"""Middle of a three-exchange family on the periodic side-six torus."""
+"""Pinned Wilson exchange families with a full-orbit check of the signed product."""
 from itertools import product
 
 import numpy as np
@@ -7,11 +7,14 @@ from face_min_cut import minimum_middle
 
 COLUMNS = ('source_faces', 'cut_faces', 'slab_faces', 'target_faces',
            'source_j', 'cut_j', 'slab_j', 'target_j')
+INTERIOR_COLUMNS = ('source_faces', 'radius1_faces', 'radius2_faces', 'target_faces',
+                    'source_j', 'radius1_j', 'radius2_j', 'target_j')
 
 
 class MiddleCut:
-    def __init__(self, lat):
-        shape = (6,) * 4
+    def __init__(self, lat, *, interior=False):
+        side = 8 if interior else 6
+        shape = (side,) * 4
         coords = np.array(np.unravel_index(lat.sites, shape))
         depth = coords.sum(axis=0)
         # Each nonroot site backs up one step along its first nonzero coordinate.
@@ -26,8 +29,28 @@ class MiddleCut:
             self.pinned[direction, parent] = True
         assert self.pinned.sum() == lat.sites.size-1
         pins = self.pinned.ravel()
-        self.target_site = np.ravel_multi_index((0, 0, 0, 3), shape)
+        self.target_site = np.ravel_multi_index((0, 0, 0, side//2), shape)
         faces = lat.faces.reshape(-1, 4)
+        if interior:
+            from interior_geometry import interior_geometry
+            self.masks = interior_geometry(lat, self.pinned)
+            self.families = ((0, 1, 2, 3),)
+        else:
+            self.masks, minimum = self._side_six_masks(lat, pins, coords, faces)
+            self.families = ((0, 1, 3), (0, 2, 3))
+        active = ~pins[faces]
+        self.boundaries = []
+        for mask in self.masks:
+            on = mask[faces]
+            self.boundaries.append((active & on).any(axis=1) & (active & ~on).any(axis=1))
+        self.counts = tuple(int(b.sum()) for b in self.boundaries)
+        self.split = [faces[b] for b in self.boundaries]
+        for family in self.families:
+            assert np.max(np.sum([self.boundaries[j] for j in family], axis=0)) <= 1
+        if not interior:
+            self._check_side_six(lat, pins, faces, minimum)
+
+    def _side_six_masks(self, lat, pins, coords, faces):
         def endpoint(site):
             mask = np.zeros_like(pins)
             mask[lat.faces[0, site]] = True
@@ -35,18 +58,14 @@ class MiddleCut:
         source, target = endpoint(0), endpoint(self.target_site)
         cut, minimum = minimum_middle(faces, pins, source, target)
         slab = np.tile(np.minimum(coords[3], 6-coords[3]) <= 1, 4) & ~pins
-        self.masks = (source, cut, slab, target)
-        self.boundaries = []
-        active = ~pins[faces]
-        for mask in self.masks:
-            on = mask[faces]
-            self.boundaries.append((active & on).any(axis=1) & (active & ~on).any(axis=1))
-        self.counts = tuple(int(b.sum()) for b in self.boundaries)
+        return (source, cut, slab, target), minimum
+
+    def _check_side_six(self, lat, pins, faces, minimum):
+        source, cut, _, target = self.masks
         assert self.counts[1] == minimum <= self.counts[2]
         assert source.any() and target.any() and not (source & target).any()
         for i in (1, 2):
             assert self.masks[i][source].all() and not self.masks[i][target].any()
-            assert np.max(np.sum([self.boundaries[j] for j in (0, i, 3)], axis=0)) <= 1
         # The residual-reachable minimum is already the largest admissible free
         # source side: only the forced target neighborhood is outside it.
         forced_target = target.copy()
@@ -58,7 +77,6 @@ class MiddleCut:
         assert source[path[0, 0]] and target[path[-1, 2]]
         assert np.array_equal(path[:-1, 2], path[1:, 0])
         assert not pins[path[:, [0, 2]]].any()
-        self.split = [faces[b] for b in self.boundaries]
 
     def measure(self, lat, u, beta, verify, mul, inv):
         v = lat.tree_frame(u, self.layers, verify)
@@ -79,12 +97,12 @@ class MiddleCut:
                 diff = tr[0, 0]-tr[1, 0]
                 return diff[0]*diff[self.target_site]
             delta = difference(raw)
-            for mid in (1, 2):
-                js = np.array([fields[i] for i in (0, mid, 3)])
+            for family in self.families:
+                js = np.array([fields[i] for i in family])
                 orbit = []
-                for bits in product((0, 1), repeat=3):
+                for bits in product((0, 1), repeat=len(family)):
                     exchange = np.zeros(links.shape[1], dtype=bool)
-                    for bit, i in zip(bits, (0, mid, 3)):
+                    for bit, i in zip(bits, family):
                         if bit:
                             exchange ^= self.masks[i]
                     pair = np.where(exchange[None, :, None], links[::-1], links).reshape(v.shape)

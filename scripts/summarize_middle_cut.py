@@ -15,7 +15,8 @@ def summarize(rows):
         def col(name):
             return np.array([float(r[name]) for r in group])
         w = np.abs(np.tanh(col('source_j')))
-        for name in ('cut', 'slab'):
+        successive = 'radius1_j' in group[0]
+        for name in (('radius1', 'radius2') if successive else ('cut', 'slab')):
             counts = col(name+'_faces')
             if not np.all(counts == counts[0]):
                 raise ValueError('geometry changed in chain')
@@ -30,6 +31,8 @@ def summarize(rows):
                 loss = largest_share = float('nan')  # No surviving preceding weight.
             print(key[0], key[5], key[6], len(j), name, int(counts[0]), f'{j.min():.8g}',
                   f'{j.max():.8g}', f'{loss:.8g}', f'{largest_share:.8g}')
+            if successive:
+                w *= np.abs(np.tanh(j))
 
 
 if __name__ == '__main__':

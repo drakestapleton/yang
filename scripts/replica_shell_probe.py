@@ -231,6 +231,7 @@ def run():
     mode.add_argument('--vertex-shell', action='store_true', help='Test shared vertex gauges on the unframed outer slab (side 4).')
     mode.add_argument('--haar-shell', action='store_true', help='Measure product Haar weight on the outer vertex sheets (side 4).')
     mode.add_argument('--middle-cut', action='store_true', help='Compare a minimum-face middle cut and a slab at separation three (side 6).')
+    mode.add_argument('--interior-shells', action='store_true', help='Measure two successive whole-slice separators at separation four (side 8).')
     arg.add_argument('--group', choices=('SU2', 'U1'), default='SU2')
     arg.add_argument('--side', type=int, default=4)
     arg.add_argument('--warmup', type=int, default=128)
@@ -244,6 +245,8 @@ def run():
         arg.error('The dense shared-vertex diagnostic is limited to side 4.')
     if opt.middle_cut and opt.side != 6:
         arg.error('The three-exchange comparison uses side 6 and time separation 3.')
+    if opt.interior_shells and opt.side != 8:
+        arg.error('The two-interior-shell comparison uses side 8 and time separation 4.')
     lat = Lattice(opt.side, opt.group)
     masks = ['slab', 'local', 'endpoints', 'tree_slab', 'tree_local', 'tree_endpoints', 'forest_endpoints']
     keys = ['trace', 'raw_cov'] + [mask+'_'+stat for mask in masks for stat in
@@ -265,6 +268,9 @@ def run():
     elif opt.middle_cut:
         from middle_cut_probe import COLUMNS, MiddleCut
         measure = MiddleCut(lat).measure
+    elif opt.interior_shells:
+        from middle_cut_probe import INTERIOR_COLUMNS as COLUMNS, MiddleCut
+        measure = MiddleCut(lat, interior=True).measure
     if measure is not None:
         columns = ('sample', *COLUMNS)
     else:

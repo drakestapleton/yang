@@ -1,0 +1,163 @@
+Contract row 2: PROVED abstract path-packing certificate, not a constructed torus packing.
+Base: a002e52ccf1467a6e19c2a96ee9434d6db1736c8
+Contract SHA256: 01e9776502eb668f6a7d06c310ee7cce110bc98c3799c6c5b5cb53598adec9e4
+No publication, signing, dependency modification or full legacy rebuild by this worker.
+
+Model and scope
+---------------
+proofs/WilsonReplicaPathPacking.lean imports the existing WilsonReplicaFreeShell.
+For arbitrary compatible PinnedFrame P and mask m, FreeFacePath is an inductive
+chain of actual Wilson Face l values, not an abstract graph of assumed split
+faces. A cons step carries two members of P.freeFace p, which is the existing
+faceEdges p minus P.edges. Its second link is literally the next step's first
+link. The terminal empty path has one free endpoint. Incidence therefore uses
+the existing periodic Wilson plaquette corners; pinned links cannot witness a
+step. No path step assumes p belongs to P.freeBoundary m.
+
+path_crosses_freeBoundary: different labels at the two endpoints force an
+actual path face into P.freeBoundary m. Equal labels propagate by induction;
+a changed label contradicts the existing freeUniform definition. The empty
+path is ruled out by the opposite-label premise, not by a hidden nonemptiness
+assumption.
+
+path_packing_le_freeBoundary: given n such chains, opposite endpoint labels,
+and pairwise disjoint face supports, choose one boundary witness per chain.
+Disjointness makes that choice injective into P.freeBoundary m, proving
+n <= (P.freeBoundary m).card. Paths may share links/endpoints and may revisit
+their own faces; only different chains must have disjoint face supports.
+The theorem does not assume that chains exhaust all lattice faces.
+
+overlapping_paths_counterexample: a concrete side-two Wilson plaquette at
+site zero with directions (0,1), the empty compatible frame, and the mask
+selecting direction zero give a genuine one-step crossing. Repeat it
+card(freeBoundary)+1 times. Every path and opposite-label premise holds,
+but the count fails. Thus dropping inter-path face disjointness is genuinely
+false, not merely beyond the tactics used here.
+
+CONCRETE DATA LIMIT: this file does not construct the side-eight pinned tree,
+the two temporal arcs, their face-disjoint packing, or the whole-slice labels.
+Those are separate geometry certificates/data. In particular it does not
+claim a Lean-certified side-eight numerical minimum or optimal flat cuts.
+It proves the general certificate implication on actual Wilson incidence.
+No configuration, Wilson action, exchange field, chain, stationarity,
+continuum, ensemble decay rate or mass-gap assertion is proved here.
+
+Source and integration hashes (SHA256)
+------------------------------------
+cbcec70a782980d56139e0f6686d66b7f6a2205e86b5d71069cc05b6faeab940  proofs/WilsonReplicaPathPacking.lean
+e1294278215f7789a55439afd868ab47f930a46ad60e96efb0da17c82e7af165  scripts/build_and_run_spark.sh
+The only recipe changes add this module to the copy step and compile it
+immediately after FreeShell, emitting its olean. Both matching integration
+sites were checked; bash -n scripts/build_and_run_spark.sh exited 0.
+Existing module order and all other modes remain unchanged.
+
+Pinned environment observed on Spark
+-----------------------------------
+Lean 4.32.0, aarch64-unknown-linux-gnu, Release,
+commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35.
+Mathlib HEAD: 81a5d257c8e410db227a6665ed08f64fea08e997
+2773c517aa90b66ea8a2c52bddddf84393157797f8341be0df45294fff7fd32e  lean-toolchain
+2f7b545f9aba8348d4be4c18b78da47d7fe7d80fbca737ce3d32415f31f9149e  lakefile.toml
+48a4e2bcfad97fa154139282a40a2c43ac80cd736520e6b9c2acb98c4d60a7bc  lake-manifest.json
+Reused immutable dependency source/olean hashes:
+d8c4be226a6df7211289c507154578177c232d84ba728303098842cfbc51549f  WilsonReplicaFrame.lean
+8182391573527293a311985f5f6a5a3549fae40e0b1a092e9c08ab332ea1cfe9  WilsonReplicaFrame.olean
+61780cb05bfc47757f60c472cea01f4bc5ddc78d51d3697ef49047d41820f87f  WilsonReplicaShells.lean
+c8775ebec8dd963a0058e674f1fdf14764b00c3e7507151f3982a633447a387c  WilsonReplicaShells.olean
+267a68c43a8eacf57deb182f7be55b53bc8730108ac7239773cc6650c874601a  WilsonReplicaExchange.lean
+dabf149932ebe4db0fe4b8cfd1a72d0f4ed4864f21dd60307baf202e5cc08d09  WilsonReplicaExchange.olean
+608b8af3fc0b24afdbe71f5856579743eaae5540d2c91c4e289674ec58ca16ab  WilsonReplicaFreeShell.lean
+16311e52504cf4ba73166b5b002cc4f2e71727ac5193efc5742b67d8726fa209  WilsonReplicaFreeShell.olean
+
+Execution and portable replay
+-----------------------------
+Fresh remote scratch was created with:
+  ssh spark 'mktemp -d /tmp/yang-path-packing.XXXXXX'
+Only the new source and controls were copied into it. The prior FreeShell
+scratch and pinned replica bridge were used read-only, in precisely the
+locations resolved by the preceding free-shell-check runner. Their hashes
+above were re-observed in each invocation. No dependency was rebuilt.
+
+Actual runner: packing-check.sh (private work log directory, basename only).
+Runner SHA256: b6eb348841aaff1ce3eb8496cb99ece5db768cbc1a7736926e349e1f608bc772
+Invocation: bash packing-check.sh proofs/WilsonReplicaPathPacking.lean
+Full-module compilation: 2026-11-23T13:36:30Z to 2026-11-23T13:36:38Z.
+LEAN_EXIT=0. No warnings or errors. Output olean SHA256:
+2ac3752b82861321ccdd2a464fb3c6f76ef478dcb5d759d13f6dfb3d09146a18
+Raw log: packing-final.log
+Raw log SHA256: 0b3edf1fedce01e2c15c2c8ca35b7cd8c1f2db4e194592a52b27cfe174634c6d
+
+The following is the executed compilation command with machine-local paths
+replaced by role variables. BRIDGE is the pinned Lake project; REPLICA is its
+prior replica module directory; FREE is the prior FreeShell directory; SCRATCH
+is the fresh directory above. Set these to installations matching the hashes.
+  cd "$BRIDGE"
+  export PATH="$HOME/.elan/bin:$PATH"
+  lake env sh -ec '
+    export LEAN_PATH="$SCRATCH:$FREE:$REPLICA:$LEAN_PATH"
+    cd "$SCRATCH"
+    taskset -c 0,1 nice -n 10 lean -o WilsonReplicaPathPacking.olean WilsonReplicaPathPacking.lean
+  '
+Export those four role variables before lake env, and copy the source into
+SCRATCH. This new-module recipe avoids any full legacy build or private path
+requirement. The repository openai_bridge recipe also checks the new module
+on a full bridge run, but that expensive mode was not run for this evidence.
+
+Portable positive output / axiom audit:
+'YangMills.PeriodicWilson.PinnedFrame.path_crosses_freeBoundary' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.PinnedFrame.path_packing_le_freeBoundary' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.PinnedFrame.overlapping_paths_counterexample' depends on axioms: [propext, Classical.choice, Quot.sound]
+All are standard axioms. No sorry, native_decide, added axiom or unsafe proof.
+The first development run had a local decide elaboration error in the control;
+replacing it with explicit simplification fixed it. The full final source,
+not merely the changed declaration, was then compiled successfully above.
+
+Actual false-weakening control
+-----------------------------
+Invocation: bash packing-check.sh PathPackingFalseControl.lean
+Timestamp: 2026-11-23T13:36:49Z to 2026-11-23T13:36:55Z.
+Expected and observed LEAN_EXIT=1. The sole error was at the attempted false
+inequality; preceding actual-chain, endpoint-label and negation proofs checked.
+Raw log: packing-negative.log
+Raw log SHA256: 265bc73cf3572283f828f54988eaead98a5c6ff68ab39aa0c3ba84e9d9465b4d
+Control source SHA256: 59b3a8335b1d256f99a8636b30aa49ca01f08d18376b13bfb6202fdd1d3e48ee
+Portable diagnostic:
+PathPackingFalseControl.lean:23:2: error: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  c >= 0
+where
+ c := [integer coercion of] ((empty 2).freeBoundary m).card
+
+For replay, save these exact UTF-8 source bytes as PathPackingFalseControl.lean
+and run the same command with that filename substituted (expect nonzero):
+--- BEGIN CONTROL ---
+import WilsonReplicaPathPacking
+namespace YangMills.PeriodicWilson.PinnedFrame
+open WilsonPolymer
+noncomputable section
+-- False weakening: duplicate a genuine one-face crossing, dropping only
+-- inter-path disjointness. Path and opposite-label premises still hold.
+private def p : Face 2 := (0, ⟨(0, 1), by decide⟩)
+private def a : Edge 2 := (corners p).1
+private def b : Edge 2 := (corners p).2.2.2
+private def m (e : Edge 2) : Bool := decide (e.2 = 0)
+private def n : ℕ := ((empty 2).freeBoundary m).card + 1
+example : ∀ _i : Fin n, (empty 2).FreeFacePath a [p] b := by
+  intro _
+  exact .cons (by simp [a, freeFace, empty, faceEdges])
+    (by simp [b, freeFace, empty, faceEdges]) (.nil (by simp [empty]))
+example : ∀ _i : Fin n, m a ≠ m b := by
+  intro _
+  simp [m, a, b, p, corners]
+-- Kernel-checked positive negation of exactly the next attempted inequality.
+example : ¬ n ≤ ((empty 2).freeBoundary m).card := Nat.not_succ_le_self _
+theorem false_without_disjointness : n ≤ ((empty 2).freeBoundary m).card := by
+  unfold n
+  omega
+end
+end YangMills.PeriodicWilson.PinnedFrame
+--- END CONTROL ---
+The successful counterexample theorem in the committed module independently
+proves existence of these path/label data and the negated count with standard
+axioms. Therefore this negative control is not relying on tactic failure as
+an oracle of mathematical falsity. The control is not a build target.
