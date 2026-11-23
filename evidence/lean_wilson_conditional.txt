@@ -1,0 +1,40 @@
+Wilson one-link conditional law on the periodic SU(2) lattice
+2026-11-22 | Spark AArch64
+
+Command: sh scripts/build_and_run_spark.sh openai_bridge
+Lean (version 4.32.0, aarch64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)
+Mathlib commit: 81a5d257c8e410db227a6665ed08f64fea08e997
+SHA-256:
+c1542c816cd42d23448b66b4cb021c7f3bdad64b64f1c643dde27147ce0c3233  PublicWilson.lean
+94111ad258b4218a263fcc0a7136446d5a6eff0e090809b72036fb3a7aecfff8  PublicTheory.lean
+7c1e30c7c6cb946aa7b096e38564207cbfaecf6a94073b1727c9fa0e9a22bd2f  proofs/PeriodicWilson.lean
+3be17b663eceaf7d14bedbcaea2f17aa30078f609341959e339949459d4f6839  proofs/WilsonConditional.lean
+
+'YangMills.PeriodicWilson.heatBathKernel_apply' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.splitLaw_probability' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.heatBathKernel_markov' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.wilsonLaw_disintegrates' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.heatBath_eq_condKernel' depends on axioms: [propext, Classical.choice, Quot.sound]
+'YangMills.PeriodicWilson.condKernel_eq_stapleTilt' depends on axioms: [propext, Classical.choice, Quot.sound]
+LEAN_PHASE4_BRIDGES status=PASS
+
+Negative controls on isolated copies of WilsonConditional.lean:
+1. Double the fiber partition function in linkDensity and adjust its
+   measurability proof. The kernel no longer equals heatBath in heatBathKernel_apply.
+2. Replace the resampled link value v by its old value u in fill_update.
+   Reconstruction of the selected coordinate fails.
+local_normalizer exit=1
+Negative.lean:98:2: error: Tactic `rfl` failed: The left-hand side
+wrong_link_value exit=1
+Negative.lean:35:2: error: unsolved goals
+
+math-check | Wolfram Language | exact normalization identity
+FullSimplify[(zloc/z)*(w/zloc) == w/z, zloc > 0 && z > 0 && w > 0]
+Out[1]= True
+
+For every real beta and every positive torus side the Wilson joint law in
+background/link coordinates is its background marginal composed with the
+normalized link kernel. The kernel equals Mathlib’s regular conditional
+law almost everywhere under that marginal. For sides at least two the
+kernel has the previously proved six-staple Haar tilt. The angular
+pushforward of Haar and the transport comparison for W2 remain open.

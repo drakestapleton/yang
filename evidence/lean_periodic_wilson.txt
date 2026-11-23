@@ -51,3 +51,6 @@ The full-density factorization and local Haar tilt use the same staple.
 Formal disintegration of the full law and the angular pushforward of Haar
 are open. A metric W2 heat-bath contraction also requires a transport
 comparison. The l = 1 plaquette has repeated links and is a commutator.
+
+The subsequent conditional-law proof closes the disintegration step.
+See proofs/WilsonConditional.lean and evidence/lean_wilson_conditional.txt.
